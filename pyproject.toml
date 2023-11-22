@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "starbot-bilibili-core"
+version = "1.0.0"
+description = "一个优雅的异步 bilibili 直播间监听库"
+keywords = ["starbot", "bilibili", "bot"]
+license = "AGPL-3.0-only"
+authors = ["Starlwr <lwr1104@qq.com>"]
+readme = "README.md"
+repository = "https://github.com/Starlwr/StarBotCore"
+packages = [{ include = "starbot_core" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+aiohttp = "^3.9.0"
+loguru = "^0.7.2"
+brotli = "^1.1.0"
+starbot-executor = "^1.2.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
