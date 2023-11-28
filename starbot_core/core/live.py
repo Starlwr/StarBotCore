@@ -194,14 +194,16 @@ class LiveRoom:
 
         self.status = ConnectionStatus.CONNECTING
 
-        conf = await self.get_chat_conf()
-        available_hosts = conf["host_list"]
+        available_hosts = None
         host = None
         session = get_session()
 
         while True:
+            received = False
+
             if not available_hosts:
-                raise LiveException(f"直播间 {self.room_id} 连接异常: 无可用连接地址")
+                conf = await self.get_chat_conf()
+                available_hosts = conf["host_list"]
 
             if host is None:
                 host = available_hosts.pop()
@@ -217,6 +219,7 @@ class LiveRoom:
                     msg: WSMessage
                     async for msg in ws:
                         if msg.type == aiohttp.WSMsgType.BINARY:
+                            received = True
                             await self.__handle_data(msg.data)
                         elif msg.type == aiohttp.WSMsgType.ERROR:
                             logger.error(f"直播间 {self.room_id} 出现错误")
@@ -230,6 +233,9 @@ class LiveRoom:
                         break
             except ClientConnectorError:
                 continue
+            finally:
+                if not received:
+                    host = None
 
     async def disconnect(self) -> NoReturn:
         """
