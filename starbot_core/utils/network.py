@@ -2,10 +2,12 @@ import asyncio
 import atexit
 import json
 import re
-from typing import Any, Union, Dict, Optional, NoReturn
+from asyncio import TimeoutError
+from typing import Any, Dict, Optional, NoReturn
 
 import aiohttp
-from aiohttp import TCPConnector, ServerDisconnectedError, ClientConnectorError
+from aiohttp import TCPConnector, ServerDisconnectedError, ClientConnectorError, ClientOSError, ClientPayloadError
+from loguru import logger
 
 from ..exception.LoginException import LoginException
 from ..exception.NetworkException import NetworkException
@@ -67,7 +69,7 @@ credential: Credential = Credential()
 
 
 @atexit.register
-def __clean():
+def __clean() -> NoReturn:
     """
     程序退出清理操作
     """
@@ -91,7 +93,8 @@ async def request(method: str,
                   data: Any = None,
                   no_csrf: bool = False,
                   json_body: bool = False,
-                  **kwargs) -> Union[Dict, None]:
+                  max_retry: int = 3,
+                  **kwargs) -> Optional[Dict]:
     """
     向接口发送请求
 
@@ -102,11 +105,15 @@ async def request(method: str,
         data: 请求载荷。默认：None
         no_csrf: 不要自动添加 CSRF。默认：False
         json_body: 载荷是否为 JSON。默认：False
+        max_retry: 最大尝试次数，不可设置为 0，不建议设置为较大的值，可能会因接口访问被风控导致超长时间等待。默认：3
         kwargs: 暂不使用
 
     Returns:
         接口未返回数据时，返回 None，否则返回该接口提供的 data 或 result 字段的数据
     """
+    if max_retry < 1:
+        raise ValueError("最大尝试次数不可为小于 1 的值")
+
     method = method.upper()
 
     # 使用 Referer 和 UA 请求头以绕过反爬虫机制
@@ -147,7 +154,7 @@ async def request(method: str,
 
     session = get_session()
 
-    for i in range(3):
+    for i in range(max_retry):
         try:
             async with session.request(**args) as resp:
                 # 检查状态码
@@ -202,13 +209,15 @@ async def request(method: str,
                 if real_data is None:
                     real_data = resp_data.get("result", None)
                 return real_data
-        except ClientConnectorError:
+        except (ClientOSError, ServerDisconnectedError, TimeoutError, ClientPayloadError, ClientConnectorError):
             await asyncio.sleep(3)
             continue
-        except ServerDisconnectedError:
+        except NetworkException as ex:
+            logger.error(f"网络请求异常, HTTP 状态码: {ex.status} ({ex.msg})")
             await asyncio.sleep(3)
             continue
-        except NetworkException:
+        except ResponseCodeException as ex:
+            logger.error(f"网络请求异常, 响应码: {ex.code} ({ex.msg})")
             await asyncio.sleep(3)
             continue
 
@@ -233,7 +242,7 @@ def get_session() -> aiohttp.ClientSession:
     return session
 
 
-def set_session(session: aiohttp.ClientSession):
+def set_session(session: aiohttp.ClientSession) -> NoReturn:
     """
     用户手动设置 Session
 
