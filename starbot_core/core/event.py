@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Optional
 
 
-class EventType(Enum):
+class EventType:
     """
     事件类型枚举，基于本项目开发时，可通过继承此类的方式扩展事件类型
     """
