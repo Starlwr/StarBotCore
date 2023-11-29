@@ -216,10 +216,6 @@ async def request(method: str,
             logger.error(f"网络请求异常, HTTP 状态码: {ex.status} ({ex.msg})")
             await asyncio.sleep(3)
             continue
-        except ResponseCodeException as ex:
-            logger.error(f"网络请求异常, 响应码: {ex.code} ({ex.msg})")
-            await asyncio.sleep(3)
-            continue
 
 
 def get_session() -> aiohttp.ClientSession:
