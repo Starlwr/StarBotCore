@@ -70,10 +70,10 @@ class LiveRoom:
     status: ConnectionStatus
     """连接状态"""
 
-    __ws: ClientWebSocketResponse
+    __ws: Optional[ClientWebSocketResponse]
     """直播间 websocket 连接"""
 
-    __heartbeat_task: Task
+    __heartbeat_task: Optional[Task]
     """直播间心跳任务"""
 
     __heartbeat_timer: int
@@ -122,6 +122,9 @@ class LiveRoom:
             self.uname = room_info["anchor_info"]["base_info"]["uname"]
             self.face = room_info["anchor_info"]["base_info"]["face"]
 
+        self.__ws = None
+        self.__heartbeat_task = None
+        self.__heartbeat_timer = 0
         self.__interval = interval
         self.__add_event_listener()
 
@@ -246,8 +249,10 @@ class LiveRoom:
 
         self.status = ConnectionStatus.CLOSING
 
-        self.__heartbeat_task.cancel()
-        await self.__ws.close()
+        if self.__heartbeat_task is not None:
+            self.__heartbeat_task.cancel()
+        if self.__ws is not None:
+            await self.__ws.close()
 
         self.status = ConnectionStatus.CLOSED
 
