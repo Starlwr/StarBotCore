@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "starbot-bilibili-core"
-version = "1.1.0"
+version = "1.2.0"
 description = "一个优雅的异步 bilibili 直播间监听库"
 keywords = ["starbot", "bilibili", "bot"]
 license = "AGPL-3.0-only"
