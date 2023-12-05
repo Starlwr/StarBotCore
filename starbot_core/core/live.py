@@ -284,7 +284,7 @@ class LiveRoom:
             logger.warning(f"直播间 {self.room_id} 连接异常: 心跳响应超时")
             await self.disconnect()
             logger.warning(f"即将重新连接直播间 {self.room_id} ...")
-            await executor.create_queue_task(self.connect(), self.__interval)
+            await executor.create_queue_task(self.connect, self.__interval)
 
     async def __send_verify_data(self, ws: ClientWebSocketResponse, token: str) -> NoReturn:
         """
@@ -479,6 +479,9 @@ class LiveEventListener:
         self.auto_complete = auto_complete
         self.__rooms = {}
 
+    def __contains__(self, item):
+        return item in self.__rooms
+
     async def add(self, uid: Optional[int] = None, room_id: Optional[int] = None) -> int:
         """
         添加监听直播间
@@ -499,7 +502,7 @@ class LiveEventListener:
             raise LiveListenerException(f"{room.uname} 的直播间 {room.room_id} 已添加监听, 不可重复添加")
 
         self.__rooms[room.uid] = room
-        await executor.create_queue_task(room.connect(), self.interval)
+        await executor.create_queue_task(room.connect, self.interval)
 
         source = RoomUserInfo(room.face, room.uid, room.uname, room.room_id)
 
@@ -836,7 +839,10 @@ class LiveEventListener:
             raise LiveListenerException(f"未添加过 UID: {uid} 的直播间监听")
 
         room = self.__rooms.pop(uid)
-        await executor.create_queue_task(room.disconnect())
+        if room.connect in executor:
+            executor.remove_queue_task(room.connect)
+        else:
+            await room.disconnect()
 
         executor.remove_event_listener("CONNECTED", room.room_id, channel="RAW")
         executor.remove_event_listener("TIMEOUT", room.room_id, channel="RAW")
