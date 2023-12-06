@@ -300,7 +300,7 @@ class SuperChatEvent(BaseLiveEvent):
     content: str
     """内容"""
 
-    price: float
+    price: int
     """价格（元）"""
 
 
