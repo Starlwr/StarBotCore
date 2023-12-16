@@ -130,8 +130,8 @@ class LiveRoom:
 
         return self
 
-    @classmethod
-    async def query_user_info(cls, uid: int) -> Tuple[str, int, str]:
+    @staticmethod
+    async def query_user_info(uid: int) -> Tuple[str, int, str]:
         """
         根据 UID 查询用户信息
 
@@ -159,6 +159,22 @@ class LiveRoom:
             "uid": self.uid
         }
         return await request(method, url, params=params)
+
+    @staticmethod
+    async def query_room_status(room_id: int) -> Tuple[int, int]:
+        """
+        根据房间号查询直播间状态相关信息
+
+        Args:
+            room_id: 要查询的房间号
+
+        Returns:
+            状态信息元组，格式为：(状态，开播时间戳)
+        """
+        room = LiveRoom()
+        room.room_id = room_id
+        info = await room.get_room_info()
+        return info["room_info"]["live_status"], info["room_info"]["live_start_time"]
 
     async def get_room_info(self) -> Dict[str, Any]:
         """

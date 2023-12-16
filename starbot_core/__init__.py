@@ -1,14 +1,9 @@
-import asyncio
-import platform
 import sys
 
 from loguru import logger
 
 from .core.event import *
 from .core.live import listener
-
-if 'windows' in platform.system().lower():
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 logger_format = (
     "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
