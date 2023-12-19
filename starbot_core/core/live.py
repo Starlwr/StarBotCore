@@ -161,20 +161,35 @@ class LiveRoom:
         return await request(method, url, params=params)
 
     @staticmethod
-    async def query_room_status(room_id: int) -> Tuple[int, int]:
+    async def query_room_base_info(room_id: int) -> Tuple[int, int, str, str, str, str, int, int, int]:
         """
-        根据房间号查询直播间状态相关信息
+        根据房间号查询直播间基础信息
 
         Args:
             room_id: 要查询的房间号
 
         Returns:
-            状态信息元组，格式为：(状态，开播时间戳)
+            基础信息元组，格式为：(直播间状态，开播时间戳，直播间标题，直播间封面链接，一级分区名称，二级分区名称，粉丝数量，粉丝团数量，大航海数量)
         """
         room = LiveRoom()
         room.room_id = room_id
         info = await room.get_room_info()
-        return info["room_info"]["live_status"], info["room_info"]["live_start_time"]
+        base_room_info = info["room_info"]
+        status = base_room_info["live_status"]
+        start_time = base_room_info["live_start_time"]
+        title = base_room_info["title"]
+        cover = base_room_info["cover"]
+        parent_area = base_room_info["parent_area_name"]
+        area = base_room_info["area_name"]
+        anchor_info = info["anchor_info"]
+        fans_count = anchor_info["relation_info"]["attention"]
+        if anchor_info["medal_info"] is None:
+            fans_medal_count = 0
+        else:
+            fans_medal_count = anchor_info["medal_info"]["fansclub"]
+        guard_count = info["guard_info"]["count"]
+
+        return status, start_time, title, cover, parent_area, area, fans_count, fans_medal_count, guard_count
 
     async def get_room_info(self) -> Dict[str, Any]:
         """
@@ -533,7 +548,12 @@ class LiveEventListener:
             if "live_time" not in raw["data"]:
                 return
 
-            event = LiveOnEvent(source)
+            (
+                _, start_time, title, cover, parent_area, area, fans_count, fans_medal_count, guard_count
+            ) = await room.query_room_base_info(room.room_id)
+            info = RoomInfo(title, cover, parent_area, area, fans_count, fans_medal_count, guard_count)
+
+            event = LiveOnEvent(source, info, start_time)
             executor.dispatch(event, EventType.LiveEvent, LiveEvent.LiveOnEvent, room.room_id)
 
         @executor.on("PREPARING", room.room_id, channel="RAW")
@@ -544,7 +564,12 @@ class LiveEventListener:
             发布事件:
                 - :class:`LiveOffEvent`: 下播事件
             """
-            event = LiveOffEvent(source)
+            (
+                _, _, title, cover, parent_area, area, fans_count, fans_medal_count, guard_count
+            ) = await room.query_room_base_info(room.room_id)
+            info = RoomInfo(title, cover, parent_area, area, fans_count, fans_medal_count, guard_count)
+
+            event = LiveOffEvent(source, info)
             executor.dispatch(event, EventType.LiveEvent, LiveEvent.LiveOffEvent, room.room_id)
 
         @executor.on("DANMU_MSG", room.room_id, channel="RAW")

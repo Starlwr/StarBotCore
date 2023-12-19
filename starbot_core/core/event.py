@@ -110,12 +110,39 @@ class FansMedalInfo(RoomUserInfo):
 
 
 @dataclass
+class RoomInfo:
+    """
+    直播间信息类
+    """
+    title: str
+    """直播间标题"""
+
+    cover: str
+    """直播间封面链接"""
+
+    parent_area: str
+    """一级分区名称"""
+
+    area: str
+    """二级分区名称"""
+
+    fans_count: int
+    """粉丝数量"""
+
+    fans_medal_count: int
+    """粉丝团数量"""
+
+    guard_count: int
+    """大航海数量"""
+
+
+@dataclass
 class BaseLiveEvent:
     """
     直播间事件基类
     """
     source: RoomUserInfo
-    """来源直播间信息"""
+    """来源直播间主播信息"""
 
     sender: UserInfo
     """事件触发者信息"""
@@ -127,7 +154,7 @@ class ConnectedEvent:
     连接成功事件
     """
     source: RoomUserInfo
-    """来源直播间信息"""
+    """来源直播间主播信息"""
 
 
 @dataclass
@@ -136,7 +163,7 @@ class DisconnectedEvent:
     断开连接事件
     """
     source: RoomUserInfo
-    """来源直播间信息"""
+    """来源直播间主播信息"""
 
 
 @dataclass
@@ -145,7 +172,7 @@ class TimeoutEvent:
     心跳响应超时事件
     """
     source: RoomUserInfo
-    """来源直播间信息"""
+    """来源直播间主播信息"""
 
 
 @dataclass
@@ -154,7 +181,13 @@ class LiveOnEvent:
     开播事件
     """
     source: RoomUserInfo
+    """来源直播间主播信息"""
+
+    info: RoomInfo
     """来源直播间信息"""
+
+    timestamp: int
+    """开播时间戳"""
 
 
 @dataclass
@@ -163,6 +196,9 @@ class LiveOffEvent:
     下播事件
     """
     source: RoomUserInfo
+    """来源直播间主播信息"""
+
+    info: RoomInfo
     """来源直播间信息"""
 
 
@@ -355,7 +391,7 @@ class WatchedUpdateEvent:
     观看过人数更新事件
     """
     source: RoomUserInfo
-    """来源直播间信息"""
+    """来源直播间主播信息"""
 
     count: int
     """观看过人数"""
@@ -379,7 +415,7 @@ class LikeUpdateEvent:
     点赞数更新事件
     """
     source: RoomUserInfo
-    """来源直播间信息"""
+    """来源直播间主播信息"""
 
     count: int
     """点赞数"""
