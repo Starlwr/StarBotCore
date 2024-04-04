@@ -770,7 +770,7 @@ class LiveEventListener:
 
             fans_medal = None
             medal_info = base["fans_medal"]
-            if medal_info["target_id"]:
+            if medal_info and medal_info["target_id"]:
                 (
                     fans_medal_level, fans_medal_name,
                     fans_medal_uid, fans_medal_uname, fans_medal_room_id, fans_medal_face
