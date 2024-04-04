@@ -146,8 +146,11 @@ loop.run_until_complete(main())
 loop.run_forever()
 ```
 
-## 鸣谢
+## 相关项目
 
 * [StarBotExecutor](https://github.com/Starlwr/StarBotExecutor): 一个基于订阅发布模式的异步执行器
+
+## 鸣谢
+
 * [bilibili-api](https://github.com/MoyuScript/bilibili-api): 哔哩哔哩的 API 调用模块
 * [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect): 哔哩哔哩 API 收集整理
