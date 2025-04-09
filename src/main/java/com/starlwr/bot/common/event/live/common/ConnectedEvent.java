@@ -1,6 +1,6 @@
 package com.starlwr.bot.common.event.live.common;
 
-import com.starlwr.bot.common.enums.Platform;
+import com.starlwr.bot.common.enums.LivePlatform;
 import com.starlwr.bot.common.event.live.base.StarBotLiveConnectionEvent;
 import com.starlwr.bot.common.model.LiveStreamerInfo;
 import lombok.Getter;
@@ -26,11 +26,11 @@ public class ConnectedEvent extends StarBotLiveConnectionEvent {
         super(platform, source, instant);
     }
 
-    public ConnectedEvent(Platform platform, LiveStreamerInfo source) {
+    public ConnectedEvent(LivePlatform platform, LiveStreamerInfo source) {
         super(platform, source);
     }
 
-    public ConnectedEvent(Platform platform, LiveStreamerInfo source, Instant instant) {
+    public ConnectedEvent(LivePlatform platform, LiveStreamerInfo source, Instant instant) {
         super(platform, source, instant);
     }
 }

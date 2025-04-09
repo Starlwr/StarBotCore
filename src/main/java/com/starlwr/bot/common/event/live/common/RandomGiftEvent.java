@@ -1,6 +1,6 @@
 package com.starlwr.bot.common.event.live.common;
 
-import com.starlwr.bot.common.enums.Platform;
+import com.starlwr.bot.common.enums.LivePlatform;
 import com.starlwr.bot.common.event.live.base.StarBotLiveGiftEvent;
 import com.starlwr.bot.common.model.GiftInfo;
 import com.starlwr.bot.common.model.LiveStreamerInfo;
@@ -64,28 +64,28 @@ public class RandomGiftEvent extends StarBotLiveGiftEvent {
         this.profit = MathUtil.subtract(value, price);
     }
 
-    public RandomGiftEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo randomGiftInfo, GiftInfo giftInfo) {
+    public RandomGiftEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo randomGiftInfo, GiftInfo giftInfo) {
         super(platform, source, sender, giftInfo, MathUtil.multiply(giftInfo.getPrice(), giftInfo.getCount()));
         this.randomGiftInfo = randomGiftInfo;
         this.price = MathUtil.multiply(randomGiftInfo.getPrice(), randomGiftInfo.getCount());
         this.profit = MathUtil.subtract(getValue(), price);
     }
 
-    public RandomGiftEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo randomGiftInfo, GiftInfo giftInfo, Instant instant) {
+    public RandomGiftEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo randomGiftInfo, GiftInfo giftInfo, Instant instant) {
         super(platform, source, sender, giftInfo, MathUtil.multiply(giftInfo.getPrice(), giftInfo.getCount()), instant);
         this.randomGiftInfo = randomGiftInfo;
         this.price = MathUtil.multiply(randomGiftInfo.getPrice(), randomGiftInfo.getCount());
         this.profit = MathUtil.subtract(getValue(), price);
     }
 
-    public RandomGiftEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo randomGiftInfo, GiftInfo giftInfo, Double price, Double value) {
+    public RandomGiftEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo randomGiftInfo, GiftInfo giftInfo, Double price, Double value) {
         super(platform, source, sender, giftInfo, value);
         this.randomGiftInfo = randomGiftInfo;
         this.price = price;
         this.profit = MathUtil.subtract(value, price);
     }
 
-    public RandomGiftEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo randomGiftInfo, GiftInfo giftInfo, Double price, Double value, Instant instant) {
+    public RandomGiftEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo randomGiftInfo, GiftInfo giftInfo, Double price, Double value, Instant instant) {
         super(platform, source, sender, giftInfo, value, instant);
         this.randomGiftInfo = randomGiftInfo;
         this.price = price;

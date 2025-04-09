@@ -1,6 +1,6 @@
 package com.starlwr.bot.common.event.live.common;
 
-import com.starlwr.bot.common.enums.Platform;
+import com.starlwr.bot.common.enums.LivePlatform;
 import com.starlwr.bot.common.event.live.base.StarBotLiveMessageEvent;
 import com.starlwr.bot.common.model.EmojiInfo;
 import com.starlwr.bot.common.model.LiveStreamerInfo;
@@ -35,12 +35,12 @@ public class EmojiEvent extends StarBotLiveMessageEvent {
         this.emoji = emoji;
     }
 
-    public EmojiEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, EmojiInfo emoji) {
+    public EmojiEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, EmojiInfo emoji) {
         super(platform, source, sender);
         this.emoji = emoji;
     }
 
-    public EmojiEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, EmojiInfo emoji, Instant instant) {
+    public EmojiEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, EmojiInfo emoji, Instant instant) {
         super(platform, source, sender, instant);
         this.emoji = emoji;
     }

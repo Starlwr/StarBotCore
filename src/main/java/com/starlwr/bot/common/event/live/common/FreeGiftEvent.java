@@ -1,6 +1,6 @@
 package com.starlwr.bot.common.event.live.common;
 
-import com.starlwr.bot.common.enums.Platform;
+import com.starlwr.bot.common.enums.LivePlatform;
 import com.starlwr.bot.common.event.live.base.StarBotLiveGiftEvent;
 import com.starlwr.bot.common.model.GiftInfo;
 import com.starlwr.bot.common.model.LiveStreamerInfo;
@@ -28,11 +28,11 @@ public class FreeGiftEvent extends StarBotLiveGiftEvent {
         super(platform, source, sender, giftInfo, 0D, instant);
     }
 
-    public FreeGiftEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo) {
+    public FreeGiftEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo) {
         super(platform, source, sender, giftInfo, 0D);
     }
 
-    public FreeGiftEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo, Instant instant) {
+    public FreeGiftEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo, Instant instant) {
         super(platform, source, sender, giftInfo, 0D, instant);
     }
 }

@@ -1,6 +1,6 @@
 package com.starlwr.bot.common.event.live.base;
 
-import com.starlwr.bot.common.enums.Platform;
+import com.starlwr.bot.common.enums.LivePlatform;
 import com.starlwr.bot.common.model.GiftInfo;
 import com.starlwr.bot.common.model.LiveStreamerInfo;
 import com.starlwr.bot.common.model.UserInfo;
@@ -45,22 +45,22 @@ public class StarBotLiveGiftEvent extends StarBotLivePurchaseEvent {
         this.giftInfo = giftInfo;
     }
 
-    public StarBotLiveGiftEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo) {
+    public StarBotLiveGiftEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo) {
         super(platform, source, sender, MathUtil.multiply(giftInfo.getPrice(), giftInfo.getCount()));
         this.giftInfo = giftInfo;
     }
 
-    public StarBotLiveGiftEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo, Instant instant) {
+    public StarBotLiveGiftEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo, Instant instant) {
         super(platform, source, sender, MathUtil.multiply(giftInfo.getPrice(), giftInfo.getCount()), instant);
         this.giftInfo = giftInfo;
     }
 
-    public StarBotLiveGiftEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo, Double value) {
+    public StarBotLiveGiftEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo, Double value) {
         super(platform, source, sender, value);
         this.giftInfo = giftInfo;
     }
 
-    public StarBotLiveGiftEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo, Double value, Instant instant) {
+    public StarBotLiveGiftEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, GiftInfo giftInfo, Double value, Instant instant) {
         super(platform, source, sender, value, instant);
         this.giftInfo = giftInfo;
     }

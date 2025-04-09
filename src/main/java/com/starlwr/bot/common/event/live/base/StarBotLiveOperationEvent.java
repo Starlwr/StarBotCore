@@ -1,6 +1,6 @@
 package com.starlwr.bot.common.event.live.base;
 
-import com.starlwr.bot.common.enums.Platform;
+import com.starlwr.bot.common.enums.LivePlatform;
 import com.starlwr.bot.common.event.live.StarBotBaseLiveEvent;
 import com.starlwr.bot.common.model.LiveStreamerInfo;
 import com.starlwr.bot.common.model.UserInfo;
@@ -34,12 +34,12 @@ public class StarBotLiveOperationEvent extends StarBotBaseLiveEvent {
         this.sender = sender;
     }
 
-    public StarBotLiveOperationEvent(Platform platform, LiveStreamerInfo source, UserInfo sender) {
+    public StarBotLiveOperationEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender) {
         super(platform, source);
         this.sender = sender;
     }
 
-    public StarBotLiveOperationEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, Instant instant) {
+    public StarBotLiveOperationEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, Instant instant) {
         super(platform, source, instant);
         this.sender = sender;
     }

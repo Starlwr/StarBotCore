@@ -1,6 +1,6 @@
 package com.starlwr.bot.common.event.live.common;
 
-import com.starlwr.bot.common.enums.Platform;
+import com.starlwr.bot.common.enums.LivePlatform;
 import com.starlwr.bot.common.event.live.base.StarBotLivePurchaseEvent;
 import com.starlwr.bot.common.model.LiveStreamerInfo;
 import com.starlwr.bot.common.model.UserInfo;
@@ -49,14 +49,14 @@ public class MembershipEvent extends StarBotLivePurchaseEvent {
         this.unit = unit;
     }
 
-    public MembershipEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, Double price, Integer count, String unit) {
+    public MembershipEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, Double price, Integer count, String unit) {
         super(platform, source, sender, MathUtil.multiply(price, count));
         this.price = price;
         this.count = count;
         this.unit = unit;
     }
 
-    public MembershipEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, Double price, Integer count, String unit, Instant instant) {
+    public MembershipEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, Double price, Integer count, String unit, Instant instant) {
         super(platform, source, sender, MathUtil.multiply(price, count), instant);
         this.price = price;
         this.count = count;

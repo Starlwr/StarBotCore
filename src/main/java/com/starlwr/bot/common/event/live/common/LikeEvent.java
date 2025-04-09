@@ -1,6 +1,6 @@
 package com.starlwr.bot.common.event.live.common;
 
-import com.starlwr.bot.common.enums.Platform;
+import com.starlwr.bot.common.enums.LivePlatform;
 import com.starlwr.bot.common.event.live.base.StarBotLiveInteractionEvent;
 import com.starlwr.bot.common.model.LiveStreamerInfo;
 import com.starlwr.bot.common.model.UserInfo;
@@ -27,11 +27,11 @@ public class LikeEvent extends StarBotLiveInteractionEvent {
         super(platform, source, sender, instant);
     }
 
-    public LikeEvent(Platform platform, LiveStreamerInfo source, UserInfo sender) {
+    public LikeEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender) {
         super(platform, source, sender);
     }
 
-    public LikeEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, Instant instant) {
+    public LikeEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, Instant instant) {
         super(platform, source, sender, instant);
     }
 }

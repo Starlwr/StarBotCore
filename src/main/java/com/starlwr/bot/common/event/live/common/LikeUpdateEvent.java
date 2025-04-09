@@ -1,6 +1,6 @@
 package com.starlwr.bot.common.event.live.common;
 
-import com.starlwr.bot.common.enums.Platform;
+import com.starlwr.bot.common.enums.LivePlatform;
 import com.starlwr.bot.common.event.live.base.StarBotLiveInfoUpdateEvent;
 import com.starlwr.bot.common.model.LiveStreamerInfo;
 import lombok.Getter;
@@ -33,12 +33,12 @@ public class LikeUpdateEvent extends StarBotLiveInfoUpdateEvent {
         this.count = count;
     }
 
-    public LikeUpdateEvent(Platform platform, LiveStreamerInfo source, Integer count) {
+    public LikeUpdateEvent(LivePlatform platform, LiveStreamerInfo source, Integer count) {
         super(platform, source);
         this.count = count;
     }
 
-    public LikeUpdateEvent(Platform platform, LiveStreamerInfo source, Integer count, Instant instant) {
+    public LikeUpdateEvent(LivePlatform platform, LiveStreamerInfo source, Integer count, Instant instant) {
         super(platform, source, instant);
         this.count = count;
     }

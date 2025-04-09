@@ -1,6 +1,6 @@
 package com.starlwr.bot.common.event.live.common;
 
-import com.starlwr.bot.common.enums.Platform;
+import com.starlwr.bot.common.enums.LivePlatform;
 import com.starlwr.bot.common.event.live.base.StarBotLiveMessageEvent;
 import com.starlwr.bot.common.model.LiveStreamerInfo;
 import com.starlwr.bot.common.model.UserInfo;
@@ -53,25 +53,25 @@ public class DanmuEvent extends StarBotLiveMessageEvent {
         this.contentText = contentText;
     }
 
-    public DanmuEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, String content) {
+    public DanmuEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, String content) {
         super(platform, source, sender);
         this.content = content;
         this.contentText = content;
     }
 
-    public DanmuEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, String content, Instant instant) {
+    public DanmuEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, String content, Instant instant) {
         super(platform, source, sender, instant);
         this.content = content;
         this.contentText = content;
     }
 
-    public DanmuEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, String content, String contentText) {
+    public DanmuEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, String content, String contentText) {
         super(platform, source, sender);
         this.content = content;
         this.contentText = contentText;
     }
 
-    public DanmuEvent(Platform platform, LiveStreamerInfo source, UserInfo sender, String content, String contentText, Instant instant) {
+    public DanmuEvent(LivePlatform platform, LiveStreamerInfo source, UserInfo sender, String content, String contentText, Instant instant) {
         super(platform, source, sender, instant);
         this.content = content;
         this.contentText = contentText;
