@@ -19,6 +19,9 @@ public class StarBotCommonProperties {
     @Getter
     private final Thread thread = new Thread();
 
+    @Getter
+    private final DataSource datasource = new DataSource();
+
     /**
      * 版本相关
      */
@@ -61,5 +64,17 @@ public class StarBotCommonProperties {
          * 非核心线程存活时间，单位：秒
          */
         private int keepAliveSeconds = 60;
+    }
+
+    /**
+     * 数据源相关
+     */
+    @Getter
+    @Setter
+    public static class DataSource {
+        /**
+         * JSON 文件路径，仅使用 JSON 数据源时生效
+         */
+        private String jsonPath = "datasource.json";
     }
 }
