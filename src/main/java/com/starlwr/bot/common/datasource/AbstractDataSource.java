@@ -26,7 +26,7 @@ public abstract class AbstractDataSource {
     @Resource
     private DataSourceServiceRegistry dataSourceServiceRegistry;
 
-    private final List<PushUser> users = new ArrayList<>();
+    protected final List<PushUser> users = new ArrayList<>();
 
     private final Map<String, Map<Long, PushUser>> userMap = new HashMap<>();
 
@@ -73,13 +73,14 @@ public abstract class AbstractDataSource {
      * @param users 推送用户列表
      */
     public void add(@NonNull List<PushUser> users) {
+        users.removeIf(user -> !user.getEnabled());
+
         for (PushUser user: users) {
             if (this.userMap.containsKey(user.getPlatform()) && this.userMap.get(user.getPlatform()).containsKey(user.getUid())) {
                 throw new DataSourceException("数据源中已存在该推送用户 (平台: " + user.getPlatform() + ", UID: " + user.getUid() + "), 无法重复添加");
             }
         }
 
-        users.removeIf(user -> !user.getEnabled());
         for (PushUser user: users) {
             user.getTargets().removeIf(target -> !target.getEnabled());
             for (PushTarget target: user.getTargets()) {
@@ -113,6 +114,10 @@ public abstract class AbstractDataSource {
             throw new DataSourceException("数据源中不存在该推送用户 (平台: " + user.getPlatform() + ", UID: " + user.getUid() + "), 无需移除");
         }
 
+        dataSourceServiceRegistry.getDataSourceService(user.getPlatform())
+                .orElseThrow(() -> new DataSourceException("未找到数据源服务实现类: " + user.getPlatform()))
+                .completePushUser(user);
+
         this.userMap.get(user.getPlatform()).remove(user.getUid());
         if (this.userMap.get(user.getPlatform()).isEmpty()) {
             this.userMap.remove(user.getPlatform());
@@ -143,6 +148,10 @@ public abstract class AbstractDataSource {
         for (PushTarget target: user.getTargets()) {
             target.getMessages().removeIf(message -> !message.getEnabled());
         }
+
+        dataSourceServiceRegistry.getDataSourceService(user.getPlatform())
+                .orElseThrow(() -> new DataSourceException("未找到数据源服务实现类: " + user.getPlatform()))
+                .completePushUser(user);
 
         this.userMap.get(user.getPlatform()).put(user.getUid(), user);
 

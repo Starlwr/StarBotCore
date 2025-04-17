@@ -9,17 +9,18 @@ import com.starlwr.bot.common.exception.DataSourceException;
 import com.starlwr.bot.common.model.PushMessage;
 import com.starlwr.bot.common.model.PushTarget;
 import com.starlwr.bot.common.model.PushUser;
+import com.starlwr.bot.common.util.CollectionUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
+import java.nio.file.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * JSON 数据源
@@ -31,6 +32,16 @@ import java.util.List;
 public class JsonDataSource extends AbstractDataSource {
     @Resource
     private StarBotCommonProperties properties;
+
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    private ScheduledFuture<?> pendingTask;
+
+    private final AtomicLong lastTriggeredTime = new AtomicLong(0);
+
+    private final long debounceDelayMillis = 1000L;
 
     /**
      * 加载数据源，读取完毕后需调用 add 方法将推送用户添加至数据源中
@@ -45,7 +56,8 @@ public class JsonDataSource extends AbstractDataSource {
 
         String path = properties.getDatasource().getJsonPath();
         try {
-            parse(Files.readString(Path.of(path)));
+            List<PushUser> users = parse(Files.readString(Path.of(path)));
+            add(users);
         } catch (NoSuchFileException e) {
             throw new DataSourceException("数据源 JSON 文件不存在, 请检查配置的路径是否正确: " + path);
         } catch (Exception e) {
@@ -55,13 +67,91 @@ public class JsonDataSource extends AbstractDataSource {
         log.info("成功从 JSON 中导入了 {} 个主播", getUserCount());
 
         eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(Instant.now()));
+
+        if (properties.getDatasource().isJsonAutoReload()) {
+            watchFileUpdate();
+        }
+    }
+
+    /**
+     * 监听 JSON 文件更新
+     */
+    private void watchFileUpdate() {
+        try {
+            WatchService watchService = FileSystems.getDefault().newWatchService();
+            Path jsonPath = Paths.get(properties.getDatasource().getJsonPath()).toAbsolutePath();
+            Path parentPath = jsonPath.getParent();
+            parentPath.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
+
+            executor.submit(() -> {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        WatchKey key = watchService.take();
+                        for (WatchEvent<?> event : key.pollEvents()) {
+                            Path changed = (Path) event.context();
+                            if (changed != null && changed.getFileName().equals(jsonPath.getFileName())) {
+                                if (pendingTask != null && !pendingTask.isDone()) {
+                                    pendingTask.cancel(false);
+                                }
+
+                                pendingTask = scheduler.schedule(() -> {
+                                    Thread.currentThread().setName("json-watcher");
+                                    long now = System.currentTimeMillis();
+                                    long last = lastTriggeredTime.getAndSet(now);
+                                    if (now - last >= debounceDelayMillis) {
+                                        log.info("检测到数据源 JSON 文件已更新, 开始从 JSON 中重载推送配置");
+                                        reload();
+                                    }
+                                }, debounceDelayMillis, TimeUnit.MILLISECONDS);
+                            }
+                        }
+
+                        if (!key.reset()) {
+                            break;
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } catch (Exception e) {
+                        log.error("监听数据源 JSON 文件更新异常", e);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            log.error("监听数据源 JSON 文件更新异常", e);
+        }
+    }
+
+    /**
+     * 重载数据源
+     */
+    private void reload() {
+        String path = properties.getDatasource().getJsonPath();
+        try {
+            List<PushUser> addUsers = new ArrayList<>();
+            List<PushUser> removeUsers = new ArrayList<>();
+            List<PushUser> updateUsers = new ArrayList<>();
+
+            List<PushUser> users = parse(Files.readString(Path.of(path)));
+            CollectionUtil.compareCollectionDiff(this.users, users, addUsers, removeUsers, updateUsers);
+
+            add(addUsers);
+            for (PushUser user : removeUsers) {
+                remove(user);
+            }
+            for (PushUser user : updateUsers) {
+                update(user);
+            }
+        } catch (Exception e) {
+            log.error("重载数据源 JSON 文件异常", e);
+        }
     }
 
     /**
      * 解析 JSON 数据
      * @param json JSON 数据
+     * @return 解析出的 PushUser 列表
      */
-    protected void parse(String json) {
+    protected List<PushUser> parse(String json) {
         List<PushUser> users = new ArrayList<>();
 
         List<String> userRequiredFields = List.of("uid", "platform");
@@ -133,6 +223,6 @@ public class JsonDataSource extends AbstractDataSource {
             users.add(user);
         }
 
-        add(users);
+        return users;
     }
 }
