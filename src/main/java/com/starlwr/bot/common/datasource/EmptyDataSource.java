@@ -1,9 +1,12 @@
 package com.starlwr.bot.common.datasource;
 
 import com.starlwr.bot.common.event.datasource.other.StarBotDataSourceLoadCompleteEvent;
+import com.starlwr.bot.common.model.PushUser;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Instant;
 import java.util.List;
@@ -37,5 +40,49 @@ public class EmptyDataSource extends AbstractDataSource {
         log.warn("当前可用的数据源实现: {}", names);
 
         eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(Instant.now()));
+    }
+
+    /**
+     * 添加推送用户
+     *
+     * @param user 推送用户
+     */
+    @Override
+    public void add(@NonNull PushUser user) {
+        throw new UnsupportedOperationException("空数据源不支持添加推送用户, 请配置 spring.profiles.active 以选用其它数据源");
+    }
+
+    /**
+     * 批量添加推送用户
+     *
+     * @param users 推送用户列表
+     */
+    @Override
+    public void add(@NonNull List<PushUser> users) {
+        throw new UnsupportedOperationException("空数据源不支持添加推送用户, 请配置 spring.profiles.active 以选用其它数据源");
+    }
+
+    /**
+     * 移除推送用户
+     *
+     * @param user 推送用户
+     */
+    @Override
+    public void remove(@NonNull PushUser user) {
+        throw new UnsupportedOperationException("空数据源不支持移除推送用户, 请配置 spring.profiles.active 以选用其它数据源");
+    }
+
+    /**
+     * 更新推送用户
+     *
+     * @param user 推送用户
+     */
+    @Override
+    public void update(@NonNull PushUser user) {
+        throw new UnsupportedOperationException("空数据源不支持更新推送用户, 请配置 spring.profiles.active 以选用其它数据源");
+    }
+
+    public void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
     }
 }
