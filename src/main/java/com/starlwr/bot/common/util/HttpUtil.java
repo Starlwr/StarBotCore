@@ -10,6 +10,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
@@ -134,6 +137,98 @@ public class HttpUtil {
      */
     public CompletableFuture<JSONObject> asyncGetJson(String url, Map<String, String> headers) {
         return CompletableFuture.supplyAsync(() -> getJson(url, headers), executor);
+    }
+
+    /**
+     * 读取字节的同步 HTTP GET 请求
+     * @param url URL
+     * @return 请求结果
+     */
+    public byte[] getBytes(String url) {
+        return getBytes(url, new HashMap<>());
+    }
+
+    /**
+     * 读取字节的异步 HTTP GET 请求
+     * @param url URL
+     * @return 请求结果
+     */
+    public CompletableFuture<byte[]> asyncGetBytes(String url) {
+        return CompletableFuture.supplyAsync(() -> getBytes(url), executor);
+    }
+
+    /**
+     * 自定义请求头读取字节的同步 HTTP GET 请求
+     * @param url URL
+     * @param headers HTTP 请求头
+     * @return 请求结果
+     */
+    public byte[] getBytes(String url, Map<String, String> headers) {
+        return webClient.get()
+                .uri(url)
+                .headers(httpHeaders -> headers.forEach(httpHeaders::add))
+                .retrieve()
+                .bodyToMono(byte[].class)
+                .block();
+    }
+
+    /**
+     * 自定义请求头读取字节的异步 HTTP GET 请求
+     * @param url URL
+     * @param headers HTTP 请求头
+     * @return 请求结果
+     */
+    public CompletableFuture<byte[]> asyncGetBytes(String url, Map<String, String> headers) {
+        return CompletableFuture.supplyAsync(() -> getBytes(url, headers), executor);
+    }
+
+    /**
+     * 读取图片的同步 HTTP GET 请求
+     * @param url URL
+     * @return 图片
+     */
+    public Optional<BufferedImage> getBufferedImage(String url) {
+        return getBufferedImage(url, new HashMap<>());
+    }
+
+    /**
+     * 读取图片的异步 HTTP GET 请求
+     * @param url URL
+     * @return 图片
+     */
+    public CompletableFuture<Optional<BufferedImage>> asyncGetBufferedImage(String url) {
+        return CompletableFuture.supplyAsync(() -> getBufferedImage(url), executor);
+    }
+
+    /**
+     * 自定义请求头读取图片的同步 HTTP GET 请求
+     * @param url URL
+     * @param headers HTTP 请求头
+     * @return 图片
+     */
+    public Optional<BufferedImage> getBufferedImage(String url, Map<String, String> headers) {
+        try {
+            byte[] bytes = getBytes(url, headers);
+
+            if (bytes != null) {
+                ByteArrayInputStream input = new ByteArrayInputStream(bytes);
+                return Optional.ofNullable(ImageIO.read(input));
+            }
+        } catch (Exception e) {
+            log.error("从 {} 读取图片异常", url, e);
+        }
+
+        return Optional.empty();
+    }
+
+    /**
+     * 自定义请求头读取图片的异步 HTTP GET 请求
+     * @param url URL
+     * @param headers HTTP 请求头
+     * @return 图片
+     */
+    public CompletableFuture<Optional<BufferedImage>> asyncGetBufferedImage(String url, Map<String, String> headers) {
+        return CompletableFuture.supplyAsync(() -> getBufferedImage(url, headers), executor);
     }
 
     /**
