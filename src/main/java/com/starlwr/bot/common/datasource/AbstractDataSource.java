@@ -63,8 +63,9 @@ public abstract class AbstractDataSource {
         this.users.add(user);
         this.userMap.computeIfAbsent(user.getPlatform(), k -> new HashMap<>()).put(user.getUid(), user);
 
+        log.info("新增推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId(), user.getPlatform());
+
         StarBotDataSourceAddEvent event = new StarBotDataSourceAddEvent(user, Instant.now());
-        log.info("发布数据源推送用户新增事件: {}", event);
         eventPublisher.publishEvent(event);
     }
 
@@ -99,8 +100,9 @@ public abstract class AbstractDataSource {
         for (PushUser user: users) {
             this.userMap.computeIfAbsent(user.getPlatform(), k -> new HashMap<>()).put(user.getUid(), user);
 
+            log.info("新增推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId(), user.getPlatform());
+
             StarBotDataSourceAddEvent event = new StarBotDataSourceAddEvent(user, Instant.now());
-            log.info("发布数据源推送用户新增事件: {}", event);
             eventPublisher.publishEvent(event);
         }
     }
@@ -124,8 +126,9 @@ public abstract class AbstractDataSource {
         }
         this.users.remove(user);
 
+        log.info("移除推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId(), user.getPlatform());
+
         StarBotDataSourceRemoveEvent event = new StarBotDataSourceRemoveEvent(user, Instant.now());
-        log.info("发布数据源推送用户移除事件: {}", event);
         eventPublisher.publishEvent(event);
     }
 
@@ -155,8 +158,9 @@ public abstract class AbstractDataSource {
 
         this.userMap.get(user.getPlatform()).put(user.getUid(), user);
 
+        log.info("更新推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId(), user.getPlatform());
+
         StarBotDataSourceUpdateEvent event = new StarBotDataSourceUpdateEvent(user, Instant.now());
-        log.info("发布数据源推送用户更新事件: {}", event);
         eventPublisher.publishEvent(event);
     }
 
