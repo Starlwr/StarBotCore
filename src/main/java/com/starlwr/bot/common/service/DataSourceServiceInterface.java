@@ -5,7 +5,7 @@ import com.starlwr.bot.common.model.PushUser;
 import java.util.List;
 
 /**
- * 数据源服务接口，各直播平台实现均应实现此类，用于获取各平台中的推送用户信息，实现类应添加 {@link DataSourceService} 注解
+ * 数据源服务接口，各直播平台实现均应实现此接口，用于获取各平台中的推送用户信息，实现类应添加 {@link DataSourceService} 注解
  */
 public interface DataSourceServiceInterface {
     /**
