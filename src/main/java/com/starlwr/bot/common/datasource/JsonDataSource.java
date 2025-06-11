@@ -64,7 +64,7 @@ public class JsonDataSource extends AbstractDataSource {
             throw new DataSourceException("读取数据源 JSON 文件异常", e);
         }
 
-        log.info("成功从 JSON 中导入了 {} 个主播", getUserCount());
+        log.info("成功从 JSON 中导入了 {} 个主播", this.users.size());
 
         eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(Instant.now()));
 

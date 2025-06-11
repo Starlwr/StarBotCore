@@ -47,7 +47,7 @@ public class MySQLDataSource extends AbstractDataSource {
 
         add(users);
 
-        log.info("成功从 MySQL 中导入了 {} 个主播", getUserCount());
+        log.info("成功从 MySQL 中导入了 {} 个主播", this.users.size());
 
         eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(Instant.now()));
     }

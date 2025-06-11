@@ -42,39 +42,20 @@ public abstract class AbstractDataSource {
      * 添加推送用户
      * @param user 推送用户
      */
-    public void add(@NonNull PushUser user) {
-        if (!user.getEnabled()) {
-            return;
-        }
-
-        if (this.userMap.containsKey(user.getPlatform()) && this.userMap.get(user.getPlatform()).containsKey(user.getUid())) {
-            throw new DataSourceException("数据源中已存在该推送用户 (平台: " + user.getPlatform() + ", UID: " + user.getUid() + "), 无法重复添加");
-        }
-
-        user.getTargets().removeIf(target -> !target.getEnabled());
-        for (PushTarget target: user.getTargets()) {
-            target.getMessages().removeIf(message -> !message.getEnabled());
-        }
-
-        dataSourceServiceRegistry.getDataSourceService(user.getPlatform())
-                .orElseThrow(() -> new DataSourceException("未找到数据源服务实现类: " + user.getPlatform()))
-                .completePushUser(user);
-
-        this.users.add(user);
-        this.userMap.computeIfAbsent(user.getPlatform(), k -> new HashMap<>()).put(user.getUid(), user);
-
-        log.info("新增推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId(), user.getPlatform());
-
-        StarBotDataSourceAddEvent event = new StarBotDataSourceAddEvent(user, Instant.now());
-        eventPublisher.publishEvent(event);
+    public synchronized void add(@NonNull PushUser user) {
+        add(Collections.singletonList(user));
     }
 
     /**
      * 批量添加推送用户
      * @param users 推送用户列表
      */
-    public void add(@NonNull List<PushUser> users) {
+    public synchronized void add(@NonNull List<PushUser> users) {
         users.removeIf(user -> !user.getEnabled());
+
+        if (new HashSet<>(users).size() != users.size()) {
+            throw new DataSourceException("推送用户列表中存在重复的用户");
+        }
 
         for (PushUser user: users) {
             if (this.userMap.containsKey(user.getPlatform()) && this.userMap.get(user.getPlatform()).containsKey(user.getUid())) {
@@ -111,7 +92,7 @@ public abstract class AbstractDataSource {
      * 移除推送用户
      * @param user 推送用户
      */
-    public void remove(@NonNull PushUser user) {
+    public synchronized void remove(@NonNull PushUser user) {
         if (!this.userMap.containsKey(user.getPlatform()) || !this.userMap.get(user.getPlatform()).containsKey(user.getUid())) {
             throw new DataSourceException("数据源中不存在该推送用户 (平台: " + user.getPlatform() + ", UID: " + user.getUid() + "), 无需移除");
         }
@@ -136,7 +117,7 @@ public abstract class AbstractDataSource {
      * 更新推送用户
      * @param user 推送用户
      */
-    public void update(@NonNull PushUser user) {
+    public synchronized void update(@NonNull PushUser user) {
         if (user.getEnabled() && (!this.userMap.containsKey(user.getPlatform()) || !this.userMap.get(user.getPlatform()).containsKey(user.getUid()))) {
             add(user);
             return;
@@ -156,6 +137,11 @@ public abstract class AbstractDataSource {
                 .orElseThrow(() -> new DataSourceException("未找到数据源服务实现类: " + user.getPlatform()))
                 .completePushUser(user);
 
+        PushUser oldUser = this.userMap.get(user.getPlatform()).get(user.getUid());
+        if (oldUser == null) {
+            throw new DataSourceException("数据源中不存在该推送用户 (平台: " + user.getPlatform() + ", UID: " + user.getUid() + "), 无法更新");
+        }
+
         this.userMap.get(user.getPlatform()).put(user.getUid(), user);
 
         log.info("更新推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId(), user.getPlatform());
@@ -165,11 +151,11 @@ public abstract class AbstractDataSource {
     }
 
     /**
-     * 获取推送用户数量
-     * @return 推送用户数量
+     * 获取推送用户列表
+     * @return 推送用户列表
      */
-    public int getUserCount() {
-        return this.users.size();
+    public List<PushUser> getAllUsers() {
+        return new ArrayList<>(users);
     }
 
     /**
