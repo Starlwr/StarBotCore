@@ -7,9 +7,7 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * StarBotCommon 配置类
@@ -19,9 +17,6 @@ import java.util.List;
 @Configuration
 @ConfigurationProperties(prefix = "starbot.common")
 public class StarBotCommonProperties {
-    @Getter
-    private final Version version = new Version();
-
     @Getter
     private final NetworkThread networkThread = new NetworkThread();
 
@@ -33,23 +28,6 @@ public class StarBotCommonProperties {
 
     @Getter
     private final Paint paint = new Paint();
-
-    /**
-     * 版本相关
-     */
-    @Getter
-    @Setter
-    public static class Version {
-        /**
-         * 版本号
-         */
-        private String number;
-
-        /**
-         * 发布日期
-         */
-        private String releaseDate;
-    }
 
     /**
      * 网络线程相关
