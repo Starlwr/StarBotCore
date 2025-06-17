@@ -27,6 +27,9 @@ public class StarBotCommonProperties {
     private final DataSource datasource = new DataSource();
 
     @Getter
+    private final Plugin plugin = new Plugin();
+
+    @Getter
     private final Paint paint = new Paint();
 
     /**
@@ -98,6 +101,23 @@ public class StarBotCommonProperties {
          * JSON 文件发生变化时是否自动重载
          */
         private boolean jsonAutoReload = true;
+    }
+
+    /**
+     * 数据源相关
+     */
+    @Getter
+    @Setter
+    public static class Plugin {
+        /**
+         * 是否自动下载插件依赖，可使用 --skip-download-dependency 命令行参数临时跳过自动下载
+         */
+        private boolean autoDownloadDependency = true;
+
+        /**
+         * 用于自动下载插件依赖的 Maven 地址
+         */
+        private List<String> mavenBaseUrls = new ArrayList<>(Arrays.asList("https://maven.aliyun.com/repository/public", "https://repo1.maven.org/maven2"));
     }
 
     /**
