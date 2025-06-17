@@ -11,10 +11,10 @@
     </parent>
 
     <groupId>com.starlwr</groupId>
-    <artifactId>starbot-common</artifactId>
+    <artifactId>starbot-core</artifactId>
     <version>1.0.0</version>
-    <name>StarBotCommon</name>
-    <description>StarBotCommon</description>
+    <name>StarBotCore</name>
+    <description>StarBot Core Module</description>
     <url>https://bot.starlwr.com</url>
 
     <licenses>
@@ -94,7 +94,7 @@
     </dependencies>
 
     <build>
-        <finalName>StarBotCommon</finalName>
+        <finalName>StarBotCore</finalName>
         <plugins>
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
