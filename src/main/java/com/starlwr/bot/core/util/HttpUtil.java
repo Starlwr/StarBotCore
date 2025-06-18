@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import javax.imageio.ImageIO;
@@ -307,7 +306,7 @@ public class HttpUtil {
         return webClient.post()
                 .uri(url)
                 .headers(httpHeaders -> headers.forEach(httpHeaders::add))
-                .bodyValue(BodyInserters.fromValue(params))
+                .bodyValue(params)
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
