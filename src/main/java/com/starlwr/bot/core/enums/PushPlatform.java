@@ -9,11 +9,12 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum PushPlatform {
-    QQ("QQ"),
-    QQOfficial("QQOfficial"),
-    WeChat("WeChat"),
-    Telegram("Telegram"),
-    SMS("SMS");
+    QQ_NAPCAT("qq-napcat"),
+    QQ_OVERFLOW("qq-overflow"),
+    QQ_OFFICIAL("qq-official"),
+    WE_CHAT("wechat"),
+    TELEGRAM("telegram"),
+    SMS("sms");
 
     private final String name;
 }
