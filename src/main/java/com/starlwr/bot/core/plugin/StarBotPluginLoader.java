@@ -4,11 +4,15 @@ import com.alibaba.fastjson2.JSON;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.AnnotatedGenericBeanDefinition;
+import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.beans.factory.support.AbstractBeanDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
-import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.springframework.context.annotation.AnnotationBeanNameGenerator;
+import org.springframework.context.annotation.AnnotationConfigUtils;
+import org.springframework.context.annotation.ConfigurationClassPostProcessor;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -91,6 +95,7 @@ public class StarBotPluginLoader implements BeanDefinitionRegistryPostProcessor 
                                 Class<?> clazz = Class.forName(className, false, pluginClassLoader);
 
                                 if (!clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers()) && clazz.isAnnotationPresent(StarBotComponent.class)) {
+                                    log.debug("注册 StarBot 组件: {} - {}", jar.getName(), clazz.getName());
                                     componentClasses.add(clazz);
                                 }
                             }
@@ -99,10 +104,9 @@ public class StarBotPluginLoader implements BeanDefinitionRegistryPostProcessor 
 
                     if (isPlugin && !componentClasses.isEmpty()) {
                         for (Class<?> clazz : componentClasses) {
-                            GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
-                            beanDefinition.setBeanClass(clazz);
-                            beanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
-                            registry.registerBeanDefinition(clazz.getName(), beanDefinition);
+                            AnnotatedGenericBeanDefinition beanDefinition = new AnnotatedGenericBeanDefinition(clazz);
+                            AnnotationConfigUtils.processCommonDefinitionAnnotations(beanDefinition);
+                            BeanDefinitionReaderUtils.registerBeanDefinition(new BeanDefinitionHolder(beanDefinition, new AnnotationBeanNameGenerator().generateBeanName(beanDefinition, registry)), registry);
                         }
 
                         pluginComponents.put(meta, componentClasses);
@@ -114,6 +118,9 @@ public class StarBotPluginLoader implements BeanDefinitionRegistryPostProcessor 
                 log.error("插件 {} 注册异常", jar.getName(), e);
             }
         }
+
+        AnnotationConfigUtils.registerAnnotationConfigProcessors(registry);
+        new ConfigurationClassPostProcessor().postProcessBeanDefinitionRegistry(registry);
 
         if (pluginComponents.isEmpty()) {
             log.info("没有需要加载的 StarBot 插件");
