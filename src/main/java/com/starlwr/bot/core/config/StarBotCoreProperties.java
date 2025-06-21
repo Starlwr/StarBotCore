@@ -1,5 +1,6 @@
 package com.starlwr.bot.core.config;
 
+import com.starlwr.bot.core.model.Sender;
 import com.starlwr.bot.core.model.TextWithStyle;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
@@ -31,6 +32,9 @@ public class StarBotCoreProperties {
 
     @Getter
     private final Paint paint = new Paint();
+
+    @Getter
+    private final Map<String, Sender> sender = new HashMap<>();
 
     /**
      * 网络线程相关

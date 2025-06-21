@@ -1,5 +1,6 @@
 package com.starlwr.bot.core.model;
 
+import com.alibaba.fastjson2.annotation.JSONField;
 import com.starlwr.bot.core.enums.PushPlatform;
 import com.starlwr.bot.core.enums.PushTargetType;
 import jakarta.persistence.*;
@@ -33,6 +34,7 @@ public class PushTarget {
      */
     @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @JSONField(serialize = false)
     private PushUser user;
 
     /**
