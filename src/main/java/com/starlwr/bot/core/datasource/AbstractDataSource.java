@@ -1,11 +1,17 @@
 package com.starlwr.bot.core.datasource;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.starlwr.bot.core.event.datasource.change.StarBotDataSourceAddEvent;
 import com.starlwr.bot.core.event.datasource.change.StarBotDataSourceRemoveEvent;
 import com.starlwr.bot.core.event.datasource.change.StarBotDataSourceUpdateEvent;
 import com.starlwr.bot.core.exception.DataSourceException;
+import com.starlwr.bot.core.handler.StarBotEventHandler;
+import com.starlwr.bot.core.model.PushMessage;
 import com.starlwr.bot.core.model.PushTarget;
 import com.starlwr.bot.core.model.PushUser;
+import com.starlwr.bot.core.service.StarBotEventHandlerService;
+import com.starlwr.bot.core.util.StringUtil;
 import jakarta.annotation.Resource;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +31,9 @@ public abstract class AbstractDataSource {
 
     @Resource
     private DataSourceServiceRegistry dataSourceServiceRegistry;
+
+    @Resource
+    private StarBotEventHandlerService handlerService;
 
     protected final List<PushUser> users = new ArrayList<>();
 
@@ -80,6 +89,8 @@ public abstract class AbstractDataSource {
         this.users.addAll(users);
         for (PushUser user: users) {
             this.userMap.computeIfAbsent(user.getPlatform(), k -> new HashMap<>()).put(user.getUid(), user);
+
+            initPushMessageParams(user);
 
             log.info("新增推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId(), user.getPlatform());
 
@@ -144,10 +155,43 @@ public abstract class AbstractDataSource {
 
         this.userMap.get(user.getPlatform()).put(user.getUid(), user);
 
+        initPushMessageParams(user);
+
         log.info("更新推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId(), user.getPlatform());
 
         StarBotDataSourceUpdateEvent event = new StarBotDataSourceUpdateEvent(user, Instant.now());
         eventPublisher.publishEvent(event);
+    }
+
+    /**
+     * 初始化推送消息参数
+     * @param user 推送用户
+     */
+    private void initPushMessageParams(@NonNull PushUser user) {
+        for (PushTarget target: user.getTargets()) {
+            for (PushMessage message: target.getMessages()) {
+                Optional<StarBotEventHandler> optionalHandler = handlerService.getHandler(message.getEvent(), message.getHandler());
+                if (optionalHandler.isPresent()) {
+                    StarBotEventHandler handler = optionalHandler.get();
+                    message.setParamsJsonObject(handler.getDefaultParams());
+                } else {
+                    message.setParamsJsonObject(new JSONObject());
+                    log.error("事件 {} 未配置处理器且不存在默认处理器, 请检查推送配置", message.getEvent());
+                    continue;
+                }
+
+                if (StringUtil.isNotBlank(message.getParams())) {
+                    try {
+                        JSONObject params = JSON.parseObject(message.getParams());
+                        for (String key: params.keySet()) {
+                            message.getParamsJsonObject().put(key, params.get(key));
+                        }
+                    } catch (Exception e) {
+                        log.error("解析推送消息参数失败, 请检查格式是否正确: {}", message.getParams(), e);
+                    }
+                }
+            }
+        }
     }
 
     /**

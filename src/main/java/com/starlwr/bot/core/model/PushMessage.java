@@ -1,10 +1,8 @@
 package com.starlwr.bot.core.model;
 
-import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.annotation.JSONField;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -54,13 +52,13 @@ public class PushMessage {
      * JSON 格式推送参数
      */
     @Column(name = "params")
-    @Setter(AccessLevel.NONE)
     private String params;
 
     /**
      * 推送参数解析后的 JSON 对象，自动根据 params 参数解析
      */
     @Transient
+    @JSONField(serialize = false)
     private JSONObject paramsJsonObject;
 
     /**
@@ -68,16 +66,6 @@ public class PushMessage {
      */
     @Column(name = "enabled")
     private Boolean enabled;
-
-    public void setParams(String params) {
-        this.params = params;
-        try {
-            this.paramsJsonObject = JSON.parseObject(params);
-        } catch (Exception e) {
-            this.paramsJsonObject = null;
-            log.error("解析推送参数失败, 请检查推送参数格式是否正确: {}", params);
-        }
-    }
 
     @Override
     public boolean equals(Object o) {

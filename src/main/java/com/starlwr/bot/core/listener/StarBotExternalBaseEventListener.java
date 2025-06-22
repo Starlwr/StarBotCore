@@ -6,16 +6,13 @@ import com.starlwr.bot.core.handler.StarBotEventHandler;
 import com.starlwr.bot.core.model.PushMessage;
 import com.starlwr.bot.core.model.PushTarget;
 import com.starlwr.bot.core.model.PushUser;
-import jakarta.annotation.PostConstruct;
+import com.starlwr.bot.core.service.StarBotEventHandlerService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -25,19 +22,10 @@ import java.util.Optional;
 @Component
 public class StarBotExternalBaseEventListener {
     @Resource
-    private ApplicationContext applicationContext;
-
-    @Resource
     private AbstractDataSource dataSource;
 
-    private final Map<String, StarBotEventHandler> cache = new HashMap<>();
-
-    @PostConstruct
-    public void init() {
-        for (StarBotEventHandler handler : applicationContext.getBeansOfType(StarBotEventHandler.class).values()) {
-            cache.put(handler.getClass().getName(), handler);
-        }
-    }
+    @Resource
+    private StarBotEventHandlerService handlerService;
 
     @Async("eventHandlerThreadPool")
     @EventListener
@@ -55,18 +43,18 @@ public class StarBotExternalBaseEventListener {
         for (PushTarget target : user.getTargets()) {
             for (PushMessage message : target.getMessages()) {
                 if (eventClass.equals(message.getEvent())) {
-                    StarBotEventHandler handler = cache.get(message.getHandler());
+                    Optional<StarBotEventHandler> optionalHandler = handlerService.getHandler(message.getEvent(), message.getHandler());
 
-                    if (handler == null) {
-                        log.error("不存在的事件处理器: {}, 请检查推送配置是否正确", message.getHandler());
-                        continue;
-                    }
-
-                    try {
-                        handler.handle(event, message);
-                    } catch (Exception e) {
-                        log.error("事件处理器 {} 处理事件 {} 异常", message.getHandler(), eventClass, e);
-                    }
+                    optionalHandler.ifPresentOrElse(
+                            handler -> {
+                                try {
+                                    handler.handle(event, message);
+                                } catch (Exception e) {
+                                    log.error("事件处理器 {} 处理事件 {} 异常", handler.getClass().getName(), eventClass, e);
+                                }
+                            },
+                            () -> log.error("未找到事件 {} 的处理器, 请检查推送配置是否正确", message.getEvent())
+                    );
                 }
             }
         }

@@ -156,7 +156,7 @@ public class JsonDataSource extends AbstractDataSource {
 
         List<String> userRequiredFields = List.of("uid", "platform");
         List<String> targetRequiredFields = List.of("platform", "type", "num");
-        List<String> messageRequiredFields = List.of("event", "handler");
+        List<String> messageRequiredFields = List.of("event");
 
         for (JSONObject userObject : JSON.parseArray(json).toList(JSONObject.class)) {
             for (String field : userRequiredFields) {
@@ -208,7 +208,10 @@ public class JsonDataSource extends AbstractDataSource {
                             message.setTarget(target);
                             message.setEvent(messageObject.getString("event"));
                             message.setHandler(messageObject.getString("handler"));
-                            message.setParams(messageObject.getJSONObject("params").toJSONString());
+                            JSONObject params = messageObject.getJSONObject("params");
+                            if (params != null) {
+                                message.setParams(params.toJSONString());
+                            }
                             if (!messageObject.containsKey("enabled")) {
                                 message.setEnabled(true);
                             } else {

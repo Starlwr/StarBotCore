@@ -1,5 +1,6 @@
 package com.starlwr.bot.core.handler;
 
+import com.alibaba.fastjson2.JSONObject;
 import com.starlwr.bot.core.event.StarBotExternalBaseEvent;
 import com.starlwr.bot.core.model.PushMessage;
 import org.springframework.stereotype.Component;
@@ -14,4 +15,10 @@ public interface StarBotEventHandler {
      * @param pushMessage 推送消息
      */
     void handle(StarBotExternalBaseEvent baseEvent, PushMessage pushMessage);
+
+    /**
+     * 获取事件处理器默认参数
+     * @return 默认参数
+     */
+    JSONObject getDefaultParams();
 }
