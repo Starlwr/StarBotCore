@@ -96,20 +96,17 @@ public class StarBotPushMessageSender {
             headers.put("Authorization", "Bearer " + sender.getToken());
         }
 
-        String[] parts = message.getContent().split("\\{next}");
-        for (String part: parts) {
-            Map<String, Object> params = new LinkedHashMap<>();
-            params.put("type", message.getType().getCode());
-            params.put("num", message.getNum());
-            params.put("content", part);
-            params.put("timestamp", message.getTimestamp().toEpochMilli());
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("type", message.getType().getCode());
+        params.put("num", message.getNum());
+        params.put("content", message.getContent());
+        params.put("timestamp", message.getTimestamp().toEpochMilli());
 
-            JSONObject result = http.postJson(sender.getUrl(), headers, params);
-            if (result.getInteger("code") == 0) {
-                log.info("StarBot -> {} ([{}] {}) [{}]: {}", platform, message.getType().getStr(), message.getNum(), message.getId(), message.getDisplay());
-            } else {
-                log.error("消息发送失败: StarBot -> {} ([{}] {}) [{}]: {}", platform, message.getType().getStr(), message.getNum(), message.getId(), message.getDisplay());
-            }
+        JSONObject result = http.postJson(sender.getUrl(), headers, params);
+        if (result.getInteger("code") == 0) {
+            log.info("StarBot -> {} ([{}] {}) [{}]: {}", platform, message.getType().getStr(), message.getNum(), message.getId(), message.getDisplay());
+        } else {
+            log.error("消息发送失败: StarBot -> {} ([{}] {}) [{}]: {}", platform, message.getType().getStr(), message.getNum(), message.getId(), message.getDisplay());
         }
     }
 }

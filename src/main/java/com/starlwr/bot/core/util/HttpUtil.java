@@ -279,7 +279,7 @@ public class HttpUtil {
      * @param params    HTTP 请求参数
      * @return 请求结果
      */
-    public String postWithParams(String url, Map<String, Object> params) {
+    public String postWithParams(String url, Object params) {
         return post(url, new HashMap<>(), params);
     }
 
@@ -290,7 +290,7 @@ public class HttpUtil {
      * @param params    HTTP 请求参数
      * @return 请求结果
      */
-    public CompletableFuture<String> asyncPostWithParams(String url, Map<String, Object> params) {
+    public CompletableFuture<String> asyncPostWithParams(String url, Object params) {
         return CompletableFuture.supplyAsync(() -> postWithParams(url, params), executor);
     }
 
@@ -302,7 +302,7 @@ public class HttpUtil {
      * @param params    HTTP 请求参数
      * @return 请求结果
      */
-    public String post(String url, Map<String, String> headers, Map<String, Object> params) {
+    public String post(String url, Map<String, String> headers, Object params) {
         return webClient.post()
                 .uri(url)
                 .headers(httpHeaders -> headers.forEach(httpHeaders::add))
@@ -320,7 +320,7 @@ public class HttpUtil {
      * @param params    HTTP 请求参数
      * @return 请求结果
      */
-    public CompletableFuture<String> asyncPost(String url, Map<String, String> headers, Map<String, Object> params) {
+    public CompletableFuture<String> asyncPost(String url, Map<String, String> headers, Object params) {
         return CompletableFuture.supplyAsync(() -> post(url, headers, params), executor);
     }
 
@@ -373,7 +373,7 @@ public class HttpUtil {
      * @param params    HTTP 请求参数
      * @return 请求结果
      */
-    public JSONObject postJsonWithParams(String url, Map<String, Object> params) {
+    public JSONObject postJsonWithParams(String url, Object params) {
         return JSON.parseObject(postWithParams(url, params));
     }
 
@@ -384,7 +384,7 @@ public class HttpUtil {
      * @param params    HTTP 请求参数
      * @return 请求结果
      */
-    public CompletableFuture<JSONObject> asyncPostJsonWithParams(String url, Map<String, Object> params) {
+    public CompletableFuture<JSONObject> asyncPostJsonWithParams(String url, Object params) {
         return CompletableFuture.supplyAsync(() -> postJsonWithParams(url, params), executor);
     }
 
@@ -396,7 +396,7 @@ public class HttpUtil {
      * @param params    HTTP 请求参数
      * @return 请求结果
      */
-    public JSONObject postJson(String url, Map<String, String> headers, Map<String, Object> params) {
+    public JSONObject postJson(String url, Map<String, String> headers, Object params) {
         return JSON.parseObject(post(url, headers, params));
     }
 
@@ -408,7 +408,7 @@ public class HttpUtil {
      * @param params    HTTP 请求参数
      * @return 请求结果
      */
-    public CompletableFuture<JSONObject> asyncPostJson(String url, Map<String, String> headers, Map<String, Object> params) {
+    public CompletableFuture<JSONObject> asyncPostJson(String url, Map<String, String> headers, Object params) {
         return CompletableFuture.supplyAsync(() -> postJson(url, headers, params), executor);
     }
 }
