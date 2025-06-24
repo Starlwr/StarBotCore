@@ -90,7 +90,6 @@ public class StarBotPushMessageSender {
 
         String platform = StringUtil.isNotBlank(sender.getName()) ? sender.getName() : message.getPlatform();
 
-
         Map<String, String> headers = new HashMap<>();
         if (StringUtil.isNotBlank(sender.getToken())) {
             headers.put("Authorization", "Bearer " + sender.getToken());
@@ -106,7 +105,7 @@ public class StarBotPushMessageSender {
         if (result.getInteger("code") == 0) {
             log.info("StarBot -> {} ([{}] {}) [{}]: {}", platform, message.getType().getStr(), message.getNum(), message.getId(), message.getDisplay());
         } else {
-            log.error("消息发送失败: StarBot -> {} ([{}] {}) [{}]: {}", platform, message.getType().getStr(), message.getNum(), message.getId(), message.getDisplay());
+            log.error("消息发送失败 ({}): StarBot -> {} ([{}] {}) [{}]: {}", result.getString("message"), platform, message.getType().getStr(), message.getNum(), message.getId(), message.getDisplay());
         }
     }
 }
