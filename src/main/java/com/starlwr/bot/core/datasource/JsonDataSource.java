@@ -81,7 +81,7 @@ public class JsonDataSource extends AbstractDataSource {
             WatchService watchService = FileSystems.getDefault().newWatchService();
             Path jsonPath = Paths.get(properties.getDatasource().getJsonPath()).toAbsolutePath();
             Path parentPath = jsonPath.getParent();
-            parentPath.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
+            parentPath.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE);
 
             executor.submit(() -> {
                 while (!Thread.currentThread().isInterrupted()) {
