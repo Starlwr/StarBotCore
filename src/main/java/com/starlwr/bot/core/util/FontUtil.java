@@ -41,6 +41,7 @@ public class FontUtil {
                 .map(String::toLowerCase)
                 .collect(Collectors.toSet());
 
+        log.info("已指定使用字体列表: {}, 可使用配置项 starbot.core.paint.fonts 自定义字体列表", properties.getPaint().getFonts());
         for (String fontDefinition: properties.getPaint().getFonts()) {
             parseFont(fontDefinition).ifPresent(fonts::add);
         }
