@@ -3,7 +3,6 @@ package com.starlwr.bot.core.util;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.util.Pair;
 
@@ -24,24 +23,6 @@ public class RedisUtil {
     public RedisUtil(String platform, StringRedisTemplate redis) {
         this.platform = platform;
         this.redis = redis;
-    }
-
-    /**
-     * 获取是否正常连接到 Redis
-     * @return 是否正常连接到 Redis
-     */
-    public boolean ping() {
-        try {
-            RedisConnectionFactory factory = redis.getConnectionFactory();
-            if (factory == null) {
-                return false;
-            }
-
-            factory.getConnection().ping();
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     // ================ 键值相关操作 ================

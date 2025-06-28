@@ -27,6 +27,11 @@ public class DataSourceServiceRegistry {
         }
     }
 
+    /**
+     * 获取指定直播平台的数据源服务
+     * @param platform 直播平台名称
+     * @return 数据源服务
+     */
     public Optional<DataSourceServiceInterface> getDataSourceService(String platform) {
         return Optional.ofNullable(serviceMap.get(platform));
     }
