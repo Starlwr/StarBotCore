@@ -10,6 +10,7 @@ import com.starlwr.bot.core.service.StarBotEventHandlerService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ import java.util.Optional;
  * StarBot 外部事件监听器
  */
 @Slf4j
+@Order(0)
 @Component
 public class StarBotExternalBaseEventListener {
     @Resource
