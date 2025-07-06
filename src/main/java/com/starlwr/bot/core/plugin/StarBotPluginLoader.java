@@ -5,16 +5,19 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.AnnotatedGenericBeanDefinition;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
-import org.springframework.context.annotation.AnnotationBeanNameGenerator;
-import org.springframework.context.annotation.AnnotationConfigUtils;
-import org.springframework.context.annotation.ConfigurationClassPostProcessor;
+import org.springframework.context.EnvironmentAware;
+import org.springframework.context.annotation.*;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -35,25 +38,34 @@ import java.util.regex.Pattern;
 @Slf4j
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
-public class StarBotPluginLoader implements BeanDefinitionRegistryPostProcessor {
-    private final Map<StarBotPluginMeta, List<Class<?>>> pluginComponents = new HashMap<>();
+public class StarBotPluginLoader implements EnvironmentAware, BeanDefinitionRegistryPostProcessor {
+    private Environment environment;
+
+    private final List<StarBotPlugin> plugins = new ArrayList<>();
 
     @Getter
     private final Map<StarBotPluginMeta, List<Dependency>> needDownloadDependencies = new HashMap<>();
 
+    private final Map<String, ClassLoader> componentClassLoaders = new HashMap<>();
+
     private final Pattern jarPattern = Pattern.compile("^(.+)-([\\d.]+[\\w.-]*)\\.jar$");
 
     @Override
-    public void postProcessBeanDefinitionRegistry(@NonNull BeanDefinitionRegistry registry) {
-        log.info("开始注册 StarBot 插件");
+    public void setEnvironment(@NonNull Environment environment) {
+        this.environment = environment;
+    }
 
+    @Override
+    public void postProcessBeanDefinitionRegistry(@NonNull BeanDefinitionRegistry registry) {
         List<File> pluginJars = scanJarFiles("plugins");
 
         List<File> libs = new ArrayList<>();
         libs.addAll(scanJarFiles("lib"));
+        libs.addAll(scanJarFiles("plugins"));
         libs.addAll(scanJarFiles("plugins-lib"));
 
         Set<String> existsDependencies = new HashSet<>();
+        existsDependencies.add("starbot-core");
         for (File lib : libs) {
             Matcher matcher = jarPattern.matcher(lib.getName());
             if (matcher.matches()) {
@@ -63,15 +75,17 @@ public class StarBotPluginLoader implements BeanDefinitionRegistryPostProcessor 
             }
         }
 
+        log.info("开始注册 StarBot 插件");
         for (File jar : pluginJars) {
             try {
                 URL jarUrl = jar.toURI().toURL();
                 URLClassLoader pluginClassLoader = new URLClassLoader(new URL[] {jarUrl}, getClass().getClassLoader());
                 try (JarFile jarFile = new JarFile(jar)) {
-                    boolean isPlugin = false;
-                    StarBotPluginMeta meta = null;
                     List<Dependency> missingDependencies = new ArrayList<>();
-                    List<Class<?>> componentClasses = new ArrayList<>();
+
+                    StarBotPlugin plugin = new StarBotPlugin();
+                    plugin.setJarFile(jar);
+                    plugin.setClassLoader(pluginClassLoader);
 
                     Enumeration<JarEntry> entries = jarFile.entries();
                     while (entries.hasMoreElements()) {
@@ -80,8 +94,7 @@ public class StarBotPluginLoader implements BeanDefinitionRegistryPostProcessor 
                         if ("plugin.json".equals(entry.getName())) {
                             try (InputStream input = jarFile.getInputStream(entry)) {
                                 String json = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-                                isPlugin = true;
-                                meta = JSON.parseObject(json, StarBotPluginMeta.class);
+                                plugin.setMeta(JSON.parseObject(json, StarBotPluginMeta.class));
                             }
                         } else if ("dependency.json".equals(entry.getName())) {
                             try (InputStream input = jarFile.getInputStream(entry)) {
@@ -92,25 +105,16 @@ public class StarBotPluginLoader implements BeanDefinitionRegistryPostProcessor 
                         } else if (entry.getName().endsWith(".class")) {
                             if (!entry.getName().contains("META-INF") && !entry.getName().contains("module-info") && !entry.getName().contains("package-info") && !entry.getName().contains("$")) {
                                 String className = entry.getName().replace('/', '.').replace(".class", "");
-                                Class<?> clazz = Class.forName(className, false, pluginClassLoader);
-
-                                if (!clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers()) && clazz.isAnnotationPresent(StarBotComponent.class)) {
-                                    log.debug("注册 StarBot 组件: {} - {}", jar.getName(), clazz.getName());
-                                    componentClasses.add(clazz);
-                                }
+                                plugin.getComponentClassNames().add(className);
                             }
                         }
                     }
 
-                    if (isPlugin && !componentClasses.isEmpty()) {
-                        for (Class<?> clazz : componentClasses) {
-                            AnnotatedGenericBeanDefinition beanDefinition = new AnnotatedGenericBeanDefinition(clazz);
-                            AnnotationConfigUtils.processCommonDefinitionAnnotations(beanDefinition);
-                            BeanDefinitionReaderUtils.registerBeanDefinition(new BeanDefinitionHolder(beanDefinition, new AnnotationBeanNameGenerator().generateBeanName(beanDefinition, registry)), registry);
-                        }
+                    if (plugin.getMeta() != null) {
+                        needDownloadDependencies.put(plugin.getMeta(), missingDependencies);
+                        plugins.add(plugin);
 
-                        pluginComponents.put(meta, componentClasses);
-                        needDownloadDependencies.put(meta, missingDependencies);
+                        StarBotPluginMeta meta = plugin.getMeta();
                         log.info("已注册插件 {} v{} --{}: {}", meta.getName(), meta.getVersion(), meta.getAuthor(), meta.getDescription());
                     }
                 }
@@ -119,18 +123,79 @@ public class StarBotPluginLoader implements BeanDefinitionRegistryPostProcessor 
             }
         }
 
+        if (needDownloadDependencies.values().stream().allMatch(List::isEmpty)) {
+            log.info("开始加载 StarBot 插件");
+
+            for (StarBotPlugin plugin : plugins) {
+                for (String className : plugin.getComponentClassNames()) {
+                    try {
+                        Class<?> clazz = Class.forName(className, false, plugin.getClassLoader());
+                        componentClassLoaders.put(clazz.getName(), plugin.getClassLoader());
+
+                        if (!clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers()) && clazz.isAnnotationPresent(StarBotComponent.class)) {
+                            log.debug("加载 StarBot 组件: {} - {}", plugin.getJarFile().getName(), clazz.getName());
+                            plugin.getComponentClasses().add(clazz);
+                        }
+                    } catch (Exception e) {
+                        log.error("加载 StarBot 组件 {} - {} 异常", plugin.getJarFile().getName(), className, e);
+                    }
+                }
+
+                if (!plugin.getComponentClasses().isEmpty()) {
+                    for (Class<?> clazz : plugin.getComponentClasses()) {
+                        AnnotatedGenericBeanDefinition beanDefinition = new AnnotatedGenericBeanDefinition(clazz);
+                        AnnotationConfigUtils.processCommonDefinitionAnnotations(beanDefinition);
+
+                        AnnotatedTypeMetadata metadata = beanDefinition.getMetadata();
+                        if (metadata.isAnnotated(Profile.class.getName())) {
+                            Map<String, Object> attributes = metadata.getAnnotationAttributes(Profile.class.getName());
+                            if (attributes != null) {
+                                String[] profiles = (String[]) attributes.get("value");
+                                if (!environment.acceptsProfiles(Profiles.of(profiles))) {
+                                    log.debug("StarBot 组件: {} - {} 不匹配 @Profile 条件: {}, 不注册至 Spring 容器中", plugin.getJarFile().getName(), clazz.getName(), Arrays.toString(profiles));
+                                    continue;
+                                }
+                            }
+                        }
+                        if (metadata.isAnnotated(Scope.class.getName())) {
+                            Map<String, Object> attributes = metadata.getAnnotationAttributes(Scope.class.getName());
+                            if (attributes != null) {
+                                String scope = (String) attributes.get("value");
+                                if ("prototype".equals(scope)) {
+                                    beanDefinition.setScope(BeanDefinition.SCOPE_PROTOTYPE);
+                                }
+                            }
+                        }
+
+                        BeanDefinitionReaderUtils.registerBeanDefinition(new BeanDefinitionHolder(beanDefinition, new AnnotationBeanNameGenerator().generateBeanName(beanDefinition, registry)), registry);
+                    }
+
+                    StarBotPluginMeta meta = plugin.getMeta();
+                    log.info("已加载插件 {} v{} --{}: {}", meta.getName(), meta.getVersion(), meta.getAuthor(), meta.getDescription());
+                } else {
+                    log.warn("插件 {} v{} --{}: {} 没有可加载的组件, 将跳过加载", plugin.getMeta().getName(), plugin.getMeta().getVersion(), plugin.getMeta().getAuthor(), plugin.getMeta().getDescription());
+                }
+            }
+        } else {
+            return;
+        }
+
         AnnotationConfigUtils.registerAnnotationConfigProcessors(registry);
         new ConfigurationClassPostProcessor().postProcessBeanDefinitionRegistry(registry);
 
-        if (pluginComponents.isEmpty()) {
+        plugins.removeIf(plugin -> plugin.getComponentClasses().isEmpty());
+        if (plugins.isEmpty()) {
             log.info("没有需要加载的 StarBot 插件");
         } else {
-            log.info("注册了 {} 个 StarBot 插件", pluginComponents.size());
+            log.info("成功加载了 {} 个 StarBot 插件", plugins.size());
         }
     }
 
     @Override
     public void postProcessBeanFactory(@NonNull ConfigurableListableBeanFactory beanFactory) {
+        StarBotClassLoader starBotClassLoader = new StarBotClassLoader(componentClassLoaders, beanFactory.getBeanClassLoader());
+        beanFactory.setBeanClassLoader(starBotClassLoader);
+        Thread.currentThread().setContextClassLoader(starBotClassLoader);
         BeanDefinitionRegistryPostProcessor.super.postProcessBeanFactory(beanFactory);
     }
 

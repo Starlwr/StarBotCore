@@ -8,7 +8,7 @@ import lombok.ToString;
 import java.util.Objects;
 
 /**
- * StarBot 插件信息
+ * StarBot 插件元数据
  */
 @Getter
 @Setter
