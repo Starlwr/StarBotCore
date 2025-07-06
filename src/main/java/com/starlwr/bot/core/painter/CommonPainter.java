@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.annotation.Scope;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
@@ -38,6 +39,9 @@ public class CommonPainter {
     private StarBotCoreProperties properties;
 
     @Resource
+    private BuildProperties buildProperties;
+
+    @Resource
     private FontUtil fontUtil;
 
     @Getter
@@ -57,13 +61,13 @@ public class CommonPainter {
 
     private Point xy;
 
-    private final int CHAPTER_FONT_SIZE = 50;
+    public static final int CHAPTER_FONT_SIZE = 50;
 
-    private final int SECTION_FONT_SIZE = 40;
+    public static final int SECTION_FONT_SIZE = 40;
 
-    private final int TEXT_FONT_SIZE = 30;
+    public static final int TEXT_FONT_SIZE = 30;
 
-    private final int TIP_FONT_SIZE = 25;
+    public static final int TIP_FONT_SIZE = 25;
 
     public static final Color COLOR_LINK = new Color(23, 139, 207);
 
@@ -761,14 +765,34 @@ public class CommonPainter {
 
     /**
      * 绘制版权信息
-     * @param version 版本号
      * @param marginRight 右边距
      * @return 当前绘图器实例
      */
-    public CommonPainter drawCopyright(String version, int marginRight) {
+    public CommonPainter drawCopyright(int marginRight) {
+        return drawCopyright(List.of(), List.of(), marginRight);
+    }
+
+    /**
+     * 绘制版权信息
+     * @param extraMiddle 附加版权信息，会输出到默认两行版权信息之间
+     * @param extraBottom 附加版权信息，会输出到默认两行版权信息之后
+     * @param marginRight 右边距
+     * @return 当前绘图器实例
+     */
+    public CommonPainter drawCopyright(List<List<TextWithStyle>> extraMiddle, List<List<TextWithStyle>> extraBottom, int marginRight) {
         // 底部默认版权信息，请务必保留此处
-        drawTextRight("Designed By StarBot v" + version, Color.LIGHT_GRAY, marginRight);
+        drawTextRight("Running on StarBot v" + buildProperties.getVersion(), Color.LIGHT_GRAY, marginRight);
+
+        for (List<TextWithStyle> line : extraMiddle) {
+            drawTextRightWithStyle(line, marginRight);
+        }
+
+        // 底部默认版权信息，请务必保留此处
         drawTextRight("https://github.com/Starlwr/StarBot", COLOR_LINK, marginRight);
+
+        for (List<TextWithStyle> line : extraBottom) {
+            drawTextRightWithStyle(line, marginRight);
+        }
 
         if (!CollectionUtils.isEmpty(properties.getPaint().getExtraCopyrights())) {
             drawTextRightWithStyle(properties.getPaint().getExtraCopyrights(), marginRight);

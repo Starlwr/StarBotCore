@@ -80,11 +80,18 @@ public abstract class AbstractDataSource {
         }
 
         Map<String, List<PushUser>> platformMap = users.stream().collect(Collectors.groupingBy(PushUser::getPlatform));
+        Set<String> notSupportedPlatforms = new HashSet<>();
         for (String platform: platformMap.keySet()) {
-            dataSourceServiceRegistry.getDataSourceService(platform)
-                    .orElseThrow(() -> new DataSourceException("未找到数据源服务实现类: " + platform))
-                    .completePushUsers(platformMap.get(platform));
+            dataSourceServiceRegistry.getDataSourceService(platform).ifPresentOrElse(
+                    service -> service.completePushUsers(platformMap.get(platform)),
+                    () -> {
+                        log.warn("未找到数据源服务实现类: {}, 请安装相应平台推送插件", platform);
+                        notSupportedPlatforms.add(platform);
+                    }
+            );
         }
+
+        users.removeIf(user -> notSupportedPlatforms.contains(user.getPlatform()));
 
         this.users.addAll(users);
         for (PushUser user: users) {

@@ -1,5 +1,7 @@
 .idea/
 target/
+plugins/
 logs/
 *.iml
+datasource.json
 src/main/resources/application-dev.yml

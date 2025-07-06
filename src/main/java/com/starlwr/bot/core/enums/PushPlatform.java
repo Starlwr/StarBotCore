@@ -9,7 +9,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum PushPlatform {
-    QQ_NAPCAT("qq-napcat"),
+    QQ_ONEBOT("qq-onebot"),
     QQ_OVERFLOW("qq-overflow"),
     QQ_OFFICIAL("qq-official"),
     WE_CHAT("wechat"),

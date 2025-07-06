@@ -17,12 +17,12 @@ import org.springframework.stereotype.Component;
 import java.util.Optional;
 
 /**
- * StarBot 外部事件监听器
+ * StarBot 监听外部事件触发事件处理
  */
 @Slf4j
 @Order(0)
 @Component
-public class StarBotExternalBaseEventListener {
+public class StarBotHandlerListener {
     @Resource
     private AbstractDataSource dataSource;
 

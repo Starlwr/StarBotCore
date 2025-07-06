@@ -1,5 +1,6 @@
 package com.starlwr.bot.core.config;
 
+import ch.qos.logback.classic.Level;
 import com.starlwr.bot.core.model.Sender;
 import com.starlwr.bot.core.model.TextWithStyle;
 import jakarta.annotation.PostConstruct;
@@ -19,6 +20,9 @@ import java.util.*;
 @ConfigurationProperties(prefix = "starbot.core")
 public class StarBotCoreProperties {
     @Getter
+    private final Log log = new Log();
+
+    @Getter
     private final NetworkThread networkThread = new NetworkThread();
 
     @Getter
@@ -35,6 +39,23 @@ public class StarBotCoreProperties {
 
     @Getter
     private final Map<String, Sender> sender = new HashMap<>();
+
+    /**
+     * 日志相关
+     */
+    @Getter
+    @Setter
+    public static class Log {
+        /**
+         * 控制台日志级别
+         */
+        private Level console;
+
+        /**
+         * 文件日志级别
+         */
+        private Level file;
+    }
 
     /**
      * 网络线程相关
