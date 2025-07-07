@@ -39,6 +39,11 @@ public class StarBotPushMessageSender {
      * @param message 消息
      */
     public void send(Message message) {
+        if (properties.getSender().get(message.getPlatform()) == null) {
+            log.warn("未配置 {} 平台的消息推送器, 请检查配置 starbot.core.sender, 已丢弃消息: [{}] {}: {}", message.getPlatform(), message.getType().getStr(), message.getNum(), message.getDisplay());
+            return;
+        }
+
         BlockingQueue<Message> queue = queueMap.computeIfAbsent(message.getPlatform(), k -> {
             BlockingQueue<Message> newQueue = new LinkedBlockingQueue<>();
             startPlatformThread(k, newQueue);
