@@ -1,7 +1,6 @@
 package com.starlwr.bot.core.model;
 
 import com.alibaba.fastjson2.annotation.JSONField;
-import com.starlwr.bot.core.enums.PushPlatform;
 import com.starlwr.bot.core.enums.PushTargetType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -38,7 +37,7 @@ public class PushTarget {
     private PushUser user;
 
     /**
-     * 推送平台，请优先从 {@link PushPlatform} 中获取，若不存在可使用自定义字符串
+     * 推送平台
      */
     @Column(name = "platform")
     private String platform;
