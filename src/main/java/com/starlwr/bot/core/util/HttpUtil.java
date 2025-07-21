@@ -5,8 +5,10 @@ import com.alibaba.fastjson2.JSONObject;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import javax.imageio.ImageIO;
@@ -410,5 +412,193 @@ public class HttpUtil {
      */
     public CompletableFuture<JSONObject> asyncPostJson(String url, Map<String, String> headers, Object params) {
         return CompletableFuture.supplyAsync(() -> postJson(url, headers, params), executor);
+    }
+
+    /**
+     * 以 form-urlencoded 格式提交的同步 HTTP POST 请求
+     *
+     * @param url URL
+     * @return 请求结果
+     */
+    public String postAsForm(String url) {
+        return postAsForm(url, new HashMap<>(), new HashMap<>());
+    }
+
+    /**
+     * 以 form-urlencoded 格式提交的异步 HTTP POST 请求
+     *
+     * @param url URL
+     * @return 请求结果
+     */
+    public CompletableFuture<String> asyncPostAsForm(String url) {
+        return CompletableFuture.supplyAsync(() -> postAsForm(url), executor);
+    }
+
+    /**
+     * 自定义请求头以 form-urlencoded 格式提交的同步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param headers   HTTP 请求头
+     * @return 请求结果
+     */
+    public String postWithHeadersAsForm(String url, Map<String, String> headers) {
+        return postAsForm(url, headers, new HashMap<>());
+    }
+
+    /**
+     * 自定义请求头以 form-urlencoded 格式提交的异步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param headers   HTTP 请求头
+     * @return 请求结果
+     */
+    public CompletableFuture<String> asyncPostWithHeadersAsForm(String url, Map<String, String> headers) {
+        return CompletableFuture.supplyAsync(() -> postWithHeadersAsForm(url, headers), executor);
+    }
+
+    /**
+     * 自定义请求参数以 form-urlencoded 格式提交的同步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param params    HTTP 请求参数
+     * @return 请求结果
+     */
+    public String postWithParamsAsForm(String url, Map<String, Object> params) {
+        return postAsForm(url, new HashMap<>(), params);
+    }
+
+    /**
+     * 自定义请求参数以 form-urlencoded 格式提交的异步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param params    HTTP 请求参数
+     * @return 请求结果
+     */
+    public CompletableFuture<String> asyncPostWithParamsAsForm(String url, Map<String, Object> params) {
+        return CompletableFuture.supplyAsync(() -> postWithParamsAsForm(url, params), executor);
+    }
+
+    /**
+     * 自定义请求头和请求参数以 form-urlencoded 格式提交的同步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param headers   HTTP 请求头
+     * @param params    HTTP 请求参数
+     * @return 请求结果
+     */
+    public String postAsForm(String url, Map<String, String> headers, Map<String, Object> params) {
+        BodyInserters.FormInserter<String> formData = BodyInserters.fromFormData("", "");
+        for (Map.Entry<String, Object> entry : params.entrySet()) {
+            formData = formData.with(entry.getKey(), entry.getValue().toString());
+        }
+
+        return webClient.post()
+                .uri(url)
+                .headers(httpHeaders -> headers.forEach(httpHeaders::add))
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(formData)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+    }
+
+    /**
+     * 自定义请求头和请求参数以 form-urlencoded 格式提交的异步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param headers   HTTP 请求头
+     * @param params    HTTP 请求参数
+     * @return 请求结果
+     */
+    public CompletableFuture<String> asyncPostAsForm(String url, Map<String, String> headers, Map<String, Object> params) {
+        return CompletableFuture.supplyAsync(() -> postAsForm(url, headers, params), executor);
+    }
+
+    /**
+     * 以 form-urlencoded 格式提交读取 JSON 的同步 HTTP POST 请求
+     *
+     * @param url URL
+     * @return 请求结果
+     */
+    public JSONObject postJsonAsForm(String url) {
+        return JSON.parseObject(postAsForm(url));
+    }
+
+    /**
+     * 以 form-urlencoded 格式提交读取 JSON 的异步 HTTP POST 请求
+     *
+     * @param url URL
+     * @return 请求结果
+     */
+    public CompletableFuture<JSONObject> asyncPostJsonAsForm(String url) {
+        return CompletableFuture.supplyAsync(() -> postJsonAsForm(url), executor);
+    }
+
+    /**
+     * 自定义请求头以 form-urlencoded 格式提交读取 JSON 的同步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param headers   HTTP 请求头
+     * @return 请求结果
+     */
+    public JSONObject postJsonWithHeadersAsForm(String url, Map<String, String> headers) {
+        return JSON.parseObject(postWithHeadersAsForm(url, headers));
+    }
+
+    /**
+     * 自定义请求头以 form-urlencoded 格式提交读取 JSON 的异步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param headers   HTTP 请求头
+     * @return 请求结果
+     */
+    public CompletableFuture<JSONObject> asyncPostJsonWithHeadersAsForm(String url, Map<String, String> headers) {
+        return CompletableFuture.supplyAsync(() -> postJsonWithHeadersAsForm(url, headers), executor);
+    }
+
+    /**
+     * 自定义请求参数以 form-urlencoded 格式提交读取 JSON 的同步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param params    HTTP 请求参数
+     * @return 请求结果
+     */
+    public JSONObject postJsonWithParamsAsForm(String url, Map<String, Object> params) {
+        return JSON.parseObject(postWithParamsAsForm(url, params));
+    }
+
+    /**
+     * 自定义请求参数以 form-urlencoded 格式提交读取 JSON 的异步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param params    HTTP 请求参数
+     * @return 请求结果
+     */
+    public CompletableFuture<JSONObject> asyncPostJsonWithParamsAsForm(String url, Map<String, Object> params) {
+        return CompletableFuture.supplyAsync(() -> postJsonWithParamsAsForm(url, params), executor);
+    }
+
+    /**
+     * 自定义请求头和请求参数以 form-urlencoded 格式提交读取 JSON 的同步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param headers   HTTP 请求头
+     * @param params    HTTP 请求参数
+     * @return 请求结果
+     */
+    public JSONObject postJsonAsForm(String url, Map<String, String> headers, Map<String, Object> params) {
+        return JSON.parseObject(postAsForm(url, headers, params));
+    }
+
+    /**
+     * 自定义请求头和请求参数以 form-urlencoded 格式提交读取 JSON 的异步 HTTP POST 请求
+     *
+     * @param url URL
+     * @param headers   HTTP 请求头
+     * @param params    HTTP 请求参数
+     * @return 请求结果
+     */
+    public CompletableFuture<JSONObject> asyncPostJsonAsForm(String url, Map<String, String> headers, Map<String, Object> params) {
+        return CompletableFuture.supplyAsync(() -> postJsonAsForm(url, headers, params), executor);
     }
 }
