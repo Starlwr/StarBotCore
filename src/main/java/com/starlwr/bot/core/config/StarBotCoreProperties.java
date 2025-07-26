@@ -37,8 +37,11 @@ public class StarBotCoreProperties {
     @Getter
     private final Paint paint = new Paint();
 
+    /**
+     * 非插件实现的推送平台配置
+     */
     @Getter
-    private final Map<String, Sender> sender = new HashMap<>();
+    private final List<Sender> sender = new ArrayList<>();
 
     /**
      * 日志相关
