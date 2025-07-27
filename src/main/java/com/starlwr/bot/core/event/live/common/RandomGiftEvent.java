@@ -22,7 +22,7 @@ import java.time.Instant;
 @ToString(callSuper = true)
 public class RandomGiftEvent extends StarBotLiveGiftEvent {
     /**
-     * 随机礼物名称
+     * 随机礼物信息
      */
     private GiftInfo randomGiftInfo;
 
