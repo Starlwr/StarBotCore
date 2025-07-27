@@ -9,13 +9,25 @@
     <logger name="org.reflections.Reflections" level="OFF"/>
     <logger name="org.apache.catalina.loader.WebappLoader" level="OFF"/>
 
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>${consoleLogLevel}</level>
         </filter>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>
                 %clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} --- [%clr(%20.20t)] %clr(%-40.40logger{39}){cyan} : %msg%n%ex
+            </pattern>
+            <charset>utf-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="ConsoleQrCode" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>${consoleLogLevel}</level>
+        </filter>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>
+                %msg%n
             </pattern>
             <charset>utf-8</charset>
         </encoder>
@@ -39,13 +51,18 @@
         <includeCallerData>true</includeCallerData>
     </appender>
 
+    <logger name="com.starlwr.bot.core.util.QrCodeUtil" level="INFO" additivity="false">
+        <appender-ref ref="ConsoleQrCode"/>
+        <appender-ref ref="AsyncRollingFile"/>
+    </logger>
+
     <logger name="com.starlwr.bot" level="DEBUG" additivity="false">
-        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="Console"/>
         <appender-ref ref="AsyncRollingFile"/>
     </logger>
 
     <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="Console"/>
         <appender-ref ref="AsyncRollingFile"/>
     </root>
 </configuration>

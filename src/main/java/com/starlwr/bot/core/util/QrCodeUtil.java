@@ -103,7 +103,7 @@ public class QrCodeUtil {
 
                 return Optional.of(Base64.getEncoder().encodeToString(imageBytes));
             } catch (IOException e) {
-                log.error("登录二维码转换为图片失败", e);
+                log.error("二维码转换为图片失败", e);
             }
         }
 
