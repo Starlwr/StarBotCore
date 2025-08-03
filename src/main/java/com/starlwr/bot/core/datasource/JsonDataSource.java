@@ -16,7 +16,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.*;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -66,7 +65,7 @@ public class JsonDataSource extends AbstractDataSource {
 
         log.info("成功从 JSON 中导入了 {} 个主播", this.users.size());
 
-        eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(Instant.now()));
+        eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(new ArrayList<>(this.users)));
 
         if (properties.getDatasource().isJsonAutoReload()) {
             watchFileUpdate();

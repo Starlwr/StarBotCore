@@ -9,7 +9,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,6 +49,6 @@ public class MySQLDataSource extends AbstractDataSource {
 
         log.info("成功从 MySQL 中导入了 {} 个主播", this.users.size());
 
-        eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(Instant.now()));
+        eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(new ArrayList<>(this.users)));
     }
 }

@@ -8,7 +8,7 @@ import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -39,7 +39,7 @@ public class EmptyDataSource extends AbstractDataSource {
         log.warn("未选用任何数据源, 将以空数据源启动, 请配置 spring.profiles.active 以选用数据源");
         log.warn("当前可用的数据源实现: {}", names);
 
-        eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(Instant.now()));
+        eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(new ArrayList<>()));
     }
 
     /**

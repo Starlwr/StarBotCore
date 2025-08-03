@@ -46,7 +46,7 @@ public class StarBotPushMessageSender {
     public void send(Message message) {
         Optional<Sender> optionalSender = senderService.getSender(message.getPlatform());
         if (optionalSender.isEmpty()) {
-            log.warn("未找到 {} 消息平台配置, 请检查配置文件是否正确配置, 已丢弃消息: [{}] {}: {}", message.getPlatform(), message.getType().getStr(), message.getNum(), message.getDisplay());
+            log.warn("未找到 {} 推送平台配置, 请检查配置文件是否正确配置, 已丢弃消息: [{}] {}: {}", message.getPlatform(), message.getType().getStr(), message.getNum(), message.getDisplay());
             return;
         }
 
