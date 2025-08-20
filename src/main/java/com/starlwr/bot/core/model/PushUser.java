@@ -1,18 +1,24 @@
 package com.starlwr.bot.core.model;
 
 import com.starlwr.bot.core.enums.LivePlatform;
+import com.starlwr.bot.core.event.dynamic.StarBotBaseDynamicEvent;
+import com.starlwr.bot.core.event.live.StarBotBaseLiveEvent;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 推送用户
  */
+@Slf4j
 @Profile("mysql")
 @Getter
 @Setter
@@ -84,5 +90,57 @@ public class PushUser {
     @Override
     public String toString() {
         return "PushUser(" + "uid=" + uid + ", uname=" + uname + ", roomId=" + roomId + ", face=" + face + ", platform=" + platform + ", enabled=" + enabled + ", targets=" + targets + ")";
+    }
+
+    public String getRoomIdString() {
+        return roomId == null ? "未开通" : roomId.toString();
+    }
+
+    /**
+     * 检查推送用户是否监听直播事件
+     * @return 是否监听直播事件
+     */
+    public boolean hasEnabledLiveEvent() {
+        Set<String> events = targets.stream()
+                .map(PushTarget::getMessages)
+                .flatMap(List::stream)
+                .map(PushMessage::getEvent)
+                .collect(Collectors.toSet());
+
+        for (String event: events) {
+            try {
+                Class<?> clazz = Class.forName(event, false, Thread.currentThread().getContextClassLoader());
+                if (StarBotBaseLiveEvent.class.isAssignableFrom(clazz)) {
+                    return true;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 检查推送用户是否监听动态更新事件
+     * @return 是否监听动态更新事件
+     */
+    public boolean hasEnabledDynamicEvent() {
+        Set<String> events = targets.stream()
+                .map(PushTarget::getMessages)
+                .flatMap(List::stream)
+                .map(PushMessage::getEvent)
+                .collect(Collectors.toSet());
+
+        for (String event: events) {
+            try {
+                Class<?> clazz = Class.forName(event, false, Thread.currentThread().getContextClassLoader());
+                if (StarBotBaseDynamicEvent.class.isAssignableFrom(clazz)) {
+                    return true;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        return false;
     }
 }

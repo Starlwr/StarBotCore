@@ -24,4 +24,8 @@ public class LiveStreamerInfo extends UserInfo {
         super(uid, uname, face);
         this.roomId = roomId;
     }
+
+    public String getRoomIdString() {
+        return roomId == null ? "未开通" : roomId.toString();
+    }
 }
