@@ -99,7 +99,7 @@ public abstract class AbstractDataSource {
 
             initPushMessageParams(user);
 
-            log.info("新增推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId() != null ? user.getRoomId() : "未开通", user.getPlatform());
+            log.info("新增推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomIdString(), user.getPlatform());
 
             StarBotDataSourceAddEvent event = new StarBotDataSourceAddEvent(user, Instant.now());
             eventPublisher.publishEvent(event);
@@ -125,7 +125,7 @@ public abstract class AbstractDataSource {
         }
         this.users.remove(user);
 
-        log.info("移除推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId() != null ? user.getRoomId() : "未开通", user.getPlatform());
+        log.info("移除推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomIdString(), user.getPlatform());
 
         StarBotDataSourceRemoveEvent event = new StarBotDataSourceRemoveEvent(user, Instant.now());
         eventPublisher.publishEvent(event);
@@ -164,7 +164,7 @@ public abstract class AbstractDataSource {
 
         initPushMessageParams(user);
 
-        log.info("更新推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId() != null ? user.getRoomId() : "未开通", user.getPlatform());
+        log.info("更新推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomIdString(), user.getPlatform());
 
         StarBotDataSourceUpdateEvent event = new StarBotDataSourceUpdateEvent(oldUser, user, Instant.now());
         eventPublisher.publishEvent(event);
