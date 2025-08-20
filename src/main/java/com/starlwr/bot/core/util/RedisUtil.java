@@ -815,4 +815,91 @@ public class RedisUtil {
     public void zUnionStore(@NonNull String key, @NonNull String otherKey, @NonNull String destKey) {
         redis.opsForZSet().unionAndStore(key, otherKey, destKey);
     }
+
+    // ================ 直播间状态 ================
+
+    /**
+     * 获取直播间状态
+     * @param uid UID
+     * @return 直播间状态，true：已开播，false：未开播
+     */
+    public Optional<Boolean> getLiveStatus(@NonNull Long uid) {
+        String key = "LiveStatus:" + platform;
+        return hGet(key, String.valueOf(uid)).map("1"::equals);
+    }
+
+    /**
+     * 设置直播间状态
+     * @param uid UID
+     * @param status 直播间状态，true：已开播，false：未开播
+     */
+    public void setLiveStatus(@NonNull Long uid, boolean status) {
+        String key = "LiveStatus:" + platform;
+
+        if (status) {
+            hSet(key, String.valueOf(uid), "1");
+        } else {
+            hSet(key, String.valueOf(uid), "0");
+        }
+    }
+
+    // ================ 直播开始时间 ================
+
+    /**
+     * 获取最近一场直播开始时间戳
+     * @param uid UID
+     * @return 最近一场直播开始时间戳
+     */
+    public Optional<Long> getLiveStartTime(@NonNull Long uid) {
+        String key = "LiveStartTime:" + platform;
+        long startTime = hGetInt(key, String.valueOf(uid));
+        return startTime > 0 ? Optional.of(startTime) : Optional.empty();
+    }
+
+    /**
+     * 设置最近一场直播开始时间戳
+     * @param uid UID
+     * @param startTime 最近一场直播开始时间戳
+     */
+    public void setLiveStartTime(@NonNull Long uid, long startTime) {
+        String key = "LiveStartTime:" + platform;
+        hSet(key, String.valueOf(uid), String.valueOf(startTime));
+    }
+
+    // ================ 直播结束时间 ================
+
+    /**
+     * 获取最近一场直播结束时间戳
+     * @param uid UID
+     * @return 最近一场直播结束时间戳
+     */
+    public Optional<Long> getLiveEndTime(@NonNull Long uid) {
+        String key = "LiveEndTime:" + platform;
+        long endTime = hGetInt(key, String.valueOf(uid));
+        return endTime > 0 ? Optional.of(endTime) : Optional.empty();
+    }
+
+    /**
+     * 设置最近一场直播结束时间戳
+     * @param uid UID
+     * @param endTime 最近一场直播结束时间戳
+     */
+    public void setLiveEndTime(@NonNull Long uid, long endTime) {
+        String key = "LiveEndTime:" + platform;
+        hSet(key, String.valueOf(uid), String.valueOf(endTime));
+    }
+
+    /**
+     * 删除最近一场直播结束时间戳
+     * @param uid UID
+     */
+    public void deleteLiveEndTime(@NonNull Long uid) {
+        String key = "LiveEndTime:" + platform;
+        hDelete(key, String.valueOf(uid));
+    }
+
+    // ================ 其他操作 ================
+
+    public void resetLiveData(@NonNull Long uid) {
+    }
 }
