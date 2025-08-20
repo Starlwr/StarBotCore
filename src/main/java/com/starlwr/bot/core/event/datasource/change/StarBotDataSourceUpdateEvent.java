@@ -17,11 +17,18 @@ import java.time.Instant;
 @NoArgsConstructor
 @ToString(callSuper = true)
 public class StarBotDataSourceUpdateEvent extends StarBotDataSourceChangeEvent {
-    public StarBotDataSourceUpdateEvent(PushUser user) {
+    /**
+     * 原推送用户
+     */
+    private PushUser oldUser;
+
+    public StarBotDataSourceUpdateEvent(PushUser oldUser, PushUser user) {
         super(user);
+        this.oldUser = oldUser;
     }
 
-    public StarBotDataSourceUpdateEvent(PushUser user, Instant instant) {
+    public StarBotDataSourceUpdateEvent(PushUser oldUser, PushUser user, Instant instant) {
         super(user, instant);
+        this.oldUser = oldUser;
     }
 }

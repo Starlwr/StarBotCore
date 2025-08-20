@@ -166,7 +166,7 @@ public abstract class AbstractDataSource {
 
         log.info("更新推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomId() != null ? user.getRoomId() : "未开通", user.getPlatform());
 
-        StarBotDataSourceUpdateEvent event = new StarBotDataSourceUpdateEvent(user, Instant.now());
+        StarBotDataSourceUpdateEvent event = new StarBotDataSourceUpdateEvent(oldUser, user, Instant.now());
         eventPublisher.publishEvent(event);
     }
 
