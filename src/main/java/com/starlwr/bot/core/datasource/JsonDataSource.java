@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.file.*;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -131,6 +132,10 @@ public class JsonDataSource extends AbstractDataSource {
             List<PushUser> updateUsers = new ArrayList<>();
 
             List<PushUser> users = parse(Files.readString(Path.of(path)));
+            if (new HashSet<>(users).size() != users.size()) {
+                throw new DataSourceException("推送用户列表中存在重复的用户");
+            }
+
             CollectionUtil.compareCollectionDiff(this.users, users, addUsers, removeUsers, updateUsers);
 
             add(addUsers);
