@@ -52,7 +52,7 @@ public class Message {
 
     /**
      * 创建消息列表，自动处理 {next} 占位符
-     * @param platform 推送平台，请优先从 {@link PushPlatform} 中获取，若不存在可使用自定义字符串
+     * @param platform 推送平台
      * @param type 推送目标类型
      * @param num 账号或群号，根据推送目标类型而定
      * @param content 可包含占位符的消息内容
@@ -64,7 +64,7 @@ public class Message {
 
     /**
      * 创建消息列表，自动处理 {next} 占位符
-     * @param platform 推送平台，请优先从 {@link PushPlatform} 中获取，若不存在可使用自定义字符串
+     * @param platform 推送平台
      * @param type 推送目标类型
      * @param num 账号或群号，根据推送目标类型而定
      * @param content 可包含占位符的消息内容

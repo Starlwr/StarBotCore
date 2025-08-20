@@ -4,7 +4,6 @@ import com.starlwr.bot.core.util.RedisUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
@@ -13,9 +12,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Redis 服务类
@@ -31,13 +28,6 @@ public class RedisService {
     private StringRedisTemplate redis;
 
     private final Map<String, RedisUtil> redisMap = new HashMap<>();
-
-    @Autowired
-    public RedisService(List<RedisUtil> redisUtils) {
-        for (RedisUtil redis : redisUtils) {
-            redisMap.put(redis.getPlatform(), redis);
-        }
-    }
 
     @PostConstruct
     public void init() {
@@ -69,7 +59,11 @@ public class RedisService {
      * @param platform 直播平台名称
      * @return Redis 实例
      */
-    public Optional<RedisUtil> getRedis(String platform) {
-        return Optional.ofNullable(redisMap.get(platform));
+    public RedisUtil getRedis(String platform) {
+        if (!redisMap.containsKey(platform)) {
+            redisMap.put(platform, new RedisUtil(platform, redis));
+        }
+
+        return redisMap.get(platform);
     }
 }
