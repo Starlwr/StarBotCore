@@ -142,9 +142,7 @@ public class JsonDataSource extends AbstractDataSource {
             for (PushUser user : removeUsers) {
                 remove(user);
             }
-            for (PushUser user : updateUsers) {
-                update(user);
-            }
+            update(updateUsers);
         } catch (Exception e) {
             log.error("重载数据源 JSON 文件异常", e);
         }

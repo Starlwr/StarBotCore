@@ -83,4 +83,13 @@ public class PushTarget {
     public String toString() {
         return "PushTarget(" + "platform=" + platform + ", type=" + type.name() + ", num=" + num + ", enabled=" + enabled + ", messages=" + messages + ")";
     }
+
+    /**
+     * 检查当前推送目标是否与另一个推送目标完全相同
+     * @param other 另一个推送目标
+     * @return 是否完全相同
+     */
+    public boolean same(PushTarget other) {
+        return equals(other) && messages.equals(other.messages);
+    }
 }

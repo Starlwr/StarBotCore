@@ -136,38 +136,74 @@ public abstract class AbstractDataSource {
      * @param user 推送用户
      */
     public synchronized void update(@NonNull PushUser user) {
-        if (user.getEnabled() && (!this.userMap.containsKey(user.getPlatform()) || !this.userMap.get(user.getPlatform()).containsKey(user.getUid()))) {
-            add(user);
-            return;
+        update(Collections.singletonList(user));
+    }
+
+    /**
+     * 批量更新推送用户
+     * @param users 推送用户列表
+     */
+    public synchronized void update(@NonNull List<PushUser> users) {
+        List<PushUser> adds = new ArrayList<>();
+        List<PushUser> removes = new ArrayList<>();
+        List<PushUser> updates = new ArrayList<>();
+
+        for (PushUser user : users) {
+            if (user.getEnabled() && (!this.userMap.containsKey(user.getPlatform()) || !this.userMap.get(user.getPlatform()).containsKey(user.getUid()))) {
+                adds.add(user);
+            } else if (!user.getEnabled() && this.userMap.containsKey(user.getPlatform()) && this.userMap.get(user.getPlatform()).containsKey(user.getUid())) {
+                removes.add(user);
+            } else {
+                updates.add(user);
+            }
         }
 
-        if (!user.getEnabled() && this.userMap.containsKey(user.getPlatform()) && this.userMap.get(user.getPlatform()).containsKey(user.getUid())) {
+        add(adds);
+        for (PushUser user : removes) {
             remove(user);
-            return;
         }
 
-        user.getTargets().removeIf(target -> !target.getEnabled());
-        for (PushTarget target: user.getTargets()) {
-            target.getMessages().removeIf(message -> !message.getEnabled());
+        updates.removeIf(user -> !user.getEnabled());
+        for (PushUser user: updates) {
+            user.getTargets().removeIf(target -> !target.getEnabled());
+            for (PushTarget target: user.getTargets()) {
+                target.getMessages().removeIf(message -> !message.getEnabled());
+            }
         }
 
-        dataSourceServiceRegistry.getDataSourceService(user.getPlatform())
-                .orElseThrow(() -> new DataSourceException("未找到数据源服务实现类: " + user.getPlatform()))
-                .completePushUser(user);
-
-        PushUser oldUser = this.userMap.get(user.getPlatform()).get(user.getUid());
-        if (oldUser == null) {
-            throw new DataSourceException("数据源中不存在该推送用户 (平台: " + user.getPlatform() + ", UID: " + user.getUid() + "), 无法更新");
+        Map<String, List<PushUser>> platformMap = updates.stream().collect(Collectors.groupingBy(PushUser::getPlatform));
+        Set<String> notSupportedPlatforms = new HashSet<>();
+        for (String platform: platformMap.keySet()) {
+            dataSourceServiceRegistry.getDataSourceService(platform).ifPresentOrElse(
+                    service -> service.completePushUsers(platformMap.get(platform)),
+                    () -> {
+                        log.warn("未找到数据源服务实现类: {}, 请安装相应平台推送插件", platform);
+                        notSupportedPlatforms.add(platform);
+                    }
+            );
         }
 
-        this.userMap.get(user.getPlatform()).put(user.getUid(), user);
+        updates.removeIf(user -> notSupportedPlatforms.contains(user.getPlatform()));
 
-        initPushMessageParams(user);
+        for (PushUser user : updates) {
+            PushUser oldUser = this.userMap.get(user.getPlatform()).get(user.getUid());
+            if (oldUser == null) {
+                throw new DataSourceException("数据源中不存在该推送用户 (平台: " + user.getPlatform() + ", UID: " + user.getUid() + "), 无法更新");
+            }
 
-        log.info("更新推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomIdString(), user.getPlatform());
+            if (oldUser.same(user)) {
+                continue;
+            }
 
-        StarBotDataSourceUpdateEvent event = new StarBotDataSourceUpdateEvent(oldUser, user, Instant.now());
-        eventPublisher.publishEvent(event);
+            this.userMap.get(user.getPlatform()).put(user.getUid(), user);
+
+            initPushMessageParams(user);
+
+            log.info("更新推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomIdString(), user.getPlatform());
+
+            StarBotDataSourceUpdateEvent event = new StarBotDataSourceUpdateEvent(oldUser, user, Instant.now());
+            eventPublisher.publishEvent(event);
+        }
     }
 
     /**

@@ -25,6 +25,10 @@ public class LiveStreamerInfo extends UserInfo {
         this.roomId = roomId;
     }
 
+    /**
+     * 获取兼容未开通直播间的房间号字符串
+     * @return 兼容未开通直播间的房间号字符串
+     */
     public String getRoomIdString() {
         return roomId == null ? "未开通" : roomId.toString();
     }

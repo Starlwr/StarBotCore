@@ -92,6 +92,25 @@ public class PushUser {
         return "PushUser(" + "uid=" + uid + ", uname=" + uname + ", roomId=" + roomId + ", face=" + face + ", platform=" + platform + ", enabled=" + enabled + ", targets=" + targets + ")";
     }
 
+    /**
+     * 检查当前推送用户是否与另一个推送用户完全相同
+     * @param other 另一个推送用户
+     * @return 是否完全相同
+     */
+    public boolean same(PushUser other) {
+        if (other.targets.size() != targets.size()) return false;
+        for (int i = 0; i < targets.size(); i++) {
+            if (!targets.get(i).same(other.targets.get(i))) {
+                return false;
+            }
+        }
+        return Objects.equals(uid, other.uid) && Objects.equals(uname, other.uname) && Objects.equals(roomId, other.roomId) && Objects.equals(face, other.face) && Objects.equals(platform, other.platform);
+    }
+
+    /**
+     * 获取兼容未开通直播间的房间号字符串
+     * @return 兼容未开通直播间的房间号字符串
+     */
     public String getRoomIdString() {
         return roomId == null ? "未开通" : roomId.toString();
     }
