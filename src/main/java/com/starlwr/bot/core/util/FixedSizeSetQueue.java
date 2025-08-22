@@ -3,7 +3,7 @@ package com.starlwr.bot.core.util;
 import java.util.*;
 
 /**
- * 固定大小的集合队列
+ * 固定大小的集合队列(滑动窗口)
  * @param <T> 元素类型
  */
 public class FixedSizeSetQueue<T> {
@@ -28,6 +28,19 @@ public class FixedSizeSetQueue<T> {
 
         queue.offerLast(element);
         map.merge(element, 1, Integer::sum);
+
+        return true;
+    }
+
+    /**
+     * 向容器批量添加元素
+     * @param elements 元素集合
+     * @return 是否添加成功
+     */
+    public synchronized boolean addAll(Collection<? extends T> elements) {
+        for (T element : elements) {
+            add(element);
+        }
 
         return true;
     }
