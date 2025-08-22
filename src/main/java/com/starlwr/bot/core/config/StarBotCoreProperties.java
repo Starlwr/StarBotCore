@@ -58,6 +58,11 @@ public class StarBotCoreProperties {
          * 文件日志级别
          */
         private Level file;
+
+        /**
+         * 是否记录事件日志
+         */
+        private boolean eventLog = false;
     }
 
     /**

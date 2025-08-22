@@ -32,8 +32,6 @@ public class StarBotHandlerListener {
     @Async("eventHandlerThreadPool")
     @EventListener
     public void handleEvent(StarBotExternalBaseEvent event) {
-        log.debug("接收到事件 {}: {}", event.getClass().getSimpleName(), event);
-
         Optional<PushUser> optionalUser = dataSource.getUser(event.getPlatform(), event.getSource().getUid());
         if (optionalUser.isEmpty()) {
             return;
