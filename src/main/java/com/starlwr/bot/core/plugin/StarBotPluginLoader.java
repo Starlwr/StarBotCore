@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.AnnotatedGenericBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
@@ -12,16 +13,22 @@ import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.context.EnvironmentAware;
+import org.springframework.context.ResourceLoaderAware;
 import org.springframework.context.annotation.*;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.type.AnnotatedTypeMetadata;
+import org.springframework.core.type.MethodMetadata;
+import org.springframework.core.type.StandardMethodMetadata;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -38,13 +45,21 @@ import java.util.regex.Pattern;
 @Slf4j
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
-public class StarBotPluginLoader implements EnvironmentAware, BeanDefinitionRegistryPostProcessor {
+public class StarBotPluginLoader implements EnvironmentAware, ResourceLoaderAware, BeanDefinitionRegistryPostProcessor {
     private Environment environment;
+
+    private ResourceLoader resourceLoader;
+
+    private Object evaluator;
+
+    private Method shouldSkipMethod;
 
     private final List<StarBotPlugin> plugins = new ArrayList<>();
 
     @Getter
     private final Map<StarBotPluginMeta, List<Dependency>> needDownloadDependencies = new HashMap<>();
+
+    private final Map<String, Class<?>> componentClasses = new HashMap<>();
 
     private final Map<String, ClassLoader> componentClassLoaders = new HashMap<>();
 
@@ -53,6 +68,11 @@ public class StarBotPluginLoader implements EnvironmentAware, BeanDefinitionRegi
     @Override
     public void setEnvironment(@NonNull Environment environment) {
         this.environment = environment;
+    }
+
+    @Override
+    public void setResourceLoader(@NonNull ResourceLoader resourceLoader) {
+        this.resourceLoader = resourceLoader;
     }
 
     @Override
@@ -126,6 +146,10 @@ public class StarBotPluginLoader implements EnvironmentAware, BeanDefinitionRegi
         if (needDownloadDependencies.values().stream().allMatch(List::isEmpty)) {
             log.info("开始加载 StarBot 插件");
 
+            for (String beanDefinitionName : registry.getBeanDefinitionNames()) {
+                componentClasses.put(beanDefinitionName, getClassByBeanDefinition(registry.getBeanDefinition(beanDefinitionName)));
+            }
+
             for (StarBotPlugin plugin : plugins) {
                 for (String className : plugin.getComponentClassNames()) {
                     try {
@@ -144,9 +168,36 @@ public class StarBotPluginLoader implements EnvironmentAware, BeanDefinitionRegi
                 if (!plugin.getComponentClasses().isEmpty()) {
                     for (Class<?> clazz : plugin.getComponentClasses()) {
                         AnnotatedGenericBeanDefinition beanDefinition = new AnnotatedGenericBeanDefinition(clazz);
+                        String beanDefinitionName = new AnnotationBeanNameGenerator().generateBeanName(beanDefinition, registry);
                         AnnotationConfigUtils.processCommonDefinitionAnnotations(beanDefinition);
 
                         AnnotatedTypeMetadata metadata = beanDefinition.getMetadata();
+
+                        if (metadata.isAnnotated(RemoveBeanDefinition.class.getName())) {
+                            Map<String, Object> attributes = metadata.getAnnotationAttributes(RemoveBeanDefinition.class.getName());
+                            if (attributes != null) {
+                                String[] names = (String[]) attributes.get("name");
+                                for (String name : names) {
+                                    if (registry.containsBeanDefinition(name)) {
+                                        registry.removeBeanDefinition(name);
+                                        log.debug("StarBot 组件: {} - {} 根据名称移除类定义: {}", plugin.getJarFile().getName(), clazz.getName(), name);
+                                    }
+                                }
+                                Class<?>[] types = (Class<?>[]) attributes.get("type");
+                                for (Class<?> type : types) {
+                                    for (String name: new HashSet<>(componentClasses.keySet())) {
+                                        if (type.isAssignableFrom(componentClasses.get(name)) && registry.containsBeanDefinition(name)) {
+                                            registry.removeBeanDefinition(name);
+                                            componentClasses.remove(name);
+                                            log.debug("StarBot 组件: {} - {} 根据类型 {} 移除类定义: {}", plugin.getJarFile().getName(), clazz.getName(), type.getName(), name);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        componentClasses.put(beanDefinitionName, clazz);
+
                         if (metadata.isAnnotated(Profile.class.getName())) {
                             Map<String, Object> attributes = metadata.getAnnotationAttributes(Profile.class.getName());
                             if (attributes != null) {
@@ -157,6 +208,12 @@ public class StarBotPluginLoader implements EnvironmentAware, BeanDefinitionRegi
                                 }
                             }
                         }
+
+                        if (shouldSkip(registry, beanDefinition)) {
+                            log.debug("StarBot 组件: {} - {} 不满足 @Condition 条件, 不注册至 Spring 容器中", plugin.getJarFile().getName(), clazz.getName());
+                            continue;
+                        }
+
                         if (metadata.isAnnotated(Scope.class.getName())) {
                             Map<String, Object> attributes = metadata.getAnnotationAttributes(Scope.class.getName());
                             if (attributes != null) {
@@ -167,7 +224,7 @@ public class StarBotPluginLoader implements EnvironmentAware, BeanDefinitionRegi
                             }
                         }
 
-                        BeanDefinitionReaderUtils.registerBeanDefinition(new BeanDefinitionHolder(beanDefinition, new AnnotationBeanNameGenerator().generateBeanName(beanDefinition, registry)), registry);
+                        BeanDefinitionReaderUtils.registerBeanDefinition(new BeanDefinitionHolder(beanDefinition, beanDefinitionName), registry);
                     }
 
                     StarBotPluginMeta meta = plugin.getMeta();
@@ -218,5 +275,74 @@ public class StarBotPluginLoader implements EnvironmentAware, BeanDefinitionRegi
         }
 
         return new ArrayList<>();
+    }
+
+    /**
+     * 判断类是否满足 @Condition 条件
+     * @param registry BeanDefinitionRegistry 实例
+     * @param beanDefinition 类定义
+     * @return 类是否满足 @Condition 条件
+     */
+    private boolean shouldSkip(BeanDefinitionRegistry registry, AnnotatedBeanDefinition beanDefinition) {
+        if (evaluator == null || shouldSkipMethod == null) {
+            try {
+                Class<?> clazz = Class.forName("org.springframework.context.annotation.ConditionEvaluator", false, getClass().getClassLoader());
+
+                Constructor<?> constructor = clazz.getDeclaredConstructor(BeanDefinitionRegistry.class, Environment.class, ResourceLoader.class);
+                constructor.setAccessible(true);
+
+                evaluator = constructor.newInstance(
+                        registry,
+                        environment,
+                        resourceLoader
+                );
+
+                shouldSkipMethod = clazz.getDeclaredMethod("shouldSkip", AnnotatedTypeMetadata.class, ConfigurationCondition.ConfigurationPhase.class);
+                shouldSkipMethod.setAccessible(true);
+            } catch (Exception e) {
+                throw new RuntimeException("调用 ConditionEvaluator.shouldSkip 失败", e);
+            }
+        }
+
+        try {
+            return (boolean) shouldSkipMethod.invoke(evaluator, beanDefinition.getMetadata(), ConfigurationCondition.ConfigurationPhase.REGISTER_BEAN);
+        } catch (Exception e) {
+            throw new RuntimeException("调用 ConditionEvaluator.shouldSkip 失败", e);
+        }
+    }
+
+    /**
+     * 根据 BeanDefinition 获取 Class
+     * @param beanDefinition 类定义
+     * @return Class 实例
+     */
+    private Class<?> getClassByBeanDefinition(BeanDefinition beanDefinition) {
+        Class<?> clazz = beanDefinition.getResolvableType().resolve();
+        if (clazz != null) {
+            return clazz;
+        }
+
+        if (beanDefinition.getBeanClassName() != null) {
+            try {
+                clazz = Class.forName(beanDefinition.getBeanClassName(), false, getClass().getClassLoader());
+            } catch (Exception ignored) {
+            }
+
+            if (clazz != null) {
+                return clazz;
+            }
+        }
+
+        Object source = beanDefinition.getSource();
+        if (source instanceof StandardMethodMetadata metadata) {
+            return metadata.getIntrospectedMethod().getReturnType();
+        } else if (source instanceof MethodMetadata metadata) {
+            try {
+                return Class.forName(metadata.getReturnTypeName(), false, getClass().getClassLoader());
+            } catch (Exception ignored) {
+            }
+        }
+
+        return null;
     }
 }

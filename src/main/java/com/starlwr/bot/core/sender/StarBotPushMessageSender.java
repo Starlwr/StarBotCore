@@ -2,7 +2,6 @@ package com.starlwr.bot.core.sender;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
-import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.model.Message;
 import com.starlwr.bot.core.model.Sender;
 import com.starlwr.bot.core.service.StarBotSenderService;
@@ -24,9 +23,6 @@ import java.util.concurrent.*;
 @Slf4j
 @Service
 public class StarBotPushMessageSender {
-    @Resource
-    private StarBotCoreProperties properties;
-
     @Resource
     private HttpUtil http;
 
