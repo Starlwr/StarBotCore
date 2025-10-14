@@ -1,7 +1,7 @@
 package com.starlwr.bot.core.datasource;
 
+import com.starlwr.bot.core.service.DataSourceServiceConfig;
 import com.starlwr.bot.core.service.DataSourceService;
-import com.starlwr.bot.core.service.DataSourceServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -15,12 +15,12 @@ import java.util.Optional;
  */
 @Component
 public class DataSourceServiceRegistry {
-    private final Map<String, DataSourceServiceInterface> serviceMap = new HashMap<>();
+    private final Map<String, DataSourceService> serviceMap = new HashMap<>();
 
     @Autowired
-    public DataSourceServiceRegistry(List<DataSourceServiceInterface> services) {
-        for (DataSourceServiceInterface service : services) {
-            DataSourceService annotation = service.getClass().getAnnotation(DataSourceService.class);
+    public DataSourceServiceRegistry(List<DataSourceService> services) {
+        for (DataSourceService service : services) {
+            DataSourceServiceConfig annotation = service.getClass().getAnnotation(DataSourceServiceConfig.class);
             if (annotation != null) {
                 serviceMap.put(annotation.name(), service);
             }
@@ -32,7 +32,7 @@ public class DataSourceServiceRegistry {
      * @param platform 直播平台名称
      * @return 数据源服务
      */
-    public Optional<DataSourceServiceInterface> getDataSourceService(String platform) {
+    public Optional<DataSourceService> getDataSourceService(String platform) {
         return Optional.ofNullable(serviceMap.get(platform));
     }
 }

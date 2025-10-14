@@ -1,20 +1,26 @@
 package com.starlwr.bot.core.service;
 
-import com.starlwr.bot.core.enums.LivePlatform;
+import com.starlwr.bot.core.model.PushUser;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.util.List;
 
 /**
- * 数据源服务实现类注解
+ * 数据源服务接口，各直播平台实现均应实现此接口，用于获取各平台中的推送用户信息，实现类应添加 {@link DataSourceServiceConfig} 注解
  */
-@Target({ElementType.TYPE})
-@Retention(RetentionPolicy.RUNTIME)
-public @interface DataSourceService {
+public interface DataSourceService {
     /**
-     * 直播平台，请优先从 {@link LivePlatform} 中获取，若不存在可使用自定义字符串
+     * 补全推送用户信息
+     * @param user 推送用户
      */
-    String name();
+    void completePushUser(PushUser user);
+
+    /**
+     * 批量补全推送用户信息
+     * @param users 推送用户列表
+     */
+    default void completePushUsers(List<PushUser> users) {
+        for (PushUser user : users) {
+            completePushUser(user);
+        }
+    }
 }

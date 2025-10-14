@@ -32,6 +32,9 @@ public class StarBotCoreProperties {
     private final Plugin plugin = new Plugin();
 
     @Getter
+    private final Data data = new Data();
+
+    @Getter
     private final Paint paint = new Paint();
 
     /**
@@ -101,7 +104,7 @@ public class StarBotCoreProperties {
         private String jsonPath = "datasource.json";
 
         /**
-         * JSON 文件发生变化时是否自动重载
+         * JSON 文件发生变化时是否自动重载，仅使用 JSON 数据源时生效
          */
         private boolean jsonAutoReload = true;
     }
@@ -121,6 +124,23 @@ public class StarBotCoreProperties {
          * 用于自动下载插件依赖的 Maven 地址
          */
         private List<String> mavenBaseUrls = new ArrayList<>(Arrays.asList("https://maven.aliyun.com/repository/public", "https://repo1.maven.org/maven2"));
+    }
+
+    /**
+     * 数据相关
+     */
+    @Getter
+    @Setter
+    public static class Data {
+        /**
+         * 是否持久化直播数据至文件，仅使用默认直播数据服务时生效
+         */
+        private boolean saveLiveData = true;
+
+        /**
+         * 直播数据文件路径，仅使用默认直播数据服务时生效
+         */
+        private String liveDataPath = "data.json";
     }
 
     /**
