@@ -33,6 +33,11 @@ public class StarBotSenderService implements ApplicationListener<ApplicationRead
         log.info("已加载 {} 个推送平台: [{}]", senders.size(), senders.values().stream().map(Sender::getName).collect(Collectors.joining(", ")));
     }
 
+    @Override
+    public boolean supportsAsyncExecution() {
+        return false;
+    }
+
     /**
      * 根据推送平台名称获取推送平台信息
      * @param name 推送平台名称
