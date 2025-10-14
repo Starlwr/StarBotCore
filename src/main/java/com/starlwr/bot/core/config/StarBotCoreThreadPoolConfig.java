@@ -38,25 +38,4 @@ public class StarBotCoreThreadPoolConfig {
             r.run();
         }
     }
-
-    @Bean
-    public ThreadPoolTaskExecutor eventHandlerThreadPool() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(properties.getEventHandlerThread().getCorePoolSize());
-        executor.setMaxPoolSize(properties.getEventHandlerThread().getMaxPoolSize());
-        executor.setQueueCapacity(properties.getEventHandlerThread().getQueueCapacity());
-        executor.setKeepAliveSeconds(properties.getEventHandlerThread().getKeepAliveSeconds());
-        executor.setThreadNamePrefix("handler-thread-");
-        executor.setRejectedExecutionHandler(new EventHandlerWithLogCallerRunsPolicy());
-        executor.initialize();
-        return executor;
-    }
-
-    private static class EventHandlerWithLogCallerRunsPolicy implements RejectedExecutionHandler {
-        @Override
-        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
-            log.warn("事件处理线程池资源已耗尽, 请考虑增加线程池大小!");
-            r.run();
-        }
-    }
 }
