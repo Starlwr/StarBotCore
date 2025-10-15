@@ -16,6 +16,9 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 默认直播数据服务实现
@@ -26,6 +29,8 @@ import java.util.Optional;
 public class DefaultLiveDataService implements LiveDataService, ApplicationListener<ApplicationEvent> {
     @Resource
     private StarBotCoreProperties properties;
+
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private JSONObject cache = new JSONObject();
 
@@ -48,11 +53,12 @@ public class DefaultLiveDataService implements LiveDataService, ApplicationListe
             try {
                 cache = JSONObject.parseObject(Files.readString(Path.of(liveDataPath)));
             } catch (NoSuchFileException e) {
-                log.warn("直播数据文件 {} 不存在, 建立新文件", liveDataPath, e);
+                log.warn("直播数据文件 {} 不存在, 建立新文件", liveDataPath);
             } catch (Exception e) {
                 log.error("读取直播数据 {} 异常", liveDataPath, e);
             }
             log.info("直播数据加载完成");
+            autoSave();
         }
     }
 
@@ -75,6 +81,22 @@ public class DefaultLiveDataService implements LiveDataService, ApplicationListe
     @Override
     public boolean supportsAsyncExecution() {
         return false;
+    }
+
+    public void autoSave() {
+        int interval = properties.getData().getAutoSaveLiveDataInterval();
+        Path path = Path.of(properties.getData().getLiveDataPath());
+
+        scheduler.scheduleWithFixedDelay(() -> {
+            Thread.currentThread().setName("auto-save-data");
+
+            try {
+                Files.writeString(path, cache.toJSONString());
+            } catch (Exception e) {
+                log.error("自动保存直播数据异常", e);
+            }
+
+        }, interval, interval, TimeUnit.SECONDS);
     }
 
     // ================ 直播间状态 ================

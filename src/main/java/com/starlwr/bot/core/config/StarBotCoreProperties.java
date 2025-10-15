@@ -141,6 +141,11 @@ public class StarBotCoreProperties {
          * 直播数据文件路径，仅使用默认直播数据服务时生效
          */
         private String liveDataPath = "data.json";
+
+        /**
+         * 自动保存直播数据间隔，单位：秒，仅使用默认直播数据服务时生效
+         */
+        private int autoSaveLiveDataInterval = 300;
     }
 
     /**
