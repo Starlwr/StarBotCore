@@ -21,6 +21,8 @@ public class StarBotDefaultLiveOnEventListener implements ApplicationListener<Li
 
     @Override
     public void onApplicationEvent(@NonNull LiveOnEvent event) {
+        log.info("[{}] [开播] {}(UID: {}, 房间号: {})", event.getPlatform(), event.getSource().getUname(), event.getSource().getUid(), event.getSource().getRoomIdString());
+
         liveDataService.setLiveStatus(event.getPlatform(), event.getSource().getUid(), true);
         liveDataService.setLiveStartTime(event.getPlatform(), event.getSource().getUid(), event.getTimestamp());
         liveDataService.resetLiveData(event.getPlatform(), event.getSource().getUid());

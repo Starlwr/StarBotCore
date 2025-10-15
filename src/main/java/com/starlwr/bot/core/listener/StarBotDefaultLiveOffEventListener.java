@@ -21,6 +21,8 @@ public class StarBotDefaultLiveOffEventListener implements ApplicationListener<L
 
     @Override
     public void onApplicationEvent(@NonNull LiveOffEvent event) {
+        log.info("[{}] [下播] {}(UID: {}, 房间号: {})", event.getPlatform(), event.getSource().getUname(), event.getSource().getUid(), event.getSource().getRoomIdString());
+
         liveDataService.setLiveStatus(event.getPlatform(), event.getSource().getUid(), false);
         liveDataService.setLiveEndTime(event.getPlatform(), event.getSource().getUid(), event.getTimestamp());
     }
