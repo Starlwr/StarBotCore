@@ -34,6 +34,9 @@ public class StarBotCoreThreadPoolConfig {
     private static class NetworkWithLogCallerRunsPolicy implements RejectedExecutionHandler {
         @Override
         public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+            if (executor.isShutdown()) {
+                return;
+            }
             log.warn("网络请求线程池资源已耗尽, 请考虑增加线程池大小!");
             r.run();
         }
