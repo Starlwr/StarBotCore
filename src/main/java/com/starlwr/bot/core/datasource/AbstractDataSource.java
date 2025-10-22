@@ -199,7 +199,17 @@ public abstract class AbstractDataSource {
 
             initPushMessageParams(user);
 
-            log.info("更新推送用户: (UID: {}, 昵称: {}, 房间号: {}, 平台: {})", user.getUid(), user.getUname(), user.getRoomIdString(), user.getPlatform());
+            boolean unameChanged = !Objects.equals(oldUser.getUname(), user.getUname());
+            boolean faceChanged = !Objects.equals(oldUser.getFace(), user.getFace());
+            if (unameChanged) {
+                log.info("推送用户 (UID: {}, 房间号: {}, 平台: {}) 昵称由 {} 更新为 {}", user.getUid(), user.getRoomIdString(), user.getPlatform(), oldUser.getUname(), user.getUname());
+            }
+            if (faceChanged) {
+                log.info("推送用户 (UID: {}, 昵称: {}, 房间号: {}, 平台: {}) 头像由 {} 更新为 {}", user.getUid(), user.getUname(), user.getRoomIdString(), user.getPlatform(), oldUser.getFace(), user.getFace());
+            }
+            if (!unameChanged && !faceChanged) {
+                log.info("推送用户 (UID: {}, 昵称: {}, 房间号: {}, 平台: {}) 推送配置已更新", user.getUid(), user.getUname(), user.getRoomIdString(), user.getPlatform());
+            }
 
             StarBotDataSourceUpdateEvent event = new StarBotDataSourceUpdateEvent(oldUser, user, Instant.now());
             eventPublisher.publishEvent(event);
