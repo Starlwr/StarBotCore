@@ -9,7 +9,7 @@ import com.starlwr.bot.core.model.PushUser;
 import com.starlwr.bot.core.service.StarBotEventHandlerService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -19,17 +19,21 @@ import java.util.Optional;
  * StarBot 监听外部事件触发事件处理
  */
 @Slf4j
-@Order(0)
 @Component
-public class StarBotHandlerListener implements ApplicationListener<StarBotExternalBaseEvent> {
+public class StarBotHandlerListener {
     @Resource
     private AbstractDataSource dataSource;
 
     @Resource
     private StarBotEventHandlerService handlerService;
 
-    @Override
-    public void onApplicationEvent(StarBotExternalBaseEvent event) {
+    /**
+     * 调用事件处理器处理外部事件
+     * @param event 事件
+     */
+    @Order(0)
+    @EventListener
+    public void onStarBotExternalBaseEvent(StarBotExternalBaseEvent event) {
         Optional<PushUser> optionalUser = dataSource.getUser(event.getPlatform(), event.getSource().getUid());
         if (optionalUser.isEmpty()) {
             return;
@@ -56,10 +60,5 @@ public class StarBotHandlerListener implements ApplicationListener<StarBotExtern
                 }
             }
         }
-    }
-
-    @Override
-    public boolean supportsAsyncExecution() {
-        return false;
     }
 }

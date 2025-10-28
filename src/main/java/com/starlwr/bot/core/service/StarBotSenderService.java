@@ -6,7 +6,7 @@ import jakarta.annotation.Resource;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
@@ -20,22 +20,20 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@Order(-10000)
-public class StarBotSenderService implements ApplicationListener<ApplicationReadyEvent> {
+public class StarBotSenderService {
     @Resource
     private StarBotCoreProperties properties;
 
     private final Map<String, Sender> senders = new HashMap<>();
 
-    @Override
-    public void onApplicationEvent(@NonNull ApplicationReadyEvent event) {
+    /**
+     * 从配置文件加载推送平台
+     */
+    @Order(-10000)
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReadyEvent() {
         properties.getSender().forEach(this::addSender);
         log.info("已加载 {} 个推送平台: [{}]", senders.size(), senders.values().stream().map(Sender::getName).collect(Collectors.joining(", ")));
-    }
-
-    @Override
-    public boolean supportsAsyncExecution() {
-        return false;
     }
 
     /**

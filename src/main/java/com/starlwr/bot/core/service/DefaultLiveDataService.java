@@ -6,9 +6,8 @@ import jakarta.annotation.Resource;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationEvent;
-import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
@@ -25,8 +24,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Service
-@Order(-10000)
-public class DefaultLiveDataService implements LiveDataService, ApplicationListener<ApplicationEvent> {
+public class DefaultLiveDataService implements LiveDataService {
     @Resource
     private StarBotCoreProperties properties;
 
@@ -34,19 +32,12 @@ public class DefaultLiveDataService implements LiveDataService, ApplicationListe
 
     private JSONObject cache = new JSONObject();
 
-    @Override
-    public void onApplicationEvent(@NonNull ApplicationEvent event) {
-        if (event instanceof ApplicationReadyEvent) {
-            onApplicationReadyEvent();
-        } else if (event instanceof ContextClosedEvent) {
-            onContextClosedEvent();
-        }
-    }
-
     /**
-     * 应用启动完成事件
+     * 加载直播数据
      */
-    private void onApplicationReadyEvent() {
+    @Order(-10000)
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReadyEvent() {
         if (properties.getData().isSaveLiveData()) {
             String liveDataPath = properties.getData().getLiveDataPath();
             log.info("开始从 {} 中加载直播数据", liveDataPath);
@@ -63,9 +54,11 @@ public class DefaultLiveDataService implements LiveDataService, ApplicationListe
     }
 
     /**
-     * 应用关闭事件
+     * 保存直播数据
      */
-    private void onContextClosedEvent() {
+    @Order(0)
+    @EventListener(ContextClosedEvent.class)
+    public void onContextClosedEvent() {
         if (properties.getData().isSaveLiveData()) {
             String liveDataPath = properties.getData().getLiveDataPath();
             log.info("开始保存直播数据至 {}", liveDataPath);
@@ -76,11 +69,6 @@ public class DefaultLiveDataService implements LiveDataService, ApplicationListe
             }
             log.info("直播数据已保存至 {}", liveDataPath);
         }
-    }
-
-    @Override
-    public boolean supportsAsyncExecution() {
-        return false;
     }
 
     public void autoSave() {

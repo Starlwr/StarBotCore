@@ -3,13 +3,12 @@ package com.starlwr.bot.core.plugin;
 import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.util.HttpUtil;
 import jakarta.annotation.Resource;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -33,8 +32,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
-public class StarBotPluginDependencyDownloader implements ApplicationListener<ApplicationReadyEvent> {
+public class StarBotPluginDependencyDownloader {
     @Resource
     private ApplicationContext context;
 
@@ -50,8 +48,12 @@ public class StarBotPluginDependencyDownloader implements ApplicationListener<Ap
     @Resource
     private HttpUtil http;
 
-    @Override
-    public void onApplicationEvent(@NonNull ApplicationReadyEvent event) {
+    /**
+     * 下载缺失依赖
+     */
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReadyEvent() {
         Set<Dependency> dependencies = loader.getNeedDownloadDependencies().values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
         if (dependencies.isEmpty()) {
             return;
@@ -130,11 +132,6 @@ public class StarBotPluginDependencyDownloader implements ApplicationListener<Ap
             Thread.currentThread().interrupt();
             System.exit(0);
         }
-    }
-
-    @Override
-    public boolean supportsAsyncExecution() {
-        return false;
     }
 
     /**

@@ -5,7 +5,7 @@ import com.starlwr.bot.core.service.LiveDataService;
 import jakarta.annotation.Resource;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -14,21 +14,20 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
-@Order(-10000)
-public class StarBotDefaultLiveOffEventListener implements ApplicationListener<LiveOffEvent> {
+public class StarBotDefaultLiveOffEventListener {
     @Resource
     private LiveDataService liveDataService;
 
-    @Override
+    /**
+     * 更新房间数据
+     * @param event 事件
+     */
+    @Order(-10000)
+    @EventListener
     public void onApplicationEvent(@NonNull LiveOffEvent event) {
         log.info("[{}] [下播] {}(UID: {}, 房间号: {})", event.getPlatform(), event.getSource().getUname(), event.getSource().getUid(), event.getSource().getRoomIdString());
 
         liveDataService.setLiveStatus(event.getPlatform(), event.getSource().getUid(), false);
         liveDataService.setLiveEndTime(event.getPlatform(), event.getSource().getUid(), event.getTimestamp());
-    }
-
-    @Override
-    public boolean supportsAsyncExecution() {
-        return false;
     }
 }
