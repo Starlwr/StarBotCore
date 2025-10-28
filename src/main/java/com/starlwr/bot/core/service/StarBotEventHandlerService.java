@@ -3,11 +3,13 @@ package com.starlwr.bot.core.service;
 import com.starlwr.bot.core.handler.DefaultHandlerForEvent;
 import com.starlwr.bot.core.handler.StarBotEventHandler;
 import jakarta.annotation.Nullable;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -27,8 +29,12 @@ public class StarBotEventHandlerService {
 
     private final Map<String, StarBotEventHandler> defaultHandlers = new HashMap<>();
 
-    @PostConstruct
-    public void init() {
+    /**
+     * 加载事件处理器
+     */
+    @Order(0)
+    @EventListener(ContextRefreshedEvent.class)
+    public void onContextRefreshedEvent() {
         for (StarBotEventHandler handler : applicationContext.getBeansOfType(StarBotEventHandler.class).values()) {
             cache.put(handler.getClass().getName(), handler);
 
