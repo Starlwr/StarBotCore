@@ -24,6 +24,6 @@ public class StarBotEventListener {
     @Order(Ordered.HIGHEST_PRECEDENCE)
     @EventListener
     public void onStarBotBaseEvent(StarBotBaseEvent event) {
-        eventLogger.debug("[{}] {}", event.getClass().getSimpleName(), event);
+        eventLogger.debug("[{}][{}] {}", event.getClass().getSimpleName(), Integer.toHexString(System.identityHashCode(event)), event);
     }
 }
