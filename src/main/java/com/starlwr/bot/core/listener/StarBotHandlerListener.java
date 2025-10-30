@@ -7,8 +7,8 @@ import com.starlwr.bot.core.model.PushMessage;
 import com.starlwr.bot.core.model.PushTarget;
 import com.starlwr.bot.core.model.PushUser;
 import com.starlwr.bot.core.service.StarBotEventHandlerService;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -21,11 +21,15 @@ import java.util.Optional;
 @Slf4j
 @Component
 public class StarBotHandlerListener {
-    @Resource
-    private AbstractDataSource dataSource;
+    private final AbstractDataSource dataSource;
 
-    @Resource
-    private StarBotEventHandlerService handlerService;
+    private final StarBotEventHandlerService handlerService;
+
+    @Autowired
+    public StarBotHandlerListener(AbstractDataSource dataSource, StarBotEventHandlerService handlerService) {
+        this.dataSource = dataSource;
+        this.handlerService = handlerService;
+    }
 
     /**
      * 调用事件处理器处理外部事件

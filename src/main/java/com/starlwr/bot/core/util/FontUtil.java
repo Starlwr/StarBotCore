@@ -3,8 +3,8 @@ package com.starlwr.bot.core.util;
 import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.model.TextWithStyle;
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
@@ -22,17 +22,21 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 public class FontUtil {
-    @Resource
-    private ResourceLoader resourceLoader;
+    private final ResourceLoader resourceLoader;
 
-    @Resource
-    private StarBotCoreProperties properties;
+    private final StarBotCoreProperties properties;
 
     private Set<String> systemFonts = new HashSet<>();
 
     private final List<Font> fonts = new ArrayList<>();
 
     private final int DEFAULT_FONT_SIZE = 30;
+
+    @Autowired
+    public FontUtil(ResourceLoader resourceLoader, StarBotCoreProperties properties) {
+        this.resourceLoader = resourceLoader;
+        this.properties = properties;
+    }
 
     @PostConstruct
     public void init() {

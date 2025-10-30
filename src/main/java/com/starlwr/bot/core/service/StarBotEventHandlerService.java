@@ -2,10 +2,11 @@ package com.starlwr.bot.core.service;
 
 import com.starlwr.bot.core.handler.DefaultHandlerForEvent;
 import com.starlwr.bot.core.handler.StarBotEventHandler;
+import com.starlwr.bot.core.util.StringUtil;
 import jakarta.annotation.Nullable;
-import jakarta.annotation.Resource;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
@@ -22,12 +23,16 @@ import java.util.Optional;
 @Slf4j
 @Service
 public class StarBotEventHandlerService {
-    @Resource
-    private ApplicationContext applicationContext;
+    private final ApplicationContext applicationContext;
 
     private final Map<String, StarBotEventHandler> cache = new HashMap<>();
 
     private final Map<String, StarBotEventHandler> defaultHandlers = new HashMap<>();
+
+    @Autowired
+    public StarBotEventHandlerService(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
 
     /**
      * 加载事件处理器
@@ -54,7 +59,7 @@ public class StarBotEventHandlerService {
      * @return 事件处理器
      */
     public Optional<StarBotEventHandler> getHandler(@NonNull String eventClass, @Nullable String handlerClass) {
-        if (handlerClass != null) {
+        if (StringUtil.isNotBlank(handlerClass)) {
             return Optional.ofNullable(cache.get(handlerClass));
         }
 

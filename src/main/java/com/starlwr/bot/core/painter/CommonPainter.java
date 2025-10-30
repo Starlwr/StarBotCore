@@ -5,15 +5,11 @@ import com.starlwr.bot.core.model.TextWithStyle;
 import com.starlwr.bot.core.util.FontUtil;
 import com.starlwr.bot.core.util.StringUtil;
 import jakarta.annotation.Nullable;
-import jakarta.annotation.Resource;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.boot.info.BuildProperties;
-import org.springframework.context.annotation.Scope;
 import org.springframework.data.util.Pair;
-import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import javax.imageio.ImageIO;
@@ -32,17 +28,12 @@ import java.util.function.Consumer;
  * 绘图器
  */
 @Slf4j
-@Component
-@Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class CommonPainter {
-    @Resource
-    private StarBotCoreProperties properties;
+    private final BuildProperties buildProperties;
 
-    @Resource
-    private BuildProperties buildProperties;
+    private final StarBotCoreProperties properties;
 
-    @Resource
-    private FontUtil fontUtil;
+    private final FontUtil fontUtil;
 
     @Getter
     private Integer rowSpace = 10;
@@ -77,10 +68,15 @@ public class CommonPainter {
      * @param height 画布高度
      * @param autoExpand 是否自动扩展画布高度
      */
-    public CommonPainter(int width, int height, boolean autoExpand) {
+    public CommonPainter(BuildProperties buildProperties, StarBotCoreProperties properties, FontUtil fontUtil, int width, int height, boolean autoExpand) {
+        this.buildProperties = buildProperties;
+        this.properties = properties;
+        this.fontUtil = fontUtil;
+
         this.width = width;
         this.height = height;
         this.autoExpand = autoExpand;
+
         this.canvas = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         this.draw = canvas.createGraphics();
 

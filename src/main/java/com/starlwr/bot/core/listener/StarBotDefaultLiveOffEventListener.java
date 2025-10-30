@@ -2,9 +2,9 @@ package com.starlwr.bot.core.listener;
 
 import com.starlwr.bot.core.event.live.common.LiveOffEvent;
 import com.starlwr.bot.core.service.LiveDataService;
-import jakarta.annotation.Resource;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -15,8 +15,12 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class StarBotDefaultLiveOffEventListener {
-    @Resource
-    private LiveDataService liveDataService;
+    private final LiveDataService liveDataService;
+
+    @Autowired
+    public StarBotDefaultLiveOffEventListener(LiveDataService liveDataService) {
+        this.liveDataService = liveDataService;
+    }
 
     /**
      * 更新房间数据

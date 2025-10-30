@@ -7,8 +7,8 @@ import com.starlwr.bot.core.model.Sender;
 import com.starlwr.bot.core.service.StarBotSenderService;
 import com.starlwr.bot.core.util.HttpUtil;
 import com.starlwr.bot.core.util.StringUtil;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -23,17 +23,21 @@ import java.util.concurrent.*;
 @Slf4j
 @Service
 public class StarBotPushMessageSender {
-    @Resource
-    private HttpUtil http;
+    private final HttpUtil http;
 
-    @Resource
-    private StarBotSenderService senderService;
+    private final StarBotSenderService senderService;
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
     private final Map<String, BlockingQueue<Message>> queueMap = new ConcurrentHashMap<>();
 
     private final Map<String, Future<?>> platformTasks = new ConcurrentHashMap<>();
+
+    @Autowired
+    public StarBotPushMessageSender(HttpUtil http, StarBotSenderService senderService) {
+        this.http = http;
+        this.senderService = senderService;
+    }
 
     /**
      * 将消息加入至消息队列

@@ -12,9 +12,9 @@ import com.starlwr.bot.core.model.PushTarget;
 import com.starlwr.bot.core.model.PushUser;
 import com.starlwr.bot.core.service.StarBotEventHandlerService;
 import com.starlwr.bot.core.util.StringUtil;
-import jakarta.annotation.Resource;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Instant;
@@ -26,18 +26,23 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public abstract class AbstractDataSource {
-    @Resource
-    protected ApplicationEventPublisher eventPublisher;
+    protected final ApplicationEventPublisher eventPublisher;
 
-    @Resource
-    private DataSourceServiceRegistry dataSourceServiceRegistry;
+    private final DataSourceServiceRegistry dataSourceServiceRegistry;
 
-    @Resource
-    private StarBotEventHandlerService handlerService;
+    private final StarBotEventHandlerService handlerService;
 
     protected final List<PushUser> users = new ArrayList<>();
 
     private final Map<String, Map<Long, PushUser>> userMap = new HashMap<>();
+
+    @Autowired
+    public AbstractDataSource(ApplicationEventPublisher eventPublisher, DataSourceServiceRegistry dataSourceServiceRegistry, StarBotEventHandlerService handlerService) {
+        this.eventPublisher = eventPublisher;
+        this.dataSourceServiceRegistry = dataSourceServiceRegistry;
+        this.handlerService = handlerService;
+    }
+
 
     /**
      * 加载数据源，读取完毕后需调用 add 方法将推送用户添加至数据源中

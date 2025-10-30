@@ -2,8 +2,8 @@ package com.starlwr.bot.core.util;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -23,12 +23,9 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 @Component
 public class HttpUtil {
-    @Resource
-    @Qualifier("networkThreadPool")
-    private ThreadPoolTaskExecutor executor;
+    private final ThreadPoolTaskExecutor executor;
 
-    @Resource
-    private WebClient webClient;
+    private final WebClient webClient;
 
     @SuppressWarnings("SpellCheckingInspection")
     private final List<String> USER_AGENTS = Arrays.asList(
@@ -41,6 +38,12 @@ public class HttpUtil {
             "Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN; rv:1.9) Gecko/20080705 Firefox/3.0 Kapiko/3.0",
             "Mozilla/5.0 (X11; Linux i686; U;) Gecko/20070322 Kazehakase/0.4.5"
     );
+
+    @Autowired
+    public HttpUtil(@Qualifier("networkThreadPool") ThreadPoolTaskExecutor executor, WebClient webClient) {
+        this.executor = executor;
+        this.webClient = webClient;
+    }
 
     /**
      * 获取随机用户代理字符串

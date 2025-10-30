@@ -19,6 +19,10 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class EmptyDataSource extends AbstractDataSource {
+    public EmptyDataSource(ApplicationEventPublisher eventPublisher) {
+        super(eventPublisher, null, null);
+    }
+
     /**
      * 加载数据源，读取完毕后需调用 add 方法将推送用户添加至数据源中
      * PushUser 仅须填充 uid, platform, enabled, targets 字段
@@ -80,9 +84,5 @@ public class EmptyDataSource extends AbstractDataSource {
     @Override
     public void update(@NonNull PushUser user) {
         throw new UnsupportedOperationException("空数据源不支持更新推送用户, 请配置 spring.profiles.active 以选用其它数据源");
-    }
-
-    public void setEventPublisher(ApplicationEventPublisher eventPublisher) {
-        this.eventPublisher = eventPublisher;
     }
 }

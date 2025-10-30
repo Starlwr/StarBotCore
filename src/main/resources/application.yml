@@ -9,8 +9,6 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
-  main:
-    allow-circular-references: true
 
 starbot:
   core:

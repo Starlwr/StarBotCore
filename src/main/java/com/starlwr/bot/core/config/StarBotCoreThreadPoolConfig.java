@@ -1,7 +1,7 @@
 package com.starlwr.bot.core.config;
 
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -15,8 +15,12 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Slf4j
 @Configuration
 public class StarBotCoreThreadPoolConfig {
-    @Resource
-    private StarBotCoreProperties properties;
+    private final StarBotCoreProperties properties;
+
+    @Autowired
+    public StarBotCoreThreadPoolConfig(StarBotCoreProperties properties) {
+        this.properties = properties;
+    }
 
     @Bean
     public ThreadPoolTaskExecutor networkThreadPool() {

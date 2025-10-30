@@ -2,8 +2,8 @@ package com.starlwr.bot.core.plugin;
 
 import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.util.HttpUtil;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -33,20 +33,24 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 public class StarBotPluginDependencyDownloader {
-    @Resource
-    private ApplicationContext context;
+    private final ApplicationContext context;
 
-    @Resource
-    private ApplicationArguments arguments;
+    private final ApplicationArguments arguments;
 
-    @Resource
-    private StarBotPluginLoader loader;
+    private final StarBotPluginLoader loader;
 
-    @Resource
-    private StarBotCoreProperties properties;
+    private final StarBotCoreProperties properties;
 
-    @Resource
-    private HttpUtil http;
+    private final HttpUtil http;
+
+    @Autowired
+    public StarBotPluginDependencyDownloader(ApplicationContext context, ApplicationArguments arguments, StarBotPluginLoader loader, StarBotCoreProperties properties, HttpUtil http) {
+        this.context = context;
+        this.arguments = arguments;
+        this.loader = loader;
+        this.properties = properties;
+        this.http = http;
+    }
 
     /**
      * 下载缺失依赖

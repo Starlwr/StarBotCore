@@ -2,9 +2,9 @@ package com.starlwr.bot.core.service;
 
 import com.alibaba.fastjson2.JSONObject;
 import com.starlwr.bot.core.config.StarBotCoreProperties;
-import jakarta.annotation.Resource;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
@@ -25,12 +25,16 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 public class DefaultLiveDataService implements LiveDataService {
-    @Resource
-    private StarBotCoreProperties properties;
+    private final StarBotCoreProperties properties;
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private JSONObject cache = new JSONObject();
+
+    @Autowired
+    public DefaultLiveDataService(StarBotCoreProperties properties) {
+        this.properties = properties;
+    }
 
     /**
      * 加载直播数据

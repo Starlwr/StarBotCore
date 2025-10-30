@@ -2,9 +2,9 @@ package com.starlwr.bot.core.service;
 
 import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.model.Sender;
-import jakarta.annotation.Resource;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
@@ -21,10 +21,14 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class StarBotSenderService {
-    @Resource
-    private StarBotCoreProperties properties;
+    private final StarBotCoreProperties properties;
 
     private final Map<String, Sender> senders = new HashMap<>();
+
+    @Autowired
+    public StarBotSenderService(StarBotCoreProperties properties) {
+        this.properties = properties;
+    }
 
     /**
      * 从配置文件加载推送平台

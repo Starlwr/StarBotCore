@@ -1,8 +1,10 @@
 package com.starlwr.bot.core.factory;
 
+import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.painter.CommonPainter;
-import jakarta.annotation.Resource;
-import org.springframework.context.ApplicationContext;
+import com.starlwr.bot.core.util.FontUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Component;
 
 /**
@@ -10,8 +12,18 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class StarBotCommonPainterFactory {
-    @Resource
-    private ApplicationContext applicationContext;
+    private final BuildProperties buildProperties;
+
+    private final StarBotCoreProperties properties;
+
+    private final FontUtil fontUtil;
+
+    @Autowired
+    public StarBotCommonPainterFactory(BuildProperties buildProperties, StarBotCoreProperties properties, FontUtil fontUtil) {
+        this.buildProperties = buildProperties;
+        this.properties = properties;
+        this.fontUtil = fontUtil;
+    }
 
     /**
      * 创建绘图器
@@ -20,7 +32,7 @@ public class StarBotCommonPainterFactory {
      * @return 绘图器
      */
     public CommonPainter create(int width, int height) {
-        return applicationContext.getBean(CommonPainter.class, width, height, false);
+        return create(width, height, false);
     }
 
     /**
@@ -31,6 +43,6 @@ public class StarBotCommonPainterFactory {
      * @return 绘图器
      */
     public CommonPainter create(int width, int height, boolean autoExpand) {
-        return applicationContext.getBean(CommonPainter.class, width, height, autoExpand);
+        return new CommonPainter(buildProperties, properties, fontUtil, width, height, autoExpand);
     }
 }

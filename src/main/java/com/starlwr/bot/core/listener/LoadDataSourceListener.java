@@ -1,8 +1,8 @@
 package com.starlwr.bot.core.listener;
 
 import com.starlwr.bot.core.datasource.AbstractDataSource;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
@@ -14,8 +14,12 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class LoadDataSourceListener {
-    @Resource
-    private AbstractDataSource dataSource;
+    private final AbstractDataSource dataSource;
+
+    @Autowired
+    public LoadDataSourceListener(AbstractDataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     /**
      * 加载数据源

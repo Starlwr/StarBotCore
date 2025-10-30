@@ -3,9 +3,11 @@ package com.starlwr.bot.core.datasource;
 import com.starlwr.bot.core.event.datasource.other.StarBotDataSourceLoadCompleteEvent;
 import com.starlwr.bot.core.model.PushUser;
 import com.starlwr.bot.core.repository.PushUserRepository;
-import jakarta.annotation.Resource;
+import com.starlwr.bot.core.service.StarBotEventHandlerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
@@ -21,8 +23,13 @@ import java.util.stream.Collectors;
 @Service
 @DataSource(name = "mysql")
 public class MySQLDataSource extends AbstractDataSource {
-    @Resource
-    private PushUserRepository pushUserRepository;
+    private final PushUserRepository pushUserRepository;
+
+    @Autowired
+    public MySQLDataSource(ApplicationEventPublisher eventPublisher, DataSourceServiceRegistry dataSourceServiceRegistry, StarBotEventHandlerService handlerService, PushUserRepository pushUserRepository) {
+        super(eventPublisher, dataSourceServiceRegistry, handlerService);
+        this.pushUserRepository = pushUserRepository;
+    }
 
     /**
      * 加载数据源，读取完毕后需调用 add 方法将推送用户添加至数据源中

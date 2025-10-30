@@ -9,9 +9,11 @@ import com.starlwr.bot.core.exception.DataSourceException;
 import com.starlwr.bot.core.model.PushMessage;
 import com.starlwr.bot.core.model.PushTarget;
 import com.starlwr.bot.core.model.PushUser;
+import com.starlwr.bot.core.service.StarBotEventHandlerService;
 import com.starlwr.bot.core.util.CollectionUtil;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
@@ -30,8 +32,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @Service
 @DataSource(name = "json")
 public class JsonDataSource extends AbstractDataSource {
-    @Resource
-    private StarBotCoreProperties properties;
+    private final StarBotCoreProperties properties;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -42,6 +43,12 @@ public class JsonDataSource extends AbstractDataSource {
     private final AtomicLong lastTriggeredTime = new AtomicLong(0);
 
     private final long debounceDelayMillis = 1000L;
+
+    @Autowired
+    public JsonDataSource(ApplicationEventPublisher eventPublisher, DataSourceServiceRegistry dataSourceServiceRegistry, StarBotEventHandlerService handlerService, StarBotCoreProperties properties) {
+        super(eventPublisher, dataSourceServiceRegistry, handlerService);
+        this.properties = properties;
+    }
 
     /**
      * 加载数据源，读取完毕后需调用 add 方法将推送用户添加至数据源中

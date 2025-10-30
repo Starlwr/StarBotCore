@@ -20,8 +20,6 @@ public class DataSourceConfig {
     @Bean
     @ConditionalOnMissingBean(AbstractDataSource.class)
     public AbstractDataSource emptyDataSource(ApplicationEventPublisher publisher) {
-        EmptyDataSource dataSource = new EmptyDataSource();
-        dataSource.setEventPublisher(publisher);
-        return dataSource;
+        return new EmptyDataSource(publisher);
     }
 }
