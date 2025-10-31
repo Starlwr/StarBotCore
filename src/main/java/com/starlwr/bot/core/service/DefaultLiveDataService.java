@@ -42,8 +42,8 @@ public class DefaultLiveDataService implements LiveDataService {
     @Order(-10000)
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReadyEvent() {
-        if (properties.getData().isSaveLiveData()) {
-            String liveDataPath = properties.getData().getLiveDataPath();
+        if (properties.getLive().isSaveLiveData()) {
+            String liveDataPath = properties.getLive().getLiveDataPath();
             log.info("开始从 {} 中加载直播数据", liveDataPath);
             try {
                 cache = JSONObject.parseObject(Files.readString(Path.of(liveDataPath)));
@@ -63,8 +63,8 @@ public class DefaultLiveDataService implements LiveDataService {
     @Order(0)
     @EventListener(ContextClosedEvent.class)
     public void onContextClosedEvent() {
-        if (properties.getData().isSaveLiveData()) {
-            String liveDataPath = properties.getData().getLiveDataPath();
+        if (properties.getLive().isSaveLiveData()) {
+            String liveDataPath = properties.getLive().getLiveDataPath();
             log.info("开始保存直播数据至 {}", liveDataPath);
             try {
                 Files.writeString(Path.of(liveDataPath), cache.toJSONString());
@@ -76,8 +76,8 @@ public class DefaultLiveDataService implements LiveDataService {
     }
 
     public void autoSave() {
-        int interval = properties.getData().getAutoSaveLiveDataInterval();
-        Path path = Path.of(properties.getData().getLiveDataPath());
+        int interval = properties.getLive().getAutoSaveLiveDataInterval();
+        Path path = Path.of(properties.getLive().getLiveDataPath());
 
         scheduler.scheduleWithFixedDelay(() -> {
             Thread.currentThread().setName("auto-save-data");

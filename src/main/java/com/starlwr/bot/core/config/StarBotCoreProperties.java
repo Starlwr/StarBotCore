@@ -32,7 +32,7 @@ public class StarBotCoreProperties {
     private final Plugin plugin = new Plugin();
 
     @Getter
-    private final Data data = new Data();
+    private final Live live = new Live();
 
     @Getter
     private final Paint paint = new Paint();
@@ -127,11 +127,11 @@ public class StarBotCoreProperties {
     }
 
     /**
-     * 数据相关
+     * 直播相关
      */
     @Getter
     @Setter
-    public static class Data {
+    public static class Live {
         /**
          * 是否持久化直播数据至文件，仅使用默认直播数据服务时生效
          */
@@ -146,6 +146,11 @@ public class StarBotCoreProperties {
          * 自动保存直播数据间隔，单位：秒，仅使用默认直播数据服务时生效
          */
         private int autoSaveLiveDataInterval = 300;
+
+        /**
+         * 判定主播断线重连（下播后短时间内重新开播）的时间间隔，断线重连不会重置直播数据，单位：秒
+         */
+        private int reconnectInterval = 300;
     }
 
     /**
