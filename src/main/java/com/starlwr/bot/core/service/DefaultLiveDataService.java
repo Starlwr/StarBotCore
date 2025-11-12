@@ -63,6 +63,10 @@ public class DefaultLiveDataService implements LiveDataService {
     @Order(0)
     @EventListener(ContextClosedEvent.class)
     public void onContextClosedEvent() {
+        if (cache.isEmpty()) {
+            return;
+        }
+
         if (properties.getLive().isSaveLiveData()) {
             String liveDataPath = properties.getLive().getLiveDataPath();
             log.info("开始保存直播数据至 {}", liveDataPath);
