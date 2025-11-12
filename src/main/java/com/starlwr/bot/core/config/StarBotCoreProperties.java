@@ -20,10 +20,13 @@ import java.util.*;
 @ConfigurationProperties(prefix = "starbot.core")
 public class StarBotCoreProperties {
     @Getter
+    private final NetworkThread networkThread = new NetworkThread();
+
+    @Getter
     private final Log log = new Log();
 
     @Getter
-    private final NetworkThread networkThread = new NetworkThread();
+    private final Network network = new Network();
 
     @Getter
     private final DataSource datasource = new DataSource();
@@ -42,28 +45,6 @@ public class StarBotCoreProperties {
      */
     @Getter
     private final List<Sender> sender = new ArrayList<>();
-
-    /**
-     * 日志相关
-     */
-    @Getter
-    @Setter
-    public static class Log {
-        /**
-         * 控制台日志级别
-         */
-        private Level console;
-
-        /**
-         * 文件日志级别
-         */
-        private Level file;
-
-        /**
-         * 是否记录事件日志
-         */
-        private boolean eventLog = false;
-    }
 
     /**
      * 网络线程相关
@@ -90,6 +71,50 @@ public class StarBotCoreProperties {
          * 非核心线程存活时间，单位：秒
          */
         private int keepAliveSeconds = 60;
+    }
+
+    /**
+     * 日志相关
+     */
+    @Getter
+    @Setter
+    public static class Log {
+        /**
+         * 控制台日志级别
+         */
+        private Level console;
+
+        /**
+         * 文件日志级别
+         */
+        private Level file;
+
+        /**
+         * 是否记录事件日志
+         */
+        private boolean eventLog = false;
+
+        /**
+         * 是否记录网络请求日志
+         */
+        private boolean networkLog = false;
+    }
+
+    /**
+     * 网络相关
+     */
+    @Getter
+    @Setter
+    public static class Network {
+        /**
+         * 网络请求连接超时时间，单位：秒
+         */
+        private int connectTimeout = 10;
+
+        /**
+         * 网络请求读取超时时间，单位：秒
+         */
+        private int readTimeout = 60;
     }
 
     /**

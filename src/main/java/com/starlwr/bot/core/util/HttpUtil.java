@@ -2,14 +2,18 @@ package com.starlwr.bot.core.util;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import com.starlwr.bot.core.config.StarBotCoreProperties;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -25,9 +29,12 @@ import java.util.concurrent.CompletableFuture;
 public class HttpUtil {
     private final ThreadPoolTaskExecutor executor;
 
-    private final WebClient webClient;
+    private final RestTemplate restTemplate;
 
-    @SuppressWarnings("SpellCheckingInspection")
+    private final StarBotCoreProperties properties;
+
+    private static final Logger networkLogger = LoggerFactory.getLogger("NetworkLogger");
+
     private final List<String> USER_AGENTS = Arrays.asList(
             "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Win64; x64; Trident/5.0; .NET CLR 3.5.30729; .NET CLR 3.0.30729; .NET CLR 2.0.50727; Media Center PC 6.0)",
             "Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0; WOW64; Trident/4.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; .NET CLR 1.0.3705; .NET CLR 1.1.4322)",
@@ -40,9 +47,10 @@ public class HttpUtil {
     );
 
     @Autowired
-    public HttpUtil(@Qualifier("networkThreadPool") ThreadPoolTaskExecutor executor, WebClient webClient) {
+    public HttpUtil(@Qualifier("networkThreadPool") ThreadPoolTaskExecutor executor, RestTemplate restTemplate, StarBotCoreProperties properties) {
         this.executor = executor;
-        this.webClient = webClient;
+        this.restTemplate = restTemplate;
+        this.properties = properties;
     }
 
     /**
@@ -52,6 +60,43 @@ public class HttpUtil {
      */
     public String getRandomUserAgent() {
         return USER_AGENTS.get(new Random().nextInt(USER_AGENTS.size()));
+    }
+
+    /**
+     * 发起 HTTP 请求
+     * @param url URL
+     * @param method 请求方法
+     * @param httpEntity 请求实体
+     * @param responseType 响应类型
+     * @return 请求结果
+     * @param <T> 返回值类型
+     */
+    private <T> T request(String url, HttpMethod method, HttpEntity<?> httpEntity, Class<T> responseType) {
+        long startTime = System.currentTimeMillis();
+        if (properties.getLog().isNetworkLog()) {
+            networkLogger.info("{} -> {}", method.name(), url);
+        }
+
+        ResponseEntity<T> response = null;
+        try {
+            response = restTemplate.exchange(url, method, httpEntity, responseType);
+            return response.getBody();
+        } catch (Exception e) {
+            if (properties.getLog().isNetworkLog()) {
+                long cost = System.currentTimeMillis() - startTime;
+                networkLogger.error("{} <- [{}]({} ms): {}", method.name(), e.getMessage(), cost, url, e);
+            }
+            throw e;
+        } finally {
+            if (properties.getLog().isNetworkLog()) {
+                long cost = System.currentTimeMillis() - startTime;
+                if (response != null) {
+                    networkLogger.info("{} <- [{}]({} ms): {}", method.name(), response.getStatusCode().value(), cost, url);
+                } else {
+                    networkLogger.error("{} <- [无结果]({} ms): {}", method.name(), cost, url);
+                }
+            }
+        }
     }
 
     /**
@@ -82,12 +127,12 @@ public class HttpUtil {
      * @return 请求结果
      */
     public String get(String url, Map<String, String> headers) {
-        return webClient.get()
-                .uri(url)
-                .headers(httpHeaders -> headers.forEach(httpHeaders::add))
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
+        HttpHeaders httpHeaders = new HttpHeaders();
+        headers.forEach(httpHeaders::add);
+
+        HttpEntity<Void> httpEntity = new HttpEntity<>(httpHeaders);
+
+        return request(url, HttpMethod.GET, httpEntity, String.class);
     }
 
     /**
@@ -168,12 +213,12 @@ public class HttpUtil {
      * @return 请求结果
      */
     public byte[] getBytes(String url, Map<String, String> headers) {
-        return webClient.get()
-                .uri(url)
-                .headers(httpHeaders -> headers.forEach(httpHeaders::add))
-                .retrieve()
-                .bodyToMono(byte[].class)
-                .block();
+        HttpHeaders httpHeaders = new HttpHeaders();
+        headers.forEach(httpHeaders::add);
+
+        HttpEntity<Void> httpEntity = new HttpEntity<>(httpHeaders);
+
+        return request(url, HttpMethod.GET, httpEntity, byte[].class);
     }
 
     /**
@@ -308,13 +353,13 @@ public class HttpUtil {
      * @return 请求结果
      */
     public String post(String url, Map<String, String> headers, Object params) {
-        return webClient.post()
-                .uri(url)
-                .headers(httpHeaders -> headers.forEach(httpHeaders::add))
-                .bodyValue(params)
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
+        HttpHeaders httpHeaders = new HttpHeaders();
+        headers.forEach(httpHeaders::add);
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Object> httpEntity = new HttpEntity<>(params, httpHeaders);
+
+        return request(url, HttpMethod.POST, httpEntity, String.class);
     }
 
     /**
@@ -490,19 +535,15 @@ public class HttpUtil {
      * @return 请求结果
      */
     public String postAsForm(String url, Map<String, String> headers, Map<String, Object> params) {
-        BodyInserters.FormInserter<String> formData = BodyInserters.fromFormData("", "");
-        for (Map.Entry<String, Object> entry : params.entrySet()) {
-            formData = formData.with(entry.getKey(), entry.getValue().toString());
-        }
+        HttpHeaders httpHeaders = new HttpHeaders();
+        headers.forEach(httpHeaders::add);
+        httpHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-        return webClient.post()
-                .uri(url)
-                .headers(httpHeaders -> headers.forEach(httpHeaders::add))
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(formData)
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        params.forEach((key, value) -> formData.add(key, value.toString()));
+        HttpEntity<MultiValueMap<String, String>> httpEntity = new HttpEntity<>(formData, httpHeaders);
+
+        return request(url, HttpMethod.POST, httpEntity, String.class);
     }
 
     /**
