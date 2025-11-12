@@ -40,6 +40,9 @@ public class StarBotCoreProperties {
     @Getter
     private final Paint paint = new Paint();
 
+    @Getter
+    private final Mail mail = new Mail();
+
     /**
      * 非插件实现的推送平台配置
      */
@@ -198,6 +201,18 @@ public class StarBotCoreProperties {
          * 自定义绘图器底部额外版权信息
          */
         private List<TextWithStyle> extraCopyrights = new ArrayList<>();
+    }
+
+    /**
+     * 邮件相关
+     */
+    @Getter
+    @Setter
+    public static class Mail {
+        /**
+         * 默认收件邮箱
+         */
+        private String defaultTo;
     }
 
     @PostConstruct
