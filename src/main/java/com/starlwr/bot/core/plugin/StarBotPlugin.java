@@ -31,6 +31,16 @@ public class StarBotPlugin {
     private StarBotPluginMeta meta;
 
     /**
+     * 依赖列表
+     */
+    private List<Dependency> dependencies = new ArrayList<>();
+
+    /**
+     * 依赖的其他插件列表
+     */
+    private List<Dependency> pluginDependencies = new ArrayList<>();
+
+    /**
      * 组件全类名列表
      */
     private List<String> componentClassNames = new ArrayList<>();
@@ -39,4 +49,12 @@ public class StarBotPlugin {
      * 组件类列表
      */
     private List<Class<?>> componentClasses = new ArrayList<>();
+
+    /**
+     * 获取插件唯一标识符
+     * @return 插件唯一标识符
+     */
+    public String getId() {
+        return meta.getId();
+    }
 }

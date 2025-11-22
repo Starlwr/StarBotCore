@@ -1,6 +1,7 @@
 package com.starlwr.bot.core.plugin;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * StarBot 插件加载器
@@ -81,7 +83,6 @@ public class StarBotPluginLoader implements EnvironmentAware, ResourceLoaderAwar
 
         List<File> libs = new ArrayList<>();
         libs.addAll(scanJarFiles("lib"));
-        libs.addAll(scanJarFiles("plugins"));
         libs.addAll(scanJarFiles("plugins-lib"));
 
         Set<String> existsDependencies = new HashSet<>();
@@ -119,8 +120,10 @@ public class StarBotPluginLoader implements EnvironmentAware, ResourceLoaderAwar
                         } else if ("dependency.json".equals(entry.getName())) {
                             try (InputStream input = jarFile.getInputStream(entry)) {
                                 String json = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-                                List<Dependency> dependencies = JSON.parseArray(json, Dependency.class);
-                                missingDependencies.addAll(dependencies.stream().filter(dependency -> !existsDependencies.contains(dependency.getArtifactId())).toList());
+                                JSONObject dependencyInfo = JSON.parseObject(json);
+                                plugin.setDependencies(dependencyInfo.getList("dependencies", Dependency.class));
+                                plugin.setPluginDependencies(dependencyInfo.getList("plugins", Dependency.class));
+                                missingDependencies.addAll(plugin.getDependencies().stream().filter(dependency -> !existsDependencies.contains(dependency.getArtifactId())).toList());
                             }
                         } else if (entry.getName().endsWith(".class")) {
                             if (!entry.getName().contains("META-INF") && !entry.getName().contains("module-info") && !entry.getName().contains("package-info") && !entry.getName().contains("$")) {
@@ -142,6 +145,8 @@ public class StarBotPluginLoader implements EnvironmentAware, ResourceLoaderAwar
                 log.error("插件 {} 注册异常", jar.getName(), e);
             }
         }
+
+        sortPlugins();
 
         if (needDownloadDependencies.values().stream().allMatch(List::isEmpty)) {
             log.info("开始加载 StarBot 插件");
@@ -275,6 +280,195 @@ public class StarBotPluginLoader implements EnvironmentAware, ResourceLoaderAwar
         }
 
         return new ArrayList<>();
+    }
+
+    /**
+     * 插件列表拓扑排序
+     */
+    public void sortPlugins() {
+        // 移除重复插件
+        Map<String, StarBotPlugin> latestMap = new HashMap<>();
+
+        for (StarBotPlugin plugin : plugins) {
+            String pluginId = plugin.getId();
+            if (latestMap.containsKey(pluginId)) {
+                log.error("检测到存在重复插件: {}, 仅保留较新版本", pluginId);
+            }
+
+            latestMap.put(pluginId, plugin);
+        }
+
+        plugins.clear();
+        plugins.addAll(latestMap.values());
+
+        if (plugins.isEmpty()) {
+            return;
+        }
+
+        // 移除缺失前置依赖插件的插件
+        boolean changed;
+        do {
+            changed = false;
+            Set<String> existsPluginIds = plugins.stream().map(StarBotPlugin::getId).collect(Collectors.toSet());
+
+            Iterator<StarBotPlugin> it = plugins.iterator();
+            while (it.hasNext()) {
+                StarBotPlugin plugin = it.next();
+
+                for (Dependency dependency: plugin.getPluginDependencies()) {
+                    if (!existsPluginIds.contains(dependency.getId())) {
+                        log.error("未安装插件 {} 的前置依赖插件 {}, 无法加载该插件", plugin.getId(), dependency.getId());
+                        it.remove();
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+        } while (changed);
+
+        if (plugins.isEmpty()) {
+            return;
+        }
+
+        // 构建依赖图
+        Map<String, List<String>> graph = new HashMap<>();
+        Map<String, Integer> indegree = new HashMap<>();
+
+        for (StarBotPlugin plugin: plugins) {
+            String pluginId = plugin.getId();
+            graph.put(pluginId, new ArrayList<>());
+            indegree.put(pluginId, 0);
+        }
+
+        for (StarBotPlugin plugin : plugins) {
+            String pluginId = plugin.getId();
+
+            for (Dependency dependency : plugin.getPluginDependencies()) {
+                graph.get(dependency.getId()).add(pluginId);
+                indegree.put(pluginId, indegree.get(pluginId) + 1);
+            }
+        }
+
+        // 拓扑排序
+        Queue<String> queue = new LinkedList<>();
+        for (Map.Entry<String, Integer> entry : indegree.entrySet()) {
+            if (entry.getValue() == 0) {
+                queue.offer(entry.getKey());
+            }
+        }
+
+        List<String> sortedIds = new ArrayList<>();
+
+        while (!queue.isEmpty()) {
+            String id = queue.poll();
+            sortedIds.add(id);
+
+            for (String next : graph.get(id)) {
+                indegree.put(next, indegree.get(next) - 1);
+                if (indegree.get(next) == 0) {
+                    queue.offer(next);
+                }
+            }
+        }
+
+        // 循环依赖检测
+        if (sortedIds.size() != plugins.size()) {
+            List<List<String>> cycles = findAllCycles(graph);
+
+            log.error("插件间存在循环依赖, 无法加载以下插件:\n{}", cycles.stream().map(this::getCycleGraph).collect(Collectors.joining("\n")));
+
+            Set<String> nodesInCycles = cycles.stream().flatMap(Collection::stream).collect(Collectors.toSet());
+            plugins.removeIf(plugin -> nodesInCycles.contains(plugin.getId()));
+
+            sortPlugins();
+            return;
+        }
+
+        // 排序原插件列表
+        Map<String, StarBotPlugin> finalMap = plugins.stream().collect(Collectors.toMap(StarBotPlugin::getId, plugin -> plugin));
+
+        plugins.clear();
+        for (String name : sortedIds) {
+            StarBotPlugin plugin = finalMap.get(name);
+            if (plugin != null) {
+                plugins.add(plugin);
+            }
+        }
+    }
+
+    /**
+     * 查找所有循环依赖链
+     * @param graph 依赖图
+     * @return 循环依赖链列表
+     */
+    private List<List<String>> findAllCycles(Map<String, List<String>> graph) {
+        List<List<String>> cycles = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        Set<String> stack = new HashSet<>();
+
+        for (String node : graph.keySet()) {
+            dfsCycle(node, graph, visited, stack, new ArrayList<>(), cycles);
+        }
+
+        return cycles;
+    }
+
+    /**
+     * DFS 查找循环依赖
+     * @param node 当前节点
+     * @param graph 依赖图
+     * @param visited 已访问节点
+     * @param stack 当前递归栈
+     * @param path 当前路径
+     * @param cycles 循环依赖列表
+     */
+    private void dfsCycle(String node, Map<String, List<String>> graph, Set<String> visited, Set<String> stack, List<String> path, List<List<String>> cycles) {
+        if (stack.contains(node)) {
+            int idx = path.indexOf(node);
+            if (idx != -1) {
+                List<String> cycle = path.subList(idx, path.size());
+                cycles.add(new ArrayList<>(cycle));
+            }
+            return;
+        }
+
+        if (visited.contains(node)) {
+            return;
+        }
+
+        visited.add(node);
+        stack.add(node);
+        path.add(node);
+
+        for (String next : graph.get(node)) {
+            dfsCycle(next, graph, visited, stack, path, cycles);
+        }
+
+        stack.remove(node);
+        path.remove(path.size() - 1);
+    }
+
+    /**
+     * 生成循环依赖图
+     * @param cycle 循环依赖节点列表
+     * @return 循环依赖图
+     */
+    private String getCycleGraph(List<String> cycle) {
+        StringBuilder message = new StringBuilder();
+        boolean singleNode = cycle.size() == 1;
+
+        for(int i = 0; i < cycle.size(); ++i) {
+            String node = cycle.get(i);
+            if (i == 0) {
+                message.append(String.format(singleNode ? "┌──->──┐%n" : "┌─────┐%n"));
+            } else {
+                message.append(String.format("%s     ↓%n", "↑"));
+            }
+            message.append(String.format("%s  %s%n", "|", node));
+        }
+
+        message.append(String.format(singleNode ? "└──<-──┘%n" : "└─────┘%n"));
+        return message.toString();
     }
 
     /**
