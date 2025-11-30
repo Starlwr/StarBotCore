@@ -56,14 +56,14 @@ public class StarBotPluginLoader implements EnvironmentAware, ResourceLoaderAwar
 
     private Method shouldSkipMethod;
 
+    private ClassLoader pluginClassLoader;
+
     private final List<StarBotPlugin> plugins = new ArrayList<>();
 
     @Getter
     private final Map<StarBotPluginMeta, List<Dependency>> needDownloadDependencies = new HashMap<>();
 
     private final Map<String, Class<?>> componentClasses = new HashMap<>();
-
-    private final Map<String, ClassLoader> componentClassLoaders = new HashMap<>();
 
     private final Pattern jarPattern = Pattern.compile("^(.+)-([\\d.]+[\\w.-]*)\\.jar$");
 
@@ -97,16 +97,24 @@ public class StarBotPluginLoader implements EnvironmentAware, ResourceLoaderAwar
         }
 
         log.info("开始注册 StarBot 插件");
+
+        URL[] jarUrls = pluginJars.stream().map(jar -> {
+            try {
+                return jar.toURI().toURL();
+            } catch (Exception e) {
+                log.error("插件 {} 路径转换异常", jar.getName(), e);
+                return null;
+            }
+        }).filter(Objects::nonNull).toArray(URL[]::new);
+        pluginClassLoader = new URLClassLoader(jarUrls, getClass().getClassLoader());
+
         for (File jar : pluginJars) {
             try {
-                URL jarUrl = jar.toURI().toURL();
-                URLClassLoader pluginClassLoader = new URLClassLoader(new URL[] {jarUrl}, getClass().getClassLoader());
                 try (JarFile jarFile = new JarFile(jar)) {
                     List<Dependency> missingDependencies = new ArrayList<>();
 
                     StarBotPlugin plugin = new StarBotPlugin();
                     plugin.setJarFile(jar);
-                    plugin.setClassLoader(pluginClassLoader);
 
                     Enumeration<JarEntry> entries = jarFile.entries();
                     while (entries.hasMoreElements()) {
@@ -158,8 +166,7 @@ public class StarBotPluginLoader implements EnvironmentAware, ResourceLoaderAwar
             for (StarBotPlugin plugin : plugins) {
                 for (String className : plugin.getComponentClassNames()) {
                     try {
-                        Class<?> clazz = Class.forName(className, false, plugin.getClassLoader());
-                        componentClassLoaders.put(clazz.getName(), plugin.getClassLoader());
+                        Class<?> clazz = Class.forName(className, false, pluginClassLoader);
 
                         if (!clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers()) && clazz.isAnnotationPresent(StarBotComponent.class)) {
                             log.debug("加载 StarBot 组件: {} - {}", plugin.getJarFile().getName(), clazz.getName());
@@ -255,7 +262,7 @@ public class StarBotPluginLoader implements EnvironmentAware, ResourceLoaderAwar
 
     @Override
     public void postProcessBeanFactory(@NonNull ConfigurableListableBeanFactory beanFactory) {
-        StarBotClassLoader starBotClassLoader = new StarBotClassLoader(componentClassLoaders, beanFactory.getBeanClassLoader());
+        StarBotClassLoader starBotClassLoader = new StarBotClassLoader(pluginClassLoader, beanFactory.getBeanClassLoader());
         beanFactory.setBeanClassLoader(starBotClassLoader);
         Thread.currentThread().setContextClassLoader(starBotClassLoader);
         BeanDefinitionRegistryPostProcessor.super.postProcessBeanFactory(beanFactory);

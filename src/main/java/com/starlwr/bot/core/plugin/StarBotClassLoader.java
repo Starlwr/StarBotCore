@@ -2,43 +2,27 @@ package com.starlwr.bot.core.plugin;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Map;
-
 /**
  * StarBot 类加载器
  */
 @Slf4j
 public class StarBotClassLoader extends ClassLoader {
-    private final Map<String, ClassLoader> delegates;
+    private final ClassLoader pluginClassLoader;
 
-    public StarBotClassLoader(Map<String, ClassLoader> delegates, ClassLoader parent) {
+    public StarBotClassLoader(ClassLoader pluginClassLoader, ClassLoader parent) {
         super(parent);
-        this.delegates = delegates;
+        this.pluginClassLoader = pluginClassLoader;
     }
 
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        ClassLoader delegate = delegates.get(name);
-
-        if (delegate == null && name.contains("$$SpringCGLIB$$")) {
-            for (Map.Entry<String, ClassLoader> entry : delegates.entrySet()) {
-                String packagePrefix = entry.getKey();
-                if (name.startsWith(packagePrefix)) {
-                    delegate = entry.getValue();
-                    break;
-                }
+        try {
+            Class<?> clazz = pluginClassLoader.loadClass(name);
+            if (resolve) {
+                resolveClass(clazz);
             }
-        }
-
-        if (delegate != null) {
-            try {
-                Class<?> clazz = delegate.loadClass(name);
-                if (resolve) {
-                    resolveClass(clazz);
-                }
-                return clazz;
-            } catch (ClassNotFoundException ignored) {
-            }
+            return clazz;
+        } catch (ClassNotFoundException ignored) {
         }
 
         return super.loadClass(name, resolve);

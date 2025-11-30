@@ -21,11 +21,6 @@ public class StarBotPlugin {
     private File jarFile;
 
     /**
-     * 插件类加载器
-     */
-    private ClassLoader classLoader;
-
-    /**
      * 插件元数据
      */
     private StarBotPluginMeta meta;
