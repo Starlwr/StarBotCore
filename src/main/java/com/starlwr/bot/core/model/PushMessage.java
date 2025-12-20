@@ -2,6 +2,8 @@ package com.starlwr.bot.core.model;
 
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.annotation.JSONField;
+import com.starlwr.bot.core.event.StarBotExternalBaseEvent;
+import com.starlwr.bot.core.handler.StarBotEventHandler;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -37,16 +39,24 @@ public class PushMessage {
     private PushTarget target;
 
     /**
-     * 事件全类名
-     */
-    @Column(name = "event")
-    private String event;
-
-    /**
      * 事件处理器全类名
      */
     @Column(name = "handler")
     private String handler;
+
+    /**
+     * 事件处理器实例，自动根据事件处理器解析
+     */
+    @Transient
+    @JSONField(serialize = false)
+    private StarBotEventHandler handlerInstance;
+
+    /**
+     * 事件处理器处理的事件类型，自动根据事件处理器解析
+     */
+    @Transient
+    @JSONField(serialize = false)
+    private Class<? extends StarBotExternalBaseEvent> eventClass;
 
     /**
      * JSON 格式推送参数
@@ -71,16 +81,16 @@ public class PushMessage {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof PushMessage that)) return false;
-        return Objects.equals(event, that.event) && Objects.equals(handler, that.handler) && Objects.equals(params, that.params);
+        return Objects.equals(handler, that.handler) && Objects.equals(params, that.params);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(event, handler, params);
+        return Objects.hash(handler, params);
     }
 
     @Override
     public String toString() {
-        return "PushMessage(" + "event=" + event + ", handler=" + handler + ", params=" + params + ", enabled=" + enabled + ")";
+        return "PushMessage(" + "handler=" + handler + ", params=" + params + ", enabled=" + enabled + ")";
     }
 }

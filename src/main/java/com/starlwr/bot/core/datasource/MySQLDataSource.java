@@ -35,7 +35,7 @@ public class MySQLDataSource extends AbstractDataSource {
      * 加载数据源，读取完毕后需调用 add 方法将推送用户添加至数据源中
      * PushUser 仅须填充 uid, platform, enabled, targets 字段
      * PushTarget 仅须填充 user, platform, type, num, enabled, messages 字段
-     * PushMessage 仅须填充 target, event, handler, params, enabled 字段
+     * PushMessage 仅须填充 target, handler, params, enabled 字段
      */
     @Override
     public void load() {

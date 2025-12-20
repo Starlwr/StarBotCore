@@ -228,27 +228,33 @@ public abstract class AbstractDataSource {
     private void initPushMessageParams(@NonNull PushUser user) {
         for (PushTarget target: user.getTargets()) {
             for (PushMessage message: target.getMessages()) {
-                Optional<StarBotEventHandler> optionalHandler = handlerService.getHandler(message.getEvent(), message.getHandler());
+                Optional<StarBotEventHandler> optionalHandler = handlerService.getHandler(message.getHandler());
                 if (optionalHandler.isPresent()) {
                     StarBotEventHandler handler = optionalHandler.get();
+                    message.setHandlerInstance(handler);
+                    message.setEventClass(handler.getEventType());
                     message.setParamsJsonObject(handler.getDefaultParams());
                 } else {
-                    message.setParamsJsonObject(new JSONObject());
-                    log.error("事件 {} 未配置处理器且不存在默认处理器, 请检查推送配置", message.getEvent());
+                    message.setHandlerInstance(null);
+                    message.setEventClass(null);
+                    message.setParamsJsonObject(null);
+                    log.error("不存在的事件处理器: {}, 请检查推送配置", message.getHandler());
                     continue;
                 }
 
                 if (StringUtil.isNotBlank(message.getParams())) {
                     try {
                         JSONObject params = JSON.parseObject(message.getParams());
-                        for (String key: params.keySet()) {
-                            message.getParamsJsonObject().put(key, params.get(key));
+                        for (Map.Entry<String, Object> entry : params.entrySet()) {
+                            message.getParamsJsonObject().put(entry.getKey(), entry.getValue());
                         }
                     } catch (Exception e) {
                         log.error("解析推送消息参数失败, 请检查格式是否正确: {}", message.getParams(), e);
                     }
                 }
             }
+
+            target.getMessages().removeIf(message -> message.getHandlerInstance() == null);
         }
     }
 

@@ -165,7 +165,7 @@ public class JsonDataSource extends AbstractDataSource {
 
         List<String> userRequiredFields = List.of("uid", "platform");
         List<String> targetRequiredFields = List.of("platform", "type", "num");
-        List<String> messageRequiredFields = List.of("event");
+        List<String> messageRequiredFields = List.of("handler");
 
         for (JSONObject userObject : JSON.parseArray(json).toList(JSONObject.class)) {
             for (String field : userRequiredFields) {
@@ -215,7 +215,6 @@ public class JsonDataSource extends AbstractDataSource {
 
                             PushMessage message = new PushMessage();
                             message.setTarget(target);
-                            message.setEvent(messageObject.getString("event"));
                             message.setHandler(messageObject.getString("handler"));
                             JSONObject params = messageObject.getJSONObject("params");
                             if (params != null) {

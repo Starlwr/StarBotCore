@@ -6,7 +6,6 @@ import com.starlwr.bot.core.handler.StarBotEventHandler;
 import com.starlwr.bot.core.model.PushMessage;
 import com.starlwr.bot.core.model.PushTarget;
 import com.starlwr.bot.core.model.PushUser;
-import com.starlwr.bot.core.service.StarBotEventHandlerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
@@ -23,12 +22,9 @@ import java.util.Optional;
 public class StarBotHandlerListener {
     private final AbstractDataSource dataSource;
 
-    private final StarBotEventHandlerService handlerService;
-
     @Autowired
-    public StarBotHandlerListener(AbstractDataSource dataSource, StarBotEventHandlerService handlerService) {
+    public StarBotHandlerListener(AbstractDataSource dataSource) {
         this.dataSource = dataSource;
-        this.handlerService = handlerService;
     }
 
     /**
@@ -48,19 +44,13 @@ public class StarBotHandlerListener {
         PushUser user = optionalUser.get();
         for (PushTarget target : user.getTargets()) {
             for (PushMessage message : target.getMessages()) {
-                if (eventClass.equals(message.getEvent())) {
-                    Optional<StarBotEventHandler> optionalHandler = handlerService.getHandler(message.getEvent(), message.getHandler());
-
-                    optionalHandler.ifPresentOrElse(
-                            handler -> {
-                                try {
-                                    handler.handle(event, message);
-                                } catch (Exception e) {
-                                    log.error("事件处理器 {} 处理事件 {} 异常", handler.getClass().getName(), eventClass, e);
-                                }
-                            },
-                            () -> log.error("未找到事件 {} 的处理器, 请检查推送配置是否正确", message.getEvent())
-                    );
+                if (event.getClass().equals(message.getEventClass())) {
+                    StarBotEventHandler handler = message.getHandlerInstance();
+                    try {
+                        handler.handle(event, message);
+                    } catch (Exception e) {
+                        log.error("事件处理器 {} 处理事件 {} 异常", handler.getClass().getName(), eventClass, e);
+                    }
                 }
             }
         }

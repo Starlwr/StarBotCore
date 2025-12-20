@@ -17,6 +17,12 @@ public interface StarBotEventHandler {
     void handle(StarBotExternalBaseEvent baseEvent, PushMessage pushMessage);
 
     /**
+     * 获取事件处理器处理的事件类型
+     * @return 事件类型
+     */
+    Class<? extends StarBotExternalBaseEvent> getEventType();
+
+    /**
      * 获取事件处理器默认参数
      * @return 默认参数
      */

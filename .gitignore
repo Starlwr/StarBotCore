@@ -2,6 +2,8 @@
 target/
 plugins/
 logs/
+EventDebug/
+NetworkDebug/
 *.iml
 datasource.json
 src/main/resources/application-dev.yml

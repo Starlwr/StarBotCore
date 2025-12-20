@@ -12,8 +12,6 @@ import org.springframework.context.annotation.Profile;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 推送用户
@@ -120,23 +118,11 @@ public class PushUser {
      * @return 是否监听直播事件
      */
     public boolean hasEnabledLiveEvent() {
-        Set<String> events = targets.stream()
+        return targets.stream()
                 .map(PushTarget::getMessages)
                 .flatMap(List::stream)
-                .map(PushMessage::getEvent)
-                .collect(Collectors.toSet());
-
-        for (String event: events) {
-            try {
-                Class<?> clazz = Class.forName(event, false, Thread.currentThread().getContextClassLoader());
-                if (StarBotBaseLiveEvent.class.isAssignableFrom(clazz)) {
-                    return true;
-                }
-            } catch (Exception ignored) {
-            }
-        }
-
-        return false;
+                .map(PushMessage::getEventClass)
+                .anyMatch(StarBotBaseLiveEvent.class::isAssignableFrom);
     }
 
     /**
@@ -144,22 +130,10 @@ public class PushUser {
      * @return 是否监听动态更新事件
      */
     public boolean hasEnabledDynamicEvent() {
-        Set<String> events = targets.stream()
+        return targets.stream()
                 .map(PushTarget::getMessages)
                 .flatMap(List::stream)
-                .map(PushMessage::getEvent)
-                .collect(Collectors.toSet());
-
-        for (String event: events) {
-            try {
-                Class<?> clazz = Class.forName(event, false, Thread.currentThread().getContextClassLoader());
-                if (StarBotBaseDynamicEvent.class.isAssignableFrom(clazz)) {
-                    return true;
-                }
-            } catch (Exception ignored) {
-            }
-        }
-
-        return false;
+                .map(PushMessage::getEventClass)
+                .anyMatch(StarBotBaseDynamicEvent.class::isAssignableFrom);
     }
 }
