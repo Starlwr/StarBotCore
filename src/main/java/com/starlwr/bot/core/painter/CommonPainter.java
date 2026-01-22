@@ -240,6 +240,44 @@ public class CommonPainter {
     }
 
     /**
+     * 绘制一个多边形，此方法不会移动绘图坐标
+     *
+     * @param points   多边形的顶点坐标列表
+     * @param color    多边形的背景颜色
+     * @return 当前绘图器实例
+     */
+    public CommonPainter drawPolygon(@NonNull List<Point> points, @NonNull Color color) {
+        if (points.isEmpty()) {
+            return this;
+        }
+
+        int[] xPoints = new int[points.size()];
+        int[] yPoints = new int[points.size()];
+        int maxY = 0;
+
+        for (int i = 0; i < points.size(); i++) {
+            Point point = points.get(i);
+            xPoints[i] = point.x;
+            yPoints[i] = point.y;
+            maxY = Math.max(maxY, yPoints[i]);
+        }
+
+        expandHeightIfNeeded(maxY);
+
+        Color originalColor = this.draw.getColor();
+
+        try {
+            this.draw.setColor(color);
+            this.draw.fillPolygon(xPoints, yPoints, points.size());
+        } finally {
+            this.draw.setColor(originalColor);
+        }
+
+        return this;
+    }
+
+
+    /**
      * 在当前绘图坐标绘制一张图片，并自动移动绘图坐标至下次绘图适合位置
      * @param image 图片
      * @return 当前绘图器实例

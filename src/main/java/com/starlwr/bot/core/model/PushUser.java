@@ -6,7 +6,6 @@ import com.starlwr.bot.core.event.live.StarBotBaseLiveEvent;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 
 import java.util.ArrayList;
@@ -16,7 +15,6 @@ import java.util.Objects;
 /**
  * 推送用户
  */
-@Slf4j
 @Profile("mysql")
 @Getter
 @Setter
