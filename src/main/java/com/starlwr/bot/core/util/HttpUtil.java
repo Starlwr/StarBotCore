@@ -63,15 +63,15 @@ public class HttpUtil {
     }
 
     /**
-     * 发起 HTTP 请求
+     * 发起 HTTP 请求并返回含响应头的完整响应
      * @param url URL
      * @param method 请求方法
      * @param httpEntity 请求实体
      * @param responseType 响应类型
-     * @return 请求结果
+     * @return 完整响应
      * @param <T> 返回值类型
      */
-    private <T> T request(String url, HttpMethod method, HttpEntity<?> httpEntity, Class<T> responseType) {
+    private <T> ResponseEntity<T> exchange(String url, HttpMethod method, HttpEntity<?> httpEntity, Class<T> responseType) {
         long startTime = System.currentTimeMillis();
         if (properties.getLog().isNetworkLog()) {
             networkLogger.info("{} -> {}", method.name(), url);
@@ -80,7 +80,7 @@ public class HttpUtil {
         ResponseEntity<T> response = null;
         try {
             response = restTemplate.exchange(url, method, httpEntity, responseType);
-            return response.getBody();
+            return response;
         } catch (Exception e) {
             if (properties.getLog().isNetworkLog()) {
                 long cost = System.currentTimeMillis() - startTime;
@@ -97,6 +97,32 @@ public class HttpUtil {
                 }
             }
         }
+    }
+
+    /**
+     * 发起 HTTP 请求
+     * @param url URL
+     * @param method 请求方法
+     * @param httpEntity 请求实体
+     * @param responseType 响应类型
+     * @return 请求结果
+     * @param <T> 返回值类型
+     */
+    private <T> T request(String url, HttpMethod method, HttpEntity<?> httpEntity, Class<T> responseType) {
+        return exchange(url, method, httpEntity, responseType).getBody();
+    }
+
+    /**
+     * 发起 HTTP 请求并返回含响应头的完整响应
+     * @param url URL
+     * @param method 请求方法
+     * @param httpEntity 请求实体
+     * @param responseType 响应类型
+     * @return 完整响应
+     * @param <T> 返回值类型
+     */
+    private <T> ResponseEntity<T> requestForEntity(String url, HttpMethod method, HttpEntity<?> httpEntity, Class<T> responseType) {
+        return exchange(url, method, httpEntity, responseType);
     }
 
     /**
@@ -144,6 +170,33 @@ public class HttpUtil {
      */
     public CompletableFuture<String> asyncGet(String url, Map<String, String> headers) {
         return CompletableFuture.supplyAsync(() -> get(url, headers), executor);
+    }
+
+    /**
+     * 自定义请求头的同步 HTTP GET 请求，返回含响应头的完整响应
+     *
+     * @param url URL
+     * @param headers HTTP 请求头
+     * @return 完整响应
+     */
+    public ResponseEntity<String> getForEntity(String url, Map<String, String> headers) {
+        HttpHeaders httpHeaders = new HttpHeaders();
+        headers.forEach(httpHeaders::add);
+
+        HttpEntity<Void> httpEntity = new HttpEntity<>(httpHeaders);
+
+        return requestForEntity(url, HttpMethod.GET, httpEntity, String.class);
+    }
+
+    /**
+     * 自定义请求头的异步 HTTP GET 请求，返回含响应头的完整响应
+     *
+     * @param url URL
+     * @param headers HTTP 请求头
+     * @return 完整响应
+     */
+    public CompletableFuture<ResponseEntity<String>> asyncGetForEntity(String url, Map<String, String> headers) {
+        return CompletableFuture.supplyAsync(() -> getForEntity(url, headers), executor);
     }
 
     /**
@@ -372,6 +425,36 @@ public class HttpUtil {
      */
     public CompletableFuture<String> asyncPost(String url, Map<String, String> headers, Object params) {
         return CompletableFuture.supplyAsync(() -> post(url, headers, params), executor);
+    }
+
+    /**
+     * 自定义请求头和请求参数的同步 HTTP POST 请求，返回含响应头的完整响应
+     *
+     * @param url URL
+     * @param headers HTTP 请求头
+     * @param params HTTP 请求参数
+     * @return 完整响应
+     */
+    public ResponseEntity<String> postForEntity(String url, Map<String, String> headers, Object params) {
+        HttpHeaders httpHeaders = new HttpHeaders();
+        headers.forEach(httpHeaders::add);
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Object> httpEntity = new HttpEntity<>(params, httpHeaders);
+
+        return requestForEntity(url, HttpMethod.POST, httpEntity, String.class);
+    }
+
+    /**
+     * 自定义请求头和请求参数的异步 HTTP POST 请求，返回含响应头的完整响应
+     *
+     * @param url URL
+     * @param headers HTTP 请求头
+     * @param params HTTP 请求参数
+     * @return 完整响应
+     */
+    public CompletableFuture<ResponseEntity<String>> asyncPostForEntity(String url, Map<String, String> headers, Object params) {
+        return CompletableFuture.supplyAsync(() -> postForEntity(url, headers, params), executor);
     }
 
     /**
