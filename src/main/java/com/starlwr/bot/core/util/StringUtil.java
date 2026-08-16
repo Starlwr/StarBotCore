@@ -28,7 +28,7 @@ public class StringUtil {
      * @return 字符串是否为空或空白
      */
     public static boolean isBlank(String str) {
-        return str == null || str.trim().isEmpty();
+        return str == null || str.isBlank();
     }
 
     /**
