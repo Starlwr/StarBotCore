@@ -5,8 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -100,16 +98,15 @@ public class ImageUtil {
 
         BufferedImage circleImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D draw = circleImage.createGraphics();
-
         draw.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        draw.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
-        Shape circle = new Ellipse2D.Float(0, 0, width, height);
-        draw.setClip(circle);
+        draw.setColor(Color.WHITE);
+        draw.fillOval(0, 0, width, height);
+
+        draw.setComposite(AlphaComposite.SrcIn);
         draw.drawImage(sourceImage, 0, 0, null);
 
         draw.dispose();
-
         return circleImage;
     }
 
@@ -125,16 +122,15 @@ public class ImageUtil {
 
         BufferedImage roundedRectangleImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D draw = roundedRectangleImage.createGraphics();
-
         draw.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        draw.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
-        Shape roundedRectangle = new RoundRectangle2D.Float(0, 0, width, height, radius, radius);
-        draw.setClip(roundedRectangle);
+        draw.setColor(Color.WHITE);
+        draw.fillRoundRect(0, 0, width, height, radius, radius);
+
+        draw.setComposite(AlphaComposite.SrcIn);
         draw.drawImage(sourceImage, 0, 0, null);
 
         draw.dispose();
-
         return roundedRectangleImage;
     }
 }
