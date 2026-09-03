@@ -836,13 +836,20 @@ public class ChartPainter {
             }
         }
 
-        // 累计模式下转换为前缀和，末位元素即为全部样本的累计总和；非累计模式保持各桶实际数值
+        // 累计模式转换为前缀和，末位元素即为全部样本的累计总和；非累计模式保持各桶实际数值
         if (cumulative) {
+            double[] cumulativeValues = new double[bucketCount + 1];
             double total = 0;
             for (int index = 0; index < bucketCount; index++) {
                 total += result[index];
-                result[index] = total;
+                cumulativeValues[index + 1] = total;
             }
+            result = cumulativeValues;
+        } else {
+            double[] interactionValues = new double[bucketCount + 1];
+            interactionValues[0] = 0;
+            System.arraycopy(result, 0, interactionValues, 1, bucketCount);
+            result = interactionValues;
         }
 
         return result;
@@ -992,7 +999,11 @@ public class ChartPainter {
      * @return 像素坐标
      */
     private static int yToPixel(double value, double min, double max, int top, int height) {
-        return (int) Math.max(top, Math.min(top + height, top + (max - value) / Math.max(max - min, 1.0) * height));
+        double range = max - min;
+        if (range <= 0) {
+            range = 1.0;
+        }
+        return (int) Math.max(top, Math.min(top + height, top + (max - value) / range * height));
     }
 
     /**

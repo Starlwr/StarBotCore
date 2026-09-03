@@ -136,7 +136,88 @@ public class ChartPainterTest {
     }
 
     /**
-     * 测试绘制排名图，包含空头像占位
+     * 测试累计曲线从 0 起步：首桶即存在数据时，曲线左端仍应从 0 开始
+     * <p>
+     * 分桶聚合的累计曲线在时间起点处累计值必须为 0，首桶的数据量应体现在
+     * 第一个时间桶末段位置；断言曲线颜色像素左端起点行号接近绘图区底部（零轴），
+     * 并输出 line-gift-cumulative.png
+     */
+    @Test
+    public void testRenderLineChartCumulativeStartsAtZero() throws Exception {
+        long start = 1784617225000L;
+
+        // 模拟礼物金额：开场即有两笔（首桶累计 0.2），随后沉寂，结尾再补两笔
+        List<ChartPainter.LinePoint> samples = new ArrayList<>();
+        samples.add(new ChartPainter.LinePoint(start + 5_000L, 0.1));
+        samples.add(new ChartPainter.LinePoint(start + 15_000L, 0.1));
+        samples.add(new ChartPainter.LinePoint(start + 580_000L, 0.2));
+        samples.add(new ChartPainter.LinePoint(start + 590_000L, 0.2));
+        samples.add(new ChartPainter.LinePoint(start + 650_000L, 0.05));
+
+        BufferedImage image = ChartPainter.renderLineChart(samples, true, 20, WIDTH, LINE_FONT).orElseThrow();
+        assertNotNull(image);
+        assertEquals(WIDTH, image.getWidth());
+        assertEquals(WIDTH * 500 / 900, image.getHeight());
+        assertEquals(BufferedImage.TYPE_INT_ARGB, image.getType());
+
+        // 绘图区底部零轴行号 = top(22) + plotHeight(图高 - 22 - 58)
+        int top = 22;
+        int bottom = 58;
+        int zeroY = top + (image.getHeight() - top - bottom);
+        // 曲线颜色与零轴颜色不一致，需按曲线主色定位：左端 3 像素列内曲线应贴近零轴
+        int startY = findLineStartY(image);
+        assertTrue(Math.abs(startY - zeroY) <= 2,
+                "累计曲线应从 0 起步, 期望起点行: " + zeroY + ", 实际起点行: " + startY);
+
+        save(image, "line-gift-cumulative.png");
+    }
+
+    /**
+     * 测试绘制小数值（范围小于 1）的全正数曲线图，验证零轴贴合绘图区底部
+     * <p>
+     * 礼物金额等小数值数据（如 0.1 ~ 0.65）的纵轴范围小于 1，像素换算必须使用真实范围，
+     * 否则 0 会被映射到绘图区中部，绘图区底部露出空白负半轴。断言累计与互动两种模式下
+     * 深灰色零轴横线的行号均等于绘图区底部（top + plotHeight），并输出 line-gift.png
+     */
+    @Test
+    public void testRenderLineChartSmallPositiveZeroAxisAtBottom() throws Exception {
+        long start = 1784617225000L;
+
+        // 模拟礼物金额：开场两笔 0.1，结尾 0.2、0.2、0.05
+        List<ChartPainter.LinePoint> samples = new ArrayList<>();
+        samples.add(new ChartPainter.LinePoint(start + 5_000L, 0.1));
+        samples.add(new ChartPainter.LinePoint(start + 15_000L, 0.1));
+        samples.add(new ChartPainter.LinePoint(start + 580_000L, 0.2));
+        samples.add(new ChartPainter.LinePoint(start + 590_000L, 0.2));
+        samples.add(new ChartPainter.LinePoint(start + 650_000L, 0.05));
+
+        for (boolean cumulative : new boolean[]{true, false}) {
+            BufferedImage image = ChartPainter.renderLineChart(samples, cumulative, 20, WIDTH, LINE_FONT).orElseThrow();
+            assertNotNull(image);
+            assertEquals(WIDTH, image.getWidth());
+            assertEquals(WIDTH * 500 / 900, image.getHeight());
+            assertEquals(BufferedImage.TYPE_INT_ARGB, image.getType());
+
+            // 绘图区底部行号 = top(22) + plotHeight(图高 - 22 - 58)，零轴横线应绘制在该行附近
+            int top = 22;
+            int bottom = 58;
+            int expectedAxisY = top + (image.getHeight() - top - bottom);
+            int actualAxisY = findDarkAxisRow(image);
+            assertTrue(Math.abs(actualAxisY - expectedAxisY) <= 1,
+                    "零轴应贴合绘图区底部, 期望行: " + expectedAxisY + ", 实际行: " + actualAxisY);
+
+            // 累计曲线与互动曲线都应在时间起点从 0 起步（首元素 0 锚点），
+            // 首桶数值映射到桶结束时刻 x = 1 / bucketCount，保证两图时间刻度一致可互相对照
+            int startY = findLineStartY(image);
+            assertTrue(Math.abs(startY - expectedAxisY) <= 2,
+                    "曲线应从 0 起步, 期望行: " + expectedAxisY + ", 实际行: " + startY);
+
+            save(image, cumulative ? "line-gift-cumulative.png" : "line-gift-interaction.png");
+        }
+    }
+
+    /**
+     * 绘制排名图，包含空头像占位
      * <p>
      * 构建 4 名主播（含一个空头像）的正值数据，按数量降序排列，验证头像、昵称与数量条的绘制，
      * 以及高度 = 100 * 数量 + 25 *（数量 - 1）的布局公式，并输出 ranking.png
@@ -394,6 +475,59 @@ public class ChartPainterTest {
         assertTrue(ChartPainter.renderRankingChart(items, 0, RANKING_FONT).isEmpty());
         assertTrue(ChartPainter.renderLineChart(zeroSamples, false, 20, 0, LINE_FONT).isEmpty());
         assertTrue(ChartPainter.renderDistributionChart(zeroSlices, -1, DISTRIBUTION_FONT).isEmpty());
+    }
+
+    /**
+     * 查找曲线图左端起点行号
+     * <p>
+     * 曲线主色为 {@link ChartPainter#COLOR_LINE}，在绘图区左端前若干列扫描该颜色的像素，
+     * 返回其最大行号（累计曲线从 0 起步时左端应贴近零轴/绘图区底部）
+     *
+     * @param image 曲线图图片
+     * @return 左端曲线像素最大行号，未找到时返回 -1
+     */
+    private static int findLineStartY(BufferedImage image) {
+        int bestY = -1;
+        for (int x = 73; x <= 78; x++) {
+            for (int y = 0; y < image.getHeight(); y++) {
+                int rgb = image.getRGB(x, y) & 0xFFFFFF;
+                int red = (rgb >> 16) & 0xFF;
+                int green = (rgb >> 8) & 0xFF;
+                int blue = rgb & 0xFF;
+                if (Math.abs(red - 238) <= 25 && Math.abs(green - 73) <= 40 && Math.abs(blue - 121) <= 40) {
+                    bestY = Math.max(bestY, y);
+                }
+            }
+        }
+        return bestY;
+    }
+
+    /**
+     * 查找深灰色零轴横线所在行号
+     * <p>
+     * 曲线图零轴使用 2 像素深的深灰色实线绘制且横贯整个绘图区，网格线为浅灰色虚线，
+     * 因此按行统计深灰色像素数量，最长深灰横线所在行即视为零轴行
+     *
+     * @param image 曲线图图片
+     * @return 零轴横线所在行号，未找到时返回 -1
+     */
+    private static int findDarkAxisRow(BufferedImage image) {
+        int bestY = -1;
+        int bestCount = 0;
+        for (int y = 0; y < image.getHeight(); y++) {
+            int count = 0;
+            for (int x = 0; x < image.getWidth(); x++) {
+                int rgb = image.getRGB(x, y) & 0xFFFFFF;
+                if (rgb < 0x909090) {
+                    count++;
+                }
+            }
+            if (count > bestCount) {
+                bestCount = count;
+                bestY = y;
+            }
+        }
+        return bestY;
     }
 
     /**
