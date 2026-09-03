@@ -25,7 +25,7 @@ public class StarBotDefaultLiveOffEventListener {
      * 更新房间数据
      * @param event 事件
      */
-    @Order(-10000)
+    @Order(-20000)
     @EventListener
     public void onLiveOffEvent(LiveOffEvent event) {
         log.info("[{}] [下播] {}(UID: {}, 房间号: {})", event.getPlatform(), event.getSource().getUname(), event.getSource().getUid(), event.getSource().getRoomIdString());

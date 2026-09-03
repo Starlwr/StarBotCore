@@ -50,7 +50,7 @@ public class StarBotDefaultLiveOnEventListener {
      * 更新重置房间数据
      * @param event 事件
      */
-    @Order(-10000)
+    @Order(-20000)
     @EventListener
     public void onLiveOnEventSetLiveData(LiveOnEvent event) {
         if (event.isReconnect()) {
