@@ -202,12 +202,47 @@ public class ChartPainter {
      * @param bucketCount        分桶数量，传入大于 0 的值时按指定数量分桶聚合后绘制，传入 0 或负数时不分桶，直接使用原始样本绘制，保留完整趋势
      * @param width              图表宽度
      * @param font               文字字体
+     * @param startTime          时间轴开始时间戳，单位：毫秒
+     * @param endTime            时间轴结束时间戳，单位：毫秒
+     * @return 曲线图图片
+     */
+    public static Optional<BufferedImage> renderLineChart(@NonNull List<LinePoint> samples, boolean cumulative, int bucketCount, int width, @NonNull Font font, Long startTime, Long endTime) {
+        return renderLineChart(samples, cumulative, bucketCount, width, font, null, null, null, startTime, endTime);
+    }
+
+    /**
+     * 绘制曲线图
+     *
+     * @param samples            曲线图数据点列表
+     * @param cumulative         是否为累计曲线
+     * @param bucketCount        分桶数量，传入大于 0 的值时按指定数量分桶聚合后绘制，传入 0 或负数时不分桶，直接使用原始样本绘制，保留完整趋势
+     * @param width              图表宽度
+     * @param font               文字字体
      * @param lineColor          曲线颜色
      * @param fillPositiveColor  正值填充颜色
      * @param fillNegativeColor  负值填充颜色
      * @return 曲线图图片
      */
     public static Optional<BufferedImage> renderLineChart(@NonNull List<LinePoint> samples, boolean cumulative, int bucketCount, int width, @NonNull Font font, Color lineColor, Color fillPositiveColor, Color fillNegativeColor) {
+        return renderLineChart(samples, cumulative, bucketCount, width, font, lineColor, fillPositiveColor, fillNegativeColor, null, null);
+    }
+
+    /**
+     * 绘制曲线图
+     *
+     * @param samples            曲线图数据点列表
+     * @param cumulative         是否为累计曲线
+     * @param bucketCount        分桶数量，传入大于 0 的值时按指定数量分桶聚合后绘制，传入 0 或负数时不分桶，直接使用原始样本绘制，保留完整趋势
+     * @param width              图表宽度
+     * @param font               文字字体
+     * @param lineColor          曲线颜色
+     * @param fillPositiveColor  正值填充颜色
+     * @param fillNegativeColor  负值填充颜色
+     * @param startTime          时间轴开始时间戳，单位：毫秒
+     * @param endTime            时间轴结束时间戳，单位：毫秒
+     * @return 曲线图图片
+     */
+    private static Optional<BufferedImage> renderLineChart(@NonNull List<LinePoint> samples, boolean cumulative, int bucketCount, int width, @NonNull Font font, Color lineColor, Color fillPositiveColor, Color fillNegativeColor, Long startTime, Long endTime) {
         if (CollectionUtils.isEmpty(samples)) {
             log.warn("绘制曲线图失败, 数据点列表不能为空");
             return Optional.empty();
@@ -218,12 +253,14 @@ public class ChartPainter {
             return Optional.empty();
         }
 
-        // 根据样本自动计算开始与结束时间戳
-        long start = Long.MAX_VALUE;
-        long end = Long.MIN_VALUE;
-        for (LinePoint sample : samples) {
-            start = Math.min(start, sample.getTimestamp());
-            end = Math.max(end, sample.getTimestamp());
+        boolean hasFixedRange = startTime != null && endTime != null && startTime < endTime;
+        long start = hasFixedRange ? startTime : Long.MAX_VALUE;
+        long end = hasFixedRange ? endTime : Long.MIN_VALUE;
+        if (!hasFixedRange) {
+            for (LinePoint sample : samples) {
+                start = Math.min(start, sample.getTimestamp());
+                end = Math.max(end, sample.getTimestamp());
+            }
         }
 
         if (end - start < 60_000L) {

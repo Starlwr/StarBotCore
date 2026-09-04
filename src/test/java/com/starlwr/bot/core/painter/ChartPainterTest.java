@@ -331,6 +331,44 @@ public class ChartPainterTest {
     }
 
     /**
+     * 测试指定时间轴范围的曲线图
+     * <p>
+     * 验证传入有效的开始/结束时间戳时时间轴使用该固定范围（即使样本跨度更小），
+     * 越界样本按既有规则过滤仍可正常绘制；范围无效（开始晚于结束）时回退为按样本自动计算，
+     * 固定范围时长低于 1 分钟时返回空
+     */
+    @Test
+    public void testRenderLineChartWithFixedRange() throws Exception {
+        long start = 1784617225000L;
+
+        // 样本仅覆盖开播后 10 ~ 20 分钟
+        List<ChartPainter.LinePoint> samples = new ArrayList<>();
+        samples.add(new ChartPainter.LinePoint(start + 10 * 60 * 1000, 10.0));
+        samples.add(new ChartPainter.LinePoint(start + 20 * 60 * 1000, 20.0));
+
+        // 固定范围覆盖开播 ~ 1 小时，时间轴应使用该范围
+        BufferedImage image = ChartPainter.renderLineChart(samples, true, 20, WIDTH, LINE_FONT, start, start + 60 * 60 * 1000).orElseThrow();
+        assertNotNull(image);
+        assertEquals(WIDTH, image.getWidth());
+        assertEquals(WIDTH * 500 / 900, image.getHeight());
+        assertEquals(BufferedImage.TYPE_INT_ARGB, image.getType());
+        save(image, "line-fixed-range.png");
+
+        // 固定范围包含越界样本（开播后 5 分钟，早于样本范围起点），越界样本按既有规则过滤，仍可正常绘制
+        List<ChartPainter.LinePoint> samplesWithOutside = new ArrayList<>();
+        samplesWithOutside.add(new ChartPainter.LinePoint(start + 5 * 60 * 1000, 5.0));
+        samplesWithOutside.add(new ChartPainter.LinePoint(start + 10 * 60 * 1000, 10.0));
+        samplesWithOutside.add(new ChartPainter.LinePoint(start + 20 * 60 * 1000, 20.0));
+        assertTrue(ChartPainter.renderLineChart(samplesWithOutside, false, 20, WIDTH, LINE_FONT, start, start + 60 * 60 * 1000).isPresent());
+
+        // 固定范围无效（开始晚于结束）时回退为按样本自动计算
+        assertTrue(ChartPainter.renderLineChart(samples, true, 20, WIDTH, LINE_FONT, start + 30 * 60 * 1000, start).isPresent());
+
+        // 固定范围时长不足 1 分钟时不绘制
+        assertTrue(ChartPainter.renderLineChart(samples, true, 20, WIDTH, LINE_FONT, start, start + 30 * 1000).isEmpty());
+    }
+
+    /**
      * 测试绘制分布图，包含中文标签
      * <p>
      * 使用“普通弹幕 / 表情弹幕 / 礼物互动 / 其他互动”四类数据，验证圆角堆叠条的绘制、
