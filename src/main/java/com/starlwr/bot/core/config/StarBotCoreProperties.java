@@ -188,6 +188,11 @@ public class StarBotCoreProperties {
     @Setter
     public static class Paint {
         /**
+         * 是否绘制 StarBot Logo
+         */
+        private boolean drawLogo = true;
+
+        /**
          * 绘图器字体列表，支持配置为字体名称或字体文件路径
          */
         private List<String> fonts = new ArrayList<>();
