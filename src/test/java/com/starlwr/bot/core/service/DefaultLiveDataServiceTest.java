@@ -25,15 +25,15 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 默认直播数据服务并发测试
+ * 默认直播数据服务测试
  * <p>
- * 使用多线程同时读写内存缓存并生成持久化快照，用于验证缓存读写锁、保存互斥、
- * 查询结果隔离和关闭保存顺序，确保直播事件持续写入期间不会出现并发修改异常或数据丢失。
+ * 覆盖数据加载、定时及关闭保存、并发读写与持久化快照、查询结果隔离等行为。
  */
-class DefaultLiveDataServiceConcurrencyTest {
+class DefaultLiveDataServiceTest {
     /**
      * 测试直播平台
      */
@@ -70,7 +70,7 @@ class DefaultLiveDataServiceConcurrencyTest {
     private static final int SAVES_PER_THREAD = 80;
 
     @TempDir
-    Path tempDir;
+    private Path tempDir;
 
     /**
      * 测试缓存读写与持久化快照并发执行
@@ -120,7 +120,7 @@ class DefaultLiveDataServiceConcurrencyTest {
                     await(start);
                     for (int i = 0; i < SAVES_PER_THREAD; i++) {
                         Boolean saved = ReflectionTestUtils.invokeMethod(
-                                service, "saveCache", dataPath, false, false);
+                                service, "saveCache", dataPath, false);
                         assertEquals(Boolean.TRUE, saved);
                     }
                 }));
@@ -239,7 +239,7 @@ class DefaultLiveDataServiceConcurrencyTest {
                 saves.add(executor.submit(() -> {
                     await(start);
                     for (int attempt = 0; attempt < 50; attempt++) {
-                        ReflectionTestUtils.invokeMethod(service, "saveCache", dataPath, false, false);
+                        ReflectionTestUtils.invokeMethod(service, "saveCache", dataPath, false);
                     }
                 }));
             }
@@ -251,7 +251,7 @@ class DefaultLiveDataServiceConcurrencyTest {
             ScheduledExecutorService scheduler = (ScheduledExecutorService) ReflectionTestUtils.getField(service, "scheduler");
             assertNotNull(scheduler);
             assertTrue(scheduler.isShutdown());
-            Boolean skipped = ReflectionTestUtils.invokeMethod(service, "saveCache", dataPath, false, false);
+            Boolean skipped = ReflectionTestUtils.invokeMethod(service, "saveCache", dataPath, false);
             assertEquals(Boolean.FALSE, skipped);
 
             for (Future<?> save : saves) {
@@ -267,11 +267,151 @@ class DefaultLiveDataServiceConcurrencyTest {
         }
     }
 
+    /**
+     * 验证非法非空文件阻止加载，且不会覆盖原文件
+     */
+    @Test
+    void invalidJsonFilesFailLoadingWithoutChangingOriginal() throws Exception {
+        int index = 0;
+        for (String original : new String[]{"broken", "[]", "null", "null trailing"}) {
+            Path path = tempDir.resolve("invalid-" + index++ + ".json");
+            Files.writeString(path, original);
+            StarBotCoreProperties properties = new StarBotCoreProperties();
+            properties.getLive().setLiveDataPath(path.toString());
+            DefaultLiveDataService service = new DefaultLiveDataService(properties);
+            try {
+                assertThrows(IllegalStateException.class, service::onApplicationReadyEvent);
+                assertEquals(Boolean.FALSE, ReflectionTestUtils.invokeMethod(
+                        service, "saveCache", path, false));
+            } finally {
+                service.onContextClosedEvent();
+            }
+            assertEquals(original, Files.readString(path));
+        }
+        try (var files = Files.list(tempDir)) {
+            assertEquals(4, files.count());
+        }
+    }
+
+    /**
+     * 验证空白文件按空数据加载，关闭时保存有效内容
+     */
+    @Test
+    void blankFilesLoadAsEmptyData() throws Exception {
+        int index = 0;
+        for (String content : new String[]{"", " ", "\t\r\n ", "\u3000"}) {
+            Path path = tempDir.resolve("blank-" + index++ + ".json");
+            Files.writeString(path, content);
+            StarBotCoreProperties properties = new StarBotCoreProperties();
+            properties.getLive().setLiveDataPath(path.toString());
+            DefaultLiveDataService service = new DefaultLiveDataService(properties);
+            try {
+                service.onApplicationReadyEvent();
+                assertTrue(service.getLiveStatus("bilibili", 1L).isEmpty());
+                service.setLiveStatus("bilibili", 1L, true);
+                assertTrue(service.getLiveStatus("bilibili", 1L).orElseThrow());
+            } finally {
+                service.onContextClosedEvent();
+            }
+            assertTrue(Files.readString(path).contains("true"));
+        }
+    }
+
+    /**
+     * 验证关闭持久化后仍可正常使用内存数据
+     */
+    @Test
+    void persistenceDisabledStillInitializesUsableMemory() throws Exception {
+        Path path = tempDir.resolve("disabled.json");
+        StarBotCoreProperties properties = new StarBotCoreProperties();
+        properties.getLive().setSaveLiveData(false);
+        properties.getLive().setLiveDataPath(path.toString());
+        DefaultLiveDataService service = new DefaultLiveDataService(properties);
+        try {
+            service.onApplicationReadyEvent();
+            service.setLiveStatus("bilibili", 1L, true);
+            assertTrue(service.getLiveStatus("bilibili", 1L).orElseThrow());
+        } finally {
+            service.onContextClosedEvent();
+        }
+        assertFalse(Files.exists(path));
+    }
+
+    /**
+     * 验证文件和父目录不存在时从空数据启动，关闭时创建目录并写入空对象
+     */
+    @Test
+    void missingFileStartsWithEmptyDataAndSavesEmptyObject() throws Exception {
+        Path path = tempDir.resolve("missing").resolve("data.json");
+        assertFalse(Files.exists(path.getParent()));
+        StarBotCoreProperties properties = new StarBotCoreProperties();
+        properties.getLive().setLiveDataPath(path.toString());
+        DefaultLiveDataService service = new DefaultLiveDataService(properties);
+        try {
+            service.onApplicationReadyEvent();
+            assertTrue(service.getLiveStatus("bilibili", 1L).isEmpty());
+        } finally {
+            service.onContextClosedEvent();
+        }
+        assertTrue(Files.isDirectory(path.getParent()));
+        assertEquals("{}", Files.readString(path));
+    }
+
+    /**
+     * 验证定时保存和清空数据后的关闭保存
+     */
+    @Test
+    void periodicSaveAndClearedCacheShutdown() throws Exception {
+        Path path = tempDir.resolve("periodic.json");
+        StarBotCoreProperties properties = new StarBotCoreProperties();
+        properties.getLive().setLiveDataPath(path.toString());
+        properties.getLive().setAutoSaveLiveDataInterval(1);
+        DefaultLiveDataService service = new DefaultLiveDataService(properties);
+        try {
+            service.onApplicationReadyEvent();
+            service.setLiveStatus("bilibili", 1L, true);
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while ((!Files.exists(path) || !Files.readString(path).contains("true")) && System.nanoTime() < deadline) {
+                Thread.sleep(30);
+            }
+            assertTrue(Files.readString(path).contains("true"));
+            assertTrue(service.deleteCustomObject("bilibili"));
+        } finally {
+            service.onContextClosedEvent();
+        }
+        assertEquals("{}", Files.readString(path));
+    }
+
+    /**
+     * 验证有效文件直接加载，关闭时保存后续变更
+     */
+    @Test
+    void validFileLoadsWithoutBackupAndShutdownPersistsChanges() throws Exception {
+        Path path = tempDir.resolve("valid.json");
+        Files.writeString(path, "{\"bilibili\":{\"LiveStatus\":{\"1\":true}}}");
+        StarBotCoreProperties properties = new StarBotCoreProperties();
+        properties.getLive().setLiveDataPath(path.toString());
+        DefaultLiveDataService service = new DefaultLiveDataService(properties);
+        try {
+            service.onApplicationReadyEvent();
+            assertTrue(service.getLiveStatus("bilibili", 1L).orElseThrow());
+            service.setLiveStatus("bilibili", 1L, false);
+        } finally {
+            service.onContextClosedEvent();
+        }
+        assertTrue(Files.readString(path).contains("false"));
+        try (var files = Files.list(tempDir)) {
+            assertEquals(1, files.count());
+        }
+    }
+
     private DefaultLiveDataService createService(Path dataPath) {
         StarBotCoreProperties properties = new StarBotCoreProperties();
         properties.getLive().setSaveLiveData(true);
         properties.getLive().setLiveDataPath(dataPath.toString());
-        return new DefaultLiveDataService(properties);
+        DefaultLiveDataService service = new DefaultLiveDataService(properties);
+        service.onApplicationReadyEvent();
+        return service;
     }
 
     private DanmuEvent createDanmu(String content) {

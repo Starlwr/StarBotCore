@@ -15,6 +15,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -46,7 +47,7 @@ public class DefaultLiveDataService implements LiveDataService {
 
     private volatile boolean closing;
 
-    private JSONObject cache = new JSONObject();
+    private JSONObject cache;
 
     private static final List<String> EVENT_RECORD_KEYS = List.of(
             "Danmu", "Emoji", "FreeGift", "PaidGift", "RandomGift", "SuperChat",
@@ -64,22 +65,45 @@ public class DefaultLiveDataService implements LiveDataService {
     @Order(-10000)
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReadyEvent() {
-        if (properties.getLive().isSaveLiveData()) {
-            String liveDataPath = properties.getLive().getLiveDataPath();
-            log.info("开始从 {} 中加载直播数据", liveDataPath);
-            try {
-                JSONObject loadedCache = JSONObject.parseObject(Files.readString(Path.of(liveDataPath)));
-                writeCache(() -> {
-                    cache = loadedCache;
-                });
-            } catch (NoSuchFileException e) {
-                log.warn("直播数据文件 {} 不存在, 建立新文件", liveDataPath);
-            } catch (Exception e) {
-                log.error("读取直播数据 {} 异常", liveDataPath, e);
+        StarBotCoreProperties.Live config = properties.getLive();
+        writeCache(() -> {
+            cache = null;
+            if (!config.isSaveLiveData()) {
+                cache = new JSONObject();
+                return;
             }
-            log.info("直播数据加载完成");
-            autoSave();
+
+            String path = config.getLiveDataPath();
+            log.info("开始从 {} 中加载直播数据", path);
+            try {
+                String content = Files.readString(Path.of(path));
+                JSONObject loadedCache;
+                if (content.isBlank()) {
+                    log.warn("直播数据文件 {} 内容为空，使用空数据", path);
+                    loadedCache = new JSONObject();
+                } else {
+                    loadedCache = JSONObject.parseObject(content);
+                }
+
+                if (loadedCache == null) {
+                    throw new IllegalArgumentException("直播数据文件格式异常: " + path + ", 请检查后再尝试启动");
+                }
+
+                cache = loadedCache;
+            } catch (NoSuchFileException e) {
+                cache = new JSONObject();
+                log.info("直播数据文件 {} 不存在，建立新文件", path);
+            } catch (Exception e) {
+                throw new IllegalStateException("读取直播数据失败: " + path + ", 为避免数据丢失, 请检查后再尝试启动", e);
+            }
+        });
+
+        if (!config.isSaveLiveData()) {
+            return;
         }
+
+        log.info("直播数据加载完成");
+        autoSave();
     }
 
     /**
@@ -90,59 +114,56 @@ public class DefaultLiveDataService implements LiveDataService {
     public void onContextClosedEvent() {
         closing = true;
         scheduler.shutdown();
+        if (!properties.getLive().isSaveLiveData()) {
+            return;
+        }
 
-        if (properties.getLive().isSaveLiveData()) {
-            String liveDataPath = properties.getLive().getLiveDataPath();
-            log.info("开始保存直播数据至 {}", liveDataPath);
-            try {
-                boolean saved = saveCache(Path.of(liveDataPath), true, true);
-                if (!saved) {
-                    log.error("保存直播数据至 {} 失败", liveDataPath);
-                    return;
-                }
-            } catch (Exception e) {
-                log.error("保存直播数据至 {} 异常", liveDataPath, e);
+        String path = properties.getLive().getLiveDataPath();
+        try {
+            if (saveCache(Path.of(path).toAbsolutePath().normalize(), true)) {
+                log.info("直播数据已保存至 {}", path);
             }
-            log.info("直播数据已保存至 {}", liveDataPath);
+        } catch (Exception e) {
+            log.error("保存直播数据至 {} 异常", path, e);
         }
     }
 
-    public void autoSave() {
+    /**
+     * 定时保存直播数据
+     */
+    private void autoSave() {
         int interval = properties.getLive().getAutoSaveLiveDataInterval();
-        Path path = Path.of(properties.getLive().getLiveDataPath());
+        Path path = Path.of(properties.getLive().getLiveDataPath()).toAbsolutePath().normalize();
 
         scheduler.scheduleWithFixedDelay(() -> {
             Thread.currentThread().setName("auto-save-data");
 
             try {
-                saveCache(path, false, false);
+                saveCache(path, false);
             } catch (Exception e) {
                 log.error("自动保存直播数据异常", e);
             }
-
         }, interval, interval, TimeUnit.SECONDS);
     }
 
     /**
      * 将当前缓存保存到指定路径
-     *
-     * @param path         保存路径
-     * @param closingSave  是否为关闭时的最终保存
-     * @param skipIfEmpty  缓存为空时是否跳过保存
-     * @return 是否实际写入文件
-     * @throws Exception 序列化或写入异常
+     * @param path 保存路径
+     * @param closingSave 是否为退出时的最终保存
+     * @return 是否实际写入
      */
-    private boolean saveCache(Path path, boolean closingSave, boolean skipIfEmpty) throws Exception {
+    private boolean saveCache(Path path, boolean closingSave) throws IOException {
         synchronized (saveMonitor) {
             if (closing && !closingSave) {
                 return false;
             }
 
-            String json = readCache(() -> skipIfEmpty && cache.isEmpty() ? null : cache.toJSONString());
+            String json = readCache(() -> cache == null ? null : cache.toJSONString());
             if (json == null) {
                 return false;
             }
 
+            Files.createDirectories(path.getParent());
             Files.writeString(path, json);
             return true;
         }

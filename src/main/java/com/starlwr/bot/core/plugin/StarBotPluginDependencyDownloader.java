@@ -6,8 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -56,8 +56,8 @@ public class StarBotPluginDependencyDownloader {
      * 下载缺失依赖
      */
     @Order(Ordered.HIGHEST_PRECEDENCE)
-    @EventListener(ApplicationReadyEvent.class)
-    public void onApplicationReadyEvent() {
+    @EventListener(ContextRefreshedEvent.class)
+    public void onContextRefreshedEvent() {
         Set<Dependency> dependencies = loader.getNeedDownloadDependencies().values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
         if (dependencies.isEmpty()) {
             return;
