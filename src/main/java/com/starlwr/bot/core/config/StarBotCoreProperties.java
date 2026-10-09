@@ -23,6 +23,9 @@ public class StarBotCoreProperties {
     private final NetworkThread networkThread = new NetworkThread();
 
     @Getter
+    private final CommandThread commandThread = new CommandThread();
+
+    @Getter
     private final Log log = new Log();
 
     @Getter
@@ -33,6 +36,9 @@ public class StarBotCoreProperties {
 
     @Getter
     private final Plugin plugin = new Plugin();
+
+    @Getter
+    private final Command command = new Command();
 
     @Getter
     private final Live live = new Live();
@@ -69,6 +75,33 @@ public class StarBotCoreProperties {
          * 线程池任务队列容量
          */
         private int queueCapacity = 5;
+
+        /**
+         * 非核心线程存活时间，单位：秒
+         */
+        private int keepAliveSeconds = 60;
+    }
+
+    /**
+     * 命令线程相关
+     */
+    @Getter
+    @Setter
+    public static class CommandThread {
+        /**
+         * 线程池核心线程数
+         */
+        private int corePoolSize = 10;
+
+        /**
+         * 线程池最大线程数
+         */
+        private int maxPoolSize = 50;
+
+        /**
+         * 线程池任务队列容量
+         */
+        private int queueCapacity = Integer.MAX_VALUE;
 
         /**
          * 非核心线程存活时间，单位：秒
@@ -152,6 +185,38 @@ public class StarBotCoreProperties {
          * 用于自动下载插件依赖的 Maven 地址
          */
         private List<String> mavenBaseUrls = new ArrayList<>(Arrays.asList("https://maven.aliyun.com/repository/public", "https://repo1.maven.org/maven2"));
+    }
+
+    /**
+     * 命令相关
+     */
+    @Getter
+    @Setter
+    public static class Command {
+        /**
+         * 全局命令前缀，空字符串表示无需前缀
+         */
+        private String prefix = "";
+
+        /**
+         * 群聊触发命令是否必须提及机器人，@ 机器人或回复机器人的消息均视为提及，私聊不受限制
+         */
+        private boolean mention = false;
+
+        /**
+         * 全局禁用的命令 ID 列表
+         */
+        private List<String> disabled = new ArrayList<>();
+
+        /**
+         * 主人账号列表，按推送平台名称分别配置
+         */
+        private Map<String, List<Long>> owners = new HashMap<>();
+
+        /**
+         * 命令禁用配置文件路径
+         */
+        private String disabledCommandPath = "disabled-command.json";
     }
 
     /**

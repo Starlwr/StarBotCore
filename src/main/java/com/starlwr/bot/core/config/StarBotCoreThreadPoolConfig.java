@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -35,6 +36,19 @@ public class StarBotCoreThreadPoolConfig {
         return executor;
     }
 
+    @Bean
+    public ThreadPoolTaskExecutor commandThreadPool() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(properties.getCommandThread().getCorePoolSize());
+        executor.setMaxPoolSize(properties.getCommandThread().getMaxPoolSize());
+        executor.setQueueCapacity(properties.getCommandThread().getQueueCapacity());
+        executor.setKeepAliveSeconds(properties.getCommandThread().getKeepAliveSeconds());
+        executor.setThreadNamePrefix("command-thread-");
+        executor.setRejectedExecutionHandler(new CommandWithLogAbortPolicy());
+        executor.initialize();
+        return executor;
+    }
+
     private static class NetworkWithLogCallerRunsPolicy implements RejectedExecutionHandler {
         @Override
         public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
@@ -43,6 +57,13 @@ public class StarBotCoreThreadPoolConfig {
             }
             log.warn("网络请求线程池资源已耗尽, 请考虑增加线程池大小!");
             r.run();
+        }
+    }
+
+    private static class CommandWithLogAbortPolicy implements RejectedExecutionHandler {
+        @Override
+        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+            throw new RejectedExecutionException("命令线程池资源已耗尽");
         }
     }
 }
