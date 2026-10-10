@@ -1,6 +1,8 @@
 package com.starlwr.bot.core.painter;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -133,6 +135,38 @@ public class ChartPainterTest {
         assertEquals(800, image.getWidth());
         assertEquals(800 * 500 / 900, image.getHeight());
         save(image, "line-interaction.png");
+    }
+
+    /**
+     * 长数值刻度应完整显示，覆盖直播报告字号、较长整数、负数与小数，以及分桶和原始样本两种绘制方式
+     */
+    @ParameterizedTest
+    @CsvSource({
+            "22518, 24000, 25",
+            "123456789, 140000000, 15",
+            "-22518, -24000, 25",
+            "-0.22518, -0.24, 25"
+    })
+    public void testRenderLineChartLongTickLabels(double value, String label, int fontSize) {
+        long start = 1784617225000L;
+        Font font = FONT.deriveFont(Font.PLAIN, (float) fontSize);
+        List<ChartPainter.LinePoint> samples = List.of(
+                new ChartPainter.LinePoint(start, 0),
+                new ChartPainter.LinePoint(start + 60_000L, value)
+        );
+
+        for (boolean cumulative : new boolean[]{true, false}) {
+            for (int bucketCount : new int[]{20, 0}) {
+                BufferedImage image = ChartPainter.renderLineChart(samples, cumulative, bucketCount, WIDTH, font).orElseThrow();
+                assertEquals(WIDTH, image.getWidth());
+                assertEquals(WIDTH * 500 / 900, image.getHeight());
+
+                // 从绘图结果定位纵轴，逐像素核对完整刻度文字，避免仅校验图片尺寸而漏掉裁切
+                int axisX = findDarkAxisColumn(image);
+                int baselineY = (value > 0 ? 22 : image.getHeight() - 58) + 5;
+                assertTickLabelFullyVisible(image, font, label, axisX, baselineY);
+            }
+        }
     }
 
     /**
@@ -513,6 +547,56 @@ public class ChartPainterTest {
         assertTrue(ChartPainter.renderRankingChart(items, 0, RANKING_FONT).isEmpty());
         assertTrue(ChartPainter.renderLineChart(zeroSamples, false, 20, 0, LINE_FONT).isEmpty());
         assertTrue(ChartPainter.renderDistributionChart(zeroSlices, -1, DISTRIBUTION_FONT).isEmpty());
+    }
+
+    /**
+     * 将刻度与独立渲染的完整文字比较，验证左边界留白及每个文字像素
+     */
+    private static void assertTickLabelFullyVisible(BufferedImage image, Font font, String label, int axisX, int baselineY) {
+        BufferedImage expected = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D draw = expected.createGraphics();
+        draw.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        draw.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        draw.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        draw.setFont(font);
+        FontMetrics metrics = draw.getFontMetrics();
+        int labelWidth = metrics.stringWidth(label);
+        int labelX = axisX - 8 - labelWidth;
+        int labelY = baselineY - metrics.getAscent();
+        draw.setColor(Color.WHITE);
+        draw.fillRect(0, 0, expected.getWidth(), expected.getHeight());
+        draw.setColor(Color.DARK_GRAY);
+        draw.drawString(label, 0, metrics.getAscent());
+        draw.dispose();
+
+        assertTrue(labelX > 0, "刻度 " + label + " 应完整显示并留有左侧空白，实际文字起点: " + labelX);
+        for (int y = 0; y < metrics.getHeight(); y++) {
+            for (int x = 0; x < labelWidth; x++) {
+                assertEquals(expected.getRGB(x, y), image.getRGB(labelX + x, labelY + y),
+                        "刻度 " + label + " 的文字像素不完整，位置: " + x + ", " + y);
+            }
+        }
+    }
+
+    /**
+     * 查找深灰色纵轴所在列，避免测试依赖固定的左侧留白
+     */
+    private static int findDarkAxisColumn(BufferedImage image) {
+        int bestX = -1;
+        int bestCount = 0;
+        for (int x = 0; x < image.getWidth(); x++) {
+            int count = 0;
+            for (int y = 30; y < image.getHeight() - 58; y++) {
+                if (image.getRGB(x, y) == Color.DARK_GRAY.getRGB()) {
+                    count++;
+                }
+            }
+            if (count > bestCount) {
+                bestCount = count;
+                bestX = x;
+            }
+        }
+        return bestX;
     }
 
     /**

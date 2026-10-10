@@ -321,7 +321,19 @@ public class ChartPainter {
         draw.setColor(Color.WHITE);
         draw.fillRect(0, 0, width, height);
 
+        draw.setFont(font);
+        FontMetrics metrics = draw.getFontMetrics();
+        double first = Math.ceil(yMin / step) * step;
+        int tickCount = (int) ((yMax - first) / step) + 1;
+        List<String> tickLabels = new ArrayList<>(tickCount);
         int left = 72;
+        // 按实际刻度文字宽度预留空间，文字两侧各留 8 像素
+        for (int index = 0; index < tickCount; index++) {
+            String label = format(first + step * index);
+            tickLabels.add(label);
+            left = Math.max(left, metrics.stringWidth(label) + 16);
+        }
+
         int right = 24;
         int top = 22;
         int bottom = 58;
@@ -329,12 +341,9 @@ public class ChartPainter {
         int plotHeight = height - top - bottom;
         int zeroY = yToPixel(0, yMin, yMax, top, plotHeight);
 
-        draw.setFont(font);
         draw.setStroke(new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 1f, new float[]{5f, 5f}, 0f));
 
         // 绘制横向网格线与数值刻度，刻度步长取整且覆盖数据范围
-        double first = Math.ceil(yMin / step) * step;
-        int tickCount = (int) ((yMax - first) / step) + 1;
         for (int index = 0; index < tickCount; index++) {
             double value = first + step * index;
             int y = yToPixel(value, yMin, yMax, top, plotHeight);
@@ -343,8 +352,8 @@ public class ChartPainter {
             draw.drawLine(left, y, left + plotWidth, y);
 
             draw.setColor(Color.DARK_GRAY);
-            String label = format(value);
-            draw.drawString(label, left - draw.getFontMetrics().stringWidth(label) - 8, y + 5);
+            String label = tickLabels.get(index);
+            draw.drawString(label, left - metrics.stringWidth(label) - 8, y + 5);
         }
 
         // 绘制纵向时间刻度
