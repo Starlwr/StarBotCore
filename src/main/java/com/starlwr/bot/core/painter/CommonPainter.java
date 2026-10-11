@@ -14,6 +14,9 @@ import org.springframework.util.CollectionUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.geom.Arc2D;
+import java.awt.geom.Area;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -236,6 +239,34 @@ public class CommonPainter {
             this.draw.setColor(originalColor);
         }
 
+        return this;
+    }
+
+    /**
+     * 绘制圆环扇区，角度从正右方起算，正值逆时针，此方法不会移动绘图坐标
+     * @param x 外圆左上角的 X 坐标
+     * @param y 外圆左上角的 Y 坐标
+     * @param diameter 外圆直径
+     * @param thickness 圆环厚度
+     * @param startAngle 起始角度
+     * @param extent 扇区角度
+     * @param color 颜色
+     * @return 当前绘图器实例
+     */
+    public CommonPainter drawRingSegment(int x, int y, int diameter, int thickness, double startAngle, double extent, @NonNull Color color) {
+        if (diameter <= 0 || thickness <= 0 || thickness * 2 >= diameter || !Double.isFinite(startAngle) || !Double.isFinite(extent)) {
+            throw new IllegalArgumentException("圆环尺寸或角度无效");
+        }
+        expandHeightIfNeeded(y + diameter);
+        Area segment = new Area(new Arc2D.Double(x, y, diameter, diameter, startAngle, extent, Arc2D.PIE));
+        segment.subtract(new Area(new Ellipse2D.Double(x + thickness, y + thickness, diameter - thickness * 2, diameter - thickness * 2)));
+        Color originalColor = this.draw.getColor();
+        try {
+            this.draw.setColor(color);
+            this.draw.fill(segment);
+        } finally {
+            this.draw.setColor(originalColor);
+        }
         return this;
     }
 
@@ -854,6 +885,15 @@ public class CommonPainter {
      */
     public Pair<Integer, Integer> getStringWidthAndHeight(String text, int size) {
         return fontUtil.getStringWidthAndHeight(this.draw, new TextWithStyle(text, size));
+    }
+
+    /**
+     * 计算含格式文本的像素宽度和高度
+     * @param text 含格式文本
+     * @return 宽度，高度
+     */
+    public Pair<Integer, Integer> getStringWidthAndHeight(TextWithStyle text) {
+        return fontUtil.getStringWidthAndHeight(this.draw, text);
     }
 
     /**

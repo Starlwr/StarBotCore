@@ -45,9 +45,8 @@ import static org.mockito.Mockito.when;
 /**
  * 命令帮助测试
  * <p>
- * 使用真实字体和绘图组件验证帮助图的状态展示、自动扩展和不透明边界，
- * 使用测试替身验证绘图异常会向上传播；可通过 {@link #SAVE_IMAGE}
- * 将生成的帮助图片保存至 TestCommandHelp 目录供人工审阅。
+ * 使用真实字体和绘图组件验证帮助图的状态展示、自动扩展和不透明边界。
+ * 可通过 {@link #SAVE_IMAGE} 将生成的帮助图片保存至 TestCommandHelp 目录供人工审阅。
  */
 class HelpCommandTest {
     /**
@@ -84,8 +83,8 @@ class HelpCommandTest {
         var help = new HelpCommand(registry, policy, properties, factory);
         var hello = command("com.example.HelloCommand");
         refresh(registry, applicationContext, List.of(help, new DisableCommand(registry, policy),
-                new EnableCommand(registry, policy), new StatusCommand(new BuildProperties(build),
-                        mock(StarBotPluginLoader.class), properties, factory, mock(SystemResourceService.class)), hello));
+                new EnableCommand(registry, policy), new StatusCommand(new BuildProperties(build), properties,
+                        mock(StarBotPluginLoader.class), factory, mock(SystemResourceService.class)), hello));
         properties.getCommand().getDisabled().add(hello.getId());
         var message = CommandMessage.builder().platform("bot-a").senderId(2L).groupId(100L)
                 .type(PushTargetType.GROUP).content("帮助").build();

@@ -269,6 +269,14 @@ public class StarBotPluginLoader implements EnvironmentAware, ResourceLoaderAwar
     }
 
     /**
+     * 获取已加载的插件列表
+     * @return 已加载的插件列表
+     */
+    public List<StarBotPlugin> getPlugins() {
+        return List.copyOf(plugins);
+    }
+
+    /**
      * 扫描目录中的依赖列表
      * @param path 目录
      * @return 依赖列表

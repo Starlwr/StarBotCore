@@ -30,7 +30,7 @@ public class PingCommand implements StarBotCommand {
 
     @Override
     public String getDescription() {
-        return "测试机器人连通性";
+        return "测试 StarBot 连通性";
     }
 
     @Override

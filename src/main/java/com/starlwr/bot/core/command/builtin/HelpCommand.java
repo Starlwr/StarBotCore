@@ -24,6 +24,7 @@ import java.awt.Font;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -225,8 +226,8 @@ public class HelpCommand implements StarBotCommand {
      */
     private void drawLogo(CommonPainter painter) {
         if (properties.getPaint().isDrawLogo()) {
-            try {
-                BufferedImage logo = ImageIO.read(resourceLoader.getResource("classpath:logo.png").getInputStream());
+            try (InputStream input = resourceLoader.getResource("classpath:logo.png").getInputStream()) {
+                BufferedImage logo = ImageIO.read(input);
                 painter.drawImage(logo, new Point(200, 55)).setPos(MARGIN, 275);
             } catch (IOException e) {
                 log.error("加载 StarBot Logo 失败", e);
