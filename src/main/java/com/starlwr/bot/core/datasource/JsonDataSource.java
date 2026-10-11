@@ -10,17 +10,18 @@ import com.starlwr.bot.core.model.PushMessage;
 import com.starlwr.bot.core.model.PushTarget;
 import com.starlwr.bot.core.model.PushUser;
 import com.starlwr.bot.core.service.StarBotEventHandlerService;
-import com.starlwr.bot.core.util.CollectionUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.SetUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Profile;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -134,16 +135,16 @@ public class JsonDataSource extends AbstractDataSource {
     private void reload() {
         String path = properties.getDatasource().getJsonPath();
         try {
-            List<PushUser> addUsers = new ArrayList<>();
-            List<PushUser> removeUsers = new ArrayList<>();
-            List<PushUser> updateUsers = new ArrayList<>();
-
             List<PushUser> users = parse(Files.readString(Path.of(path)));
-            if (new HashSet<>(users).size() != users.size()) {
+            Set<PushUser> newUsers = new HashSet<>(users);
+            if (newUsers.size() != users.size()) {
                 throw new DataSourceException("推送用户列表中存在重复的用户");
             }
 
-            CollectionUtil.compareCollectionDiff(this.users, users, addUsers, removeUsers, updateUsers);
+            Set<PushUser> oldUsers = new HashSet<>(this.users);
+            List<PushUser> addUsers = new ArrayList<>(SetUtils.difference(newUsers, oldUsers));
+            List<PushUser> removeUsers = new ArrayList<>(SetUtils.difference(oldUsers, newUsers));
+            List<PushUser> updateUsers = new ArrayList<>(SetUtils.intersection(newUsers, oldUsers));
 
             add(addUsers);
             for (PushUser user : removeUsers) {

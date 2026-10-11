@@ -8,12 +8,13 @@ import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.enums.GroupRole;
 import com.starlwr.bot.core.enums.PushTargetType;
 import com.starlwr.bot.core.model.CommandContext;
-import com.starlwr.bot.core.util.StringUtil;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -120,7 +121,7 @@ public class StarBotCommandPolicy {
         try {
             Map<GroupKey, Set<String>> loaded = new LinkedHashMap<>();
             String content = Files.readString(path);
-            if (content.isBlank()) {
+            if (StringUtils.isBlank(content)) {
                 log.warn("命令禁用配置文件 {} 内容为空，使用空配置", path);
             } else {
                 JSONArray rules = JSON.parseArray(content);
@@ -129,13 +130,13 @@ public class StarBotCommandPolicy {
                 }
 
                 for (Object entry : rules) {
-                    if (!(entry instanceof JSONObject rule) || !(rule.get("platform") instanceof String platform) || StringUtil.isBlank(platform) || rule.getLong("groupId") == null || !(rule.get("disabled") instanceof JSONArray ids)) {
+                    if (!(entry instanceof JSONObject rule) || !(rule.get("platform") instanceof String platform) || StringUtils.isBlank(platform) || rule.getLong("groupId") == null || !(rule.get("disabled") instanceof JSONArray ids)) {
                         throw new IllegalArgumentException("命令禁用配置文件格式错误, 禁用规则缺少有效的 platform/groupId/disabled, 请检查后再尝试启动: " + entry);
                     }
 
                     Set<String> commands = new LinkedHashSet<>();
                     for (Object id : ids) {
-                        if (!(id instanceof String value) || StringUtil.isBlank(value)) {
+                        if (!(id instanceof String value) || StringUtils.isBlank(value)) {
                             throw new IllegalArgumentException("命令禁用配置文件格式错误, 配置的命令 ID 无效, 请检查后再尝试启动: " + entry);
                         }
                         commands.add(value);
@@ -207,7 +208,7 @@ public class StarBotCommandPolicy {
             return false;
         }
 
-        if (ids.isEmpty()) {
+        if (CollectionUtils.isEmpty(ids)) {
             updated.remove(key);
         } else {
             updated.put(key, Set.copyOf(ids));

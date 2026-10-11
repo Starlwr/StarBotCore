@@ -1,9 +1,9 @@
 package com.starlwr.bot.core.service;
 
 import com.starlwr.bot.core.command.StarBotCommand;
-import com.starlwr.bot.core.util.StringUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -42,11 +42,11 @@ public class StarBotCommandRegistry {
         for (StarBotCommand command : applicationContext.getBeansOfType(StarBotCommand.class).values()) {
             try {
                 String id = command.getId();
-                if (StringUtil.isBlank(id)) {
+                if (StringUtils.isBlank(id)) {
                     log.error("命令 ID 为空, 跳过注册当前命令: {}", command.getClass().getName());
                     continue;
                 }
-                if (StringUtil.isBlank(command.getName())) {
+                if (StringUtils.isBlank(command.getName())) {
                     log.error("命令名称为空, 跳过注册当前命令: {}", command.getClass().getName());
                     continue;
                 }

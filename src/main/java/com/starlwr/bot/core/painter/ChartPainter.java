@@ -1,10 +1,10 @@
 package com.starlwr.bot.core.painter;
 
 import com.starlwr.bot.core.util.ImageUtil;
-import com.starlwr.bot.core.util.StringUtil;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.util.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.awt.*;
 import java.awt.geom.Path2D;
@@ -560,12 +560,12 @@ public class ChartPainter {
             int nameX = barX + BAR_OFFSET * 2;
             int baseline = y + textBaselineOffset;
 
-            if (StringUtil.isNotBlank(item.getName())) {
+            if (StringUtils.isNotBlank(item.getName())) {
                 draw.setColor(Color.BLACK);
                 draw.drawString(item.getName(), nameX, baseline);
             }
 
-            int nameWidth = StringUtil.isNotBlank(item.getName()) ? draw.getFontMetrics().stringWidth(item.getName()) : 0;
+            int nameWidth = StringUtils.isNotBlank(item.getName()) ? draw.getFontMetrics().stringWidth(item.getName()) : 0;
             int countX = Math.max(barWidth, barX + BAR_OFFSET * 3 + nameWidth);
             draw.setColor(Color.GRAY);
             draw.drawString(countText, countX, baseline);
@@ -629,11 +629,11 @@ public class ChartPainter {
 
             String countText = format(value);
             int baseline = y + textBaselineOffset;
-            int nameWidth = StringUtil.isNotBlank(item.getName()) ? draw.getFontMetrics().stringWidth(item.getName()) : 0;
+            int nameWidth = StringUtils.isNotBlank(item.getName()) ? draw.getFontMetrics().stringWidth(item.getName()) : 0;
 
             if (value >= 0) {
                 int nameX = barX + BAR_OFFSET * 2;
-                if (StringUtil.isNotBlank(item.getName())) {
+                if (StringUtils.isNotBlank(item.getName())) {
                     draw.setColor(Color.BLACK);
                     draw.drawString(item.getName(), nameX, baseline);
                 }
@@ -645,7 +645,7 @@ public class ChartPainter {
                 int countWidth = draw.getFontMetrics().stringWidth(countText);
 
                 int nameX = reverseBarX - BAR_OFFSET * 2 - nameWidth;
-                if (StringUtil.isNotBlank(item.getName())) {
+                if (StringUtils.isNotBlank(item.getName())) {
                     draw.setColor(Color.BLACK);
                     draw.drawString(item.getName(), nameX, baseline);
                 }
@@ -672,7 +672,7 @@ public class ChartPainter {
      * @return 分布图图片
      */
     public static Optional<BufferedImage> renderDistributionChart(@NonNull List<DistributionSlice> slices, int width, @NonNull Font font) {
-        if (slices.isEmpty()) {
+        if (CollectionUtils.isEmpty(slices)) {
             log.warn("绘制分布图失败, 数据列表不能为空");
             return Optional.empty();
         }
@@ -724,11 +724,11 @@ public class ChartPainter {
         for (int i = 0; i < count; i++) {
             int labelLimit = Math.max(maxRowWidth - 28 - rightWidths[i], 0);
             String rawLabel = slices.get(i).getLabel();
-            int rawLabelWidth = StringUtil.isNotBlank(rawLabel) ? metrics.stringWidth(rawLabel) : 0;
+            int rawLabelWidth = StringUtils.isNotBlank(rawLabel) ? metrics.stringWidth(rawLabel) : 0;
             // 计算完整标签宽度（不省略）与省略后宽度（独占一行仍放不下时使用）
             int fullItemWidth = 20 + rawLabelWidth + 8 + rightWidths[i];
             int fittedItemWidth = 20 + Math.min(rawLabelWidth, labelLimit) + 8 + rightWidths[i];
-            if (!currentRow.isEmpty() && lineX + fullItemWidth > legendRight) {
+            if (CollectionUtils.isNotEmpty(currentRow) && lineX + fullItemWidth > legendRight) {
                 // 当前行放不下完整标签，换行
                 rowGroups.add(currentRow);
                 currentRow = new ArrayList<>();
@@ -744,7 +744,7 @@ public class ChartPainter {
                 lineX += fullItemWidth + itemGap;
             }
         }
-        if (!currentRow.isEmpty()) {
+        if (CollectionUtils.isNotEmpty(currentRow)) {
             rowGroups.add(currentRow);
         }
         int legendTop = topSpace + barHeight + gap;
@@ -812,7 +812,7 @@ public class ChartPainter {
                 DistributionSlice slice = slices.get(idx);
                 String label = slice.getLabel();
                 int labelLimit = Math.max(maxRowWidth - 28 - rightWidths[idx], 0);
-                if (StringUtil.isNotBlank(label) && metrics.stringWidth(label) > labelLimit) {
+                if (StringUtils.isNotBlank(label) && metrics.stringWidth(label) > labelLimit) {
                     label = limitLabel(draw, label, itemX + 20, itemX + 20 + labelLimit);
                 }
                 int labelWidth = legendLabelWidth(metrics, label, labelLimit);
@@ -820,7 +820,7 @@ public class ChartPainter {
 
                 draw.setColor(PALETTE[idx % PALETTE.length]);
                 draw.fillOval(itemX, legendY - (int) (draw.getFontMetrics().getAscent() * 0.45) - 6, 12, 12);
-                if (StringUtil.isNotBlank(label)) {
+                if (StringUtils.isNotBlank(label)) {
                     draw.setColor(Color.BLACK);
                     draw.drawString(label, itemX + 20, legendY);
                 }
@@ -1144,7 +1144,7 @@ public class ChartPainter {
      * @return 标签显示宽度
      */
     private static int legendLabelWidth(FontMetrics metrics, String label, int labelLimit) {
-        if (!StringUtil.isNotBlank(label)) {
+        if (StringUtils.isBlank(label)) {
             return 0;
         }
         return Math.min(metrics.stringWidth(label), labelLimit);

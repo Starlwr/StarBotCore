@@ -3,7 +3,6 @@ package com.starlwr.bot.core.service;
 import com.starlwr.bot.core.StarBotCoreApplication;
 import com.starlwr.bot.core.model.SystemResourceSnapshot;
 import com.starlwr.bot.core.model.SystemResourceSnapshot.Usage;
-import com.starlwr.bot.core.util.StringUtil;
 import com.sun.jna.Native;
 import com.sun.jna.Structure;
 import com.sun.jna.platform.win32.BaseTSD.SIZE_T;
@@ -13,6 +12,7 @@ import com.sun.jna.win32.StdCallLibrary;
 import com.sun.management.OperatingSystemMXBean;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.system.ApplicationHome;
 import org.springframework.stereotype.Service;
 import oshi.SystemInfo;
@@ -163,8 +163,8 @@ public class SystemResourceService {
             OperatingSystem os = systemInfo.getOperatingSystem();
             String family = os.getFamily();
             String version = os.getVersionInfo().getVersion();
-            String name = StringUtil.isBlank(family) ? System.getProperty("os.name") : family;
-            if (StringUtil.isNotBlank(version)) {
+            String name = StringUtils.defaultIfBlank(family, System.getProperty("os.name"));
+            if (StringUtils.isNotBlank(version)) {
                 name += " " + version;
             }
             return os.getBitness() > 0 ? name + " · " + os.getBitness() + " 位" : name;

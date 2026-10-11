@@ -1,9 +1,10 @@
 package com.starlwr.bot.core.painter;
 
-import com.starlwr.bot.core.util.StringUtil;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.util.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.awt.*;
 import java.awt.font.FontRenderContext;
@@ -286,13 +287,13 @@ public class WordCloudPainter {
         // 合并重复词条，过滤空白词条与非正权重词条
         Map<String, Double> merged = new LinkedHashMap<>();
         for (WordItem item : words) {
-            if (item == null || StringUtil.isBlank(item.getWord()) || item.getWeight() <= 0) {
+            if (item == null || StringUtils.isBlank(item.getWord()) || item.getWeight() <= 0) {
                 continue;
             }
-            merged.merge(item.getWord().trim(), item.getWeight(), Double::sum);
+            merged.merge(item.getWord().strip(), item.getWeight(), Double::sum);
         }
 
-        if (merged.isEmpty()) {
+        if (MapUtils.isEmpty(merged)) {
             log.warn("绘制词云图失败, 有效词条列表不能为空");
             return Optional.empty();
         }

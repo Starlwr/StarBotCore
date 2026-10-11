@@ -1,8 +1,8 @@
 package com.starlwr.bot.core.converter;
 
-import com.starlwr.bot.core.util.StringUtil;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
@@ -34,11 +34,11 @@ public class FontConverter implements Converter<String, Font> {
 
     @Override
     public Font convert(@NonNull String source) {
-        if (StringUtil.isBlank(source)) {
+        if (StringUtils.isBlank(source)) {
             return null;
         }
 
-        return parseFont(source.trim())
+        return parseFont(source.strip())
                 .orElseThrow(() -> new IllegalArgumentException("无法解析配置文件中的字体: " + source));
     }
 

@@ -3,14 +3,14 @@ package com.starlwr.bot.core.painter;
 import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.model.TextWithStyle;
 import com.starlwr.bot.core.util.FontUtil;
-import com.starlwr.bot.core.util.StringUtil;
 import jakarta.annotation.Nullable;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.boot.info.BuildProperties;
-import org.springframework.data.util.Pair;
-import org.springframework.util.CollectionUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -278,7 +278,7 @@ public class CommonPainter {
      * @return 当前绘图器实例
      */
     public CommonPainter drawPolygon(@NonNull List<Point> points, @NonNull Color color) {
-        if (points.isEmpty()) {
+        if (CollectionUtils.isEmpty(points)) {
             return this;
         }
 
@@ -659,7 +659,7 @@ public class CommonPainter {
      * @return 当前绘图器实例
      */
     public CommonPainter drawTextWithStyle(@NonNull List<TextWithStyle> texts, Point drawLocation, boolean autoWrap, int marginRight) {
-        if (texts.isEmpty()) {
+        if (CollectionUtils.isEmpty(texts)) {
             return this;
         }
 
@@ -672,7 +672,7 @@ public class CommonPainter {
         int maxHeight = 0;
 
         for (TextWithStyle text : texts) {
-            if (StringUtil.isEmpty(text.getText())) {
+            if (StringUtils.isEmpty(text.getText())) {
                 continue;
             }
 
@@ -803,7 +803,7 @@ public class CommonPainter {
      * @return 当前绘图器实例
      */
     public CommonPainter drawTextRightWithStyle(@NonNull List<TextWithStyle> texts, Point drawLocation, int marginRight, Point noCoverLimit) {
-        if (texts.isEmpty()) {
+        if (CollectionUtils.isEmpty(texts)) {
             return this;
         }
 
@@ -813,7 +813,7 @@ public class CommonPainter {
             Pair<Integer, Integer> size = sizes.get(i);
 
             Point currentPoint = drawLocation != null ? drawLocation : new Point(this.xy.x, this.xy.y);
-            currentPoint.x = this.width - size.getFirst() - marginRight;
+            currentPoint.x = this.width - size.getLeft() - marginRight;
             if (noCoverLimit != null) {
                 currentPoint.y = Math.max(currentPoint.y, noCoverLimit.y);
             }
@@ -821,7 +821,7 @@ public class CommonPainter {
             drawTextWithStyle(List.of(texts.get(i)), currentPoint);
 
             if (drawLocation == null) {
-                setPos(this.xy.x, currentPoint.y + size.getSecond() + this.rowSpace);
+                setPos(this.xy.x, currentPoint.y + size.getRight() + this.rowSpace);
             }
         }
 
@@ -859,7 +859,7 @@ public class CommonPainter {
             drawTextRightWithStyle(line, marginRight);
         }
 
-        if (!CollectionUtils.isEmpty(properties.getPaint().getExtraCopyrights())) {
+        if (CollectionUtils.isNotEmpty(properties.getPaint().getExtraCopyrights())) {
             drawTextRightWithStyle(properties.getPaint().getExtraCopyrights(), marginRight);
         }
 

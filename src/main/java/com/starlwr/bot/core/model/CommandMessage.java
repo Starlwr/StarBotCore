@@ -8,6 +8,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
+import org.apache.commons.lang3.StringUtils;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -113,7 +114,7 @@ public final class CommandMessage {
      * @return 发送者昵称
      */
     public String getNickname() {
-        return Objects.requireNonNullElse(nickname, "");
+        return StringUtils.defaultString(nickname);
     }
 
     /**
@@ -121,7 +122,7 @@ public final class CommandMessage {
      * @return 群名称
      */
     public String getGroupName() {
-        return Objects.requireNonNullElse(groupName, "");
+        return StringUtils.defaultString(groupName);
     }
 
     /**
@@ -129,7 +130,7 @@ public final class CommandMessage {
      * @return 消息发送者群昵称
      */
     public String getGroupNickName() {
-        return Objects.requireNonNullElse(groupNickName, "");
+        return StringUtils.defaultString(groupNickName);
     }
 
     /**

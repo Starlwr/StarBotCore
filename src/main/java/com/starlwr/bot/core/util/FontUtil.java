@@ -4,9 +4,10 @@ import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.model.TextWithStyle;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
 import java.awt.*;
@@ -108,7 +109,7 @@ public class FontUtil {
      * @return 宽度，高度
      */
     public Pair<Integer, Integer> getStringWidthAndHeight(Graphics2D draw, TextWithStyle text) {
-        if (StringUtil.isEmpty(text.getText())) {
+        if (StringUtils.isEmpty(text.getText())) {
             return Pair.of(0, 0);
         }
 

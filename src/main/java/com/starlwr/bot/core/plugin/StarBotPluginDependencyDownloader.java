@@ -3,14 +3,15 @@ package com.starlwr.bot.core.plugin;
 import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.util.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -59,7 +60,7 @@ public class StarBotPluginDependencyDownloader {
     @EventListener(ContextRefreshedEvent.class)
     public void onContextRefreshedEvent() {
         Set<Dependency> dependencies = loader.getNeedDownloadDependencies().values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
-        if (dependencies.isEmpty()) {
+        if (CollectionUtils.isEmpty(dependencies)) {
             return;
         }
 
@@ -79,7 +80,7 @@ public class StarBotPluginDependencyDownloader {
 
         List<Dependency> failedDependencies = downloadJars(dependencies);
 
-        if (failedDependencies.isEmpty()) {
+        if (CollectionUtils.isEmpty(failedDependencies)) {
             log.info("依赖下载成功");
         } else {
             log.warn("依赖下载完毕, 存在未下载成功的依赖: {}", failedDependencies.stream().map(dependency -> dependency.getArtifactId() + "-" + dependency.getVersion()).collect(Collectors.joining(", ")));
@@ -101,7 +102,7 @@ public class StarBotPluginDependencyDownloader {
         StringJoiner sj = new StringJoiner(" ");
         for (String name : arguments.getOptionNames()) {
             List<String> values = arguments.getOptionValues(name);
-            if (values == null || values.isEmpty()) {
+            if (CollectionUtils.isEmpty(values)) {
                 sj.add("--" + name);
             } else {
                 for (String value : values) {
@@ -115,7 +116,7 @@ public class StarBotPluginDependencyDownloader {
 
         String cmdLine = "java " + String.join(" ", inputArguments) + " -jar " + runtimeMxBean.getClassPath() + " " + sj;
 
-        if (!failedDependencies.isEmpty()) {
+        if (CollectionUtils.isNotEmpty(failedDependencies)) {
             cmdLine += " --skip-download-dependency";
         }
 

@@ -11,9 +11,10 @@ import com.starlwr.bot.core.model.PushMessage;
 import com.starlwr.bot.core.model.PushTarget;
 import com.starlwr.bot.core.model.PushUser;
 import com.starlwr.bot.core.service.StarBotEventHandlerService;
-import com.starlwr.bot.core.util.StringUtil;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -123,7 +124,7 @@ public abstract class AbstractDataSource {
         user = this.userMap.get(user.getPlatform()).get(user.getUid());
 
         this.userMap.get(user.getPlatform()).remove(user.getUid());
-        if (this.userMap.get(user.getPlatform()).isEmpty()) {
+        if (MapUtils.isEmpty(this.userMap.get(user.getPlatform()))) {
             this.userMap.remove(user.getPlatform());
         }
         this.users.remove(user);
@@ -241,7 +242,7 @@ public abstract class AbstractDataSource {
                     continue;
                 }
 
-                if (StringUtil.isNotBlank(message.getParams())) {
+                if (StringUtils.isNotBlank(message.getParams())) {
                     try {
                         JSONObject params = JSON.parseObject(message.getParams());
                         for (Map.Entry<String, Object> entry : params.entrySet()) {

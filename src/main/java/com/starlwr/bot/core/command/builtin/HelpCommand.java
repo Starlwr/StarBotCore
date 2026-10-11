@@ -11,12 +11,13 @@ import com.starlwr.bot.core.service.StarBotCommandRegistry;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -27,7 +28,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -165,7 +165,7 @@ public class HelpCommand implements StarBotCommand {
             painter.drawImage(content, new Point(CONTENT_X, rowY));
 
             String state = "● " + view.getState().getText();
-            int stateWidth = painter.getStringWidthAndHeight(state, 26).getFirst();
+            int stateWidth = painter.getStringWidthAndHeight(state, 26).getLeft();
             painter.drawTextWithStyle(List.of(new TextWithStyle(state, 26, view.getState().getColor(), Font.BOLD)), new Point(WIDTH - MARGIN - stateWidth, rowY + 12));
 
             painter.movePos(0, rowHeight);
@@ -248,26 +248,26 @@ public class HelpCommand implements StarBotCommand {
         Pair<Integer, Integer> titleSize = painter.getStringWidthAndHeight(title, CommonPainter.CHAPTER_FONT_SIZE);
         painter.drawPolygon(List.of(
                 new Point(MARGIN, y + 8),
-                new Point(MARGIN + titleSize.getFirst() + 48, y + 8),
-                new Point(MARGIN + titleSize.getFirst() + 64, y + titleSize.getSecond() + 16),
-                new Point(MARGIN, y + titleSize.getSecond() + 16)
+                new Point(MARGIN + titleSize.getLeft() + 48, y + 8),
+                new Point(MARGIN + titleSize.getLeft() + 64, y + titleSize.getRight() + 16),
+                new Point(MARGIN, y + titleSize.getRight() + 16)
         ), COLOR_LIGHT_PURPLE);
 
         painter.drawPolygon(List.of(
                 new Point(MARGIN, y),
-                new Point(MARGIN + titleSize.getFirst() + 32, y),
-                new Point(MARGIN + titleSize.getFirst() + 48, y + titleSize.getSecond() + 16),
-                new Point(MARGIN, y + titleSize.getSecond() + 16)
+                new Point(MARGIN + titleSize.getLeft() + 32, y),
+                new Point(MARGIN + titleSize.getLeft() + 48, y + titleSize.getRight() + 16),
+                new Point(MARGIN, y + titleSize.getRight() + 16)
         ), COLOR_MIDDLE_PURPLE);
 
-        painter.drawRectangle(MARGIN, y + titleSize.getSecond() + 12, WIDTH - MARGIN * 2, 4, COLOR_LIGHT_PURPLE);
+        painter.drawRectangle(MARGIN, y + titleSize.getRight() + 12, WIDTH - MARGIN * 2, 4, COLOR_LIGHT_PURPLE);
         painter.drawChapter(title, new Point(MARGIN + 16, y + 8));
 
-        int lineY = y + painter.getStringWidthAndHeight(title, CommonPainter.SECTION_FONT_SIZE).getSecond() + 12;
+        int lineY = y + painter.getStringWidthAndHeight(title, CommonPainter.SECTION_FONT_SIZE).getRight() + 12;
         Pair<Integer, Integer> tipSize = painter.getStringWidthAndHeight(tip, CommonPainter.TEXT_FONT_SIZE);
-        painter.drawText(tip, COLOR_DEEP_PURPLE, new Point(WIDTH - MARGIN * 2 - tipSize.getFirst(), lineY - tipSize.getSecond() - 5));
+        painter.drawText(tip, COLOR_DEEP_PURPLE, new Point(WIDTH - MARGIN * 2 - tipSize.getLeft(), lineY - tipSize.getRight() - 5));
 
-        painter.setPos(MARGIN, y + titleSize.getSecond() + 50);
+        painter.setPos(MARGIN, y + titleSize.getRight() + 50);
     }
 
     /**
@@ -276,11 +276,11 @@ public class HelpCommand implements StarBotCommand {
      * @return 单个命令的帮助图片
      */
     private BufferedImage renderCommand(StarBotCommand command) {
-        String prefix = Objects.requireNonNullElse(properties.getCommand().getPrefix(), "");
+        String prefix = StringUtils.defaultString(properties.getCommand().getPrefix());
 
         CommonPainter painter = factory.create(CONTENT_WIDTH, 220, true).setPos(0, 0);
         painter.drawTextWithStyle(List.of(new TextWithStyle(prefix + command.getName(), 36, Color.BLACK, Font.BOLD)), null, true, 0);
-        if (!CollectionUtils.isEmpty(command.getAliases())) {
+        if (CollectionUtils.isNotEmpty(command.getAliases())) {
             String aliases = String.join("、", command.getAliases());
             painter.drawTextWithStyle(List.of(new TextWithStyle("别名: " + aliases, 23, Color.GRAY, Font.PLAIN)), null, true, 0);
         }

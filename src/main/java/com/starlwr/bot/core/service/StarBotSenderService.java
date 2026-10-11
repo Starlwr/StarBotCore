@@ -4,6 +4,7 @@ import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.model.Sender;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -54,7 +55,7 @@ public class StarBotSenderService {
      * @param sender 推送平台信息
      */
     public synchronized void addSender(@NonNull Sender sender) {
-        if (sender.getName() == null) {
+        if (StringUtils.isBlank(sender.getName())) {
             throw new IllegalArgumentException("推送平台名称不能为空, 请检查 application.yml 配置文件");
         }
 

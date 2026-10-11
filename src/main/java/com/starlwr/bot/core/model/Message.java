@@ -1,11 +1,11 @@
 package com.starlwr.bot.core.model;
 
 import com.starlwr.bot.core.enums.PushTargetType;
-import com.starlwr.bot.core.util.StringUtil;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.apache.commons.lang3.StringUtils;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -110,7 +110,7 @@ public class Message {
 
         String[] parts = content.split("\\{next}");
         for (String part : parts) {
-            if (StringUtil.isEmpty(part)) {
+            if (StringUtils.isEmpty(part)) {
                 continue;
             }
 
@@ -152,7 +152,7 @@ public class Message {
      * @return 消息的展示字符串
      */
     public String getDisplay() {
-        if (StringUtil.isBlank(content)) {
+        if (StringUtils.isBlank(content)) {
             return "";
         }
 

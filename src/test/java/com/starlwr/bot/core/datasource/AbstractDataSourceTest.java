@@ -19,12 +19,17 @@ import com.starlwr.bot.core.service.StarBotEventHandlerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -49,6 +54,8 @@ import static org.mockito.Mockito.when;
  */
 class AbstractDataSourceTest {
     private JsonDataSource dataSource;
+
+    private StarBotCoreProperties properties;
 
     private DataSourceService service;
 
@@ -94,7 +101,48 @@ class AbstractDataSourceTest {
                 eventListener.accept(changeEvent);
             }
         };
-        dataSource = new JsonDataSource(publisher, registry, handlerService, new StarBotCoreProperties());
+        properties = new StarBotCoreProperties();
+        dataSource = new JsonDataSource(publisher, registry, handlerService, properties);
+    }
+
+    /**
+     * 验证重载时分别处理新增、移除和更新，并使用新配置中的用户对象
+     */
+    @Test
+    void reloadUsesNewConfigurationForExistingUsers(@TempDir Path directory) throws IOException {
+        PushUser original = addUser("bilibili", 1001L);
+        PushUser removed = addUser("bilibili", 1002L);
+        Path path = directory.resolve("datasource.json");
+        Files.writeString(path, """
+                [{
+                    "uid": 1001,
+                    "platform": "bilibili",
+                    "targets": [{
+                        "platform": "test-bot",
+                        "type": 1,
+                        "num": 2002,
+                        "messages": [{"handler": "test.live"}]
+                    }]
+                }, {
+                    "uid": 1003,
+                    "platform": "bilibili"
+                }]
+                """);
+        properties.getDatasource().setJsonPath(path.toString());
+        clearEvents();
+
+        ReflectionTestUtils.invokeMethod(dataSource, "reload");
+
+        PushUser updated = dataSource.getUser("bilibili", 1001L).orElseThrow();
+        assertNotSame(original, updated);
+        assertEquals(2002L, updated.getTargets().get(0).getNum());
+        assertEquals(2, dataSource.getAllUsers().size());
+        assertTrue(dataSource.getUser("bilibili", 1002L).isEmpty());
+        assertTrue(dataSource.getUser("bilibili", 1003L).isPresent());
+        assertEquals(1, eventsOfType(StarBotDataSourceAddEvent.class).size());
+        assertEquals(1, eventsOfType(StarBotDataSourceUpdateEvent.class).size());
+        assertEquals(1, removeEvents.size());
+        assertSame(removed, removeEvents.get(0).getUser());
     }
 
     /**

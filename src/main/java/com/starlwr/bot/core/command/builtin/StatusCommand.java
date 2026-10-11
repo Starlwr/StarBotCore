@@ -13,11 +13,12 @@ import com.starlwr.bot.core.plugin.StarBotPluginLoader;
 import com.starlwr.bot.core.plugin.StarBotPluginMeta;
 import com.starlwr.bot.core.service.SystemResourceService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
 import javax.imageio.ImageIO;
@@ -133,7 +134,7 @@ public class StatusCommand implements StarBotCommand {
         drawOperatingSystem(painter, snapshot.getOperatingSystem());
         drawSectionTitle(painter, "已安装插件");
 
-        if (plugins.isEmpty()) {
+        if (CollectionUtils.isEmpty(plugins)) {
             painter.setPos(MARGIN + PADDING, painter.getY());
             painter.drawTextWithStyle(List.of(new TextWithStyle("暂无已安装插件", 30, Color.GRAY)));
             painter.movePos(0, 25);
@@ -220,7 +221,7 @@ public class StatusCommand implements StarBotCommand {
      * @param y 顶部 Y 坐标
      */
     private void drawCenteredText(CommonPainter painter, TextWithStyle text, int centerX, int y) {
-        int width = painter.getStringWidthAndHeight(text).getFirst();
+        int width = painter.getStringWidthAndHeight(text).getLeft();
         painter.drawTextWithStyle(List.of(text), new Point(centerX - width / 2, y));
     }
 
@@ -232,10 +233,10 @@ public class StatusCommand implements StarBotCommand {
         int y = painter.getY();
         TextWithStyle title = new TextWithStyle("运行状态", 72, COLOR_DEEP_PURPLE, Font.BOLD);
         Pair<Integer, Integer> size = painter.getStringWidthAndHeight(title);
-        int titleHeight = size.getSecond();
+        int titleHeight = size.getRight();
         int decorationY = y + titleHeight / 2;
-        drawTitleDecoration(painter, (WIDTH - size.getFirst()) / 2 - 55, decorationY, -1);
-        drawTitleDecoration(painter, (WIDTH + size.getFirst()) / 2 + 55, decorationY, 1);
+        drawTitleDecoration(painter, (WIDTH - size.getLeft()) / 2 - 55, decorationY, -1);
+        drawTitleDecoration(painter, (WIDTH + size.getLeft()) / 2 + 55, decorationY, 1);
         drawCenteredText(painter, title, WIDTH / 2, y);
         painter.setPos(MARGIN, y + titleHeight + 34);
     }
@@ -279,15 +280,15 @@ public class StatusCommand implements StarBotCommand {
         int width = WIDTH - MARGIN * 2;
         TextWithStyle label = new TextWithStyle("Core 版本", 36, COLOR_DEEP_PURPLE, Font.BOLD);
         TextWithStyle value = new TextWithStyle("v" + build.getVersion(), 64, COLOR_DEEP_PURPLE, Font.BOLD);
-        int availableWidth = width - PADDING * 2 - painter.getStringWidthAndHeight(label).getFirst() - 32;
-        int versionWidth = Math.min(availableWidth, painter.getStringWidthAndHeight(value).getFirst() + 1);
+        int availableWidth = width - PADDING * 2 - painter.getStringWidthAndHeight(label).getLeft() - 32;
+        int versionWidth = Math.min(availableWidth, painter.getStringWidthAndHeight(value).getLeft() + 1);
         CommonPainter version = factory.create(versionWidth, 120, true).setRowSpace(0);
         version.drawTextWithStyle(List.of(value), null, true, 0);
         BufferedImage versionImage = version.createSolidRoundedRectangleBackground(new Color(0, 0, 0, 0), 0).getBufferedImage();
 
         int height = Math.max(144, versionImage.getHeight() + 48);
         CommonPainter card = factory.create(width, height, true);
-        int labelHeight = card.getStringWidthAndHeight(label).getSecond();
+        int labelHeight = card.getStringWidthAndHeight(label).getRight();
         card.drawTextWithStyle(List.of(label), new Point(PADDING, (height - labelHeight) / 2));
         card.drawImage(versionImage, new Point(width - PADDING - versionImage.getWidth(), (height - versionImage.getHeight()) / 2));
         card.setPos(0, height);
@@ -306,15 +307,15 @@ public class StatusCommand implements StarBotCommand {
         int width = WIDTH - MARGIN * 2;
         TextWithStyle label = new TextWithStyle("操作系统", 32, COLOR_DEEP_PURPLE, Font.BOLD);
         TextWithStyle value = new TextWithStyle(operatingSystem, 30, COLOR_DEEP_PURPLE);
-        int availableWidth = width - PADDING * 2 - painter.getStringWidthAndHeight(label).getFirst() - 32;
-        int valueWidth = Math.min(availableWidth, painter.getStringWidthAndHeight(value).getFirst() + 1);
+        int availableWidth = width - PADDING * 2 - painter.getStringWidthAndHeight(label).getLeft() - 32;
+        int valueWidth = Math.min(availableWidth, painter.getStringWidthAndHeight(value).getLeft() + 1);
         CommonPainter content = factory.create(valueWidth, 80, true).setRowSpace(0);
         content.drawTextWithStyle(List.of(value), null, true, 0);
         BufferedImage valueImage = content.createSolidRoundedRectangleBackground(new Color(0, 0, 0, 0), 0).getBufferedImage();
 
         int height = Math.max(112, valueImage.getHeight() + 40);
         CommonPainter card = factory.create(width, height, true);
-        int labelHeight = card.getStringWidthAndHeight(label).getSecond();
+        int labelHeight = card.getStringWidthAndHeight(label).getRight();
         card.drawTextWithStyle(List.of(label), new Point(PADDING, (height - labelHeight) / 2));
         card.drawImage(valueImage, new Point(width - PADDING - valueImage.getWidth(), (height - valueImage.getHeight()) / 2));
         card.setPos(0, height);
@@ -333,8 +334,8 @@ public class StatusCommand implements StarBotCommand {
         int y = painter.getY();
         TextWithStyle title = new TextWithStyle(text, 40, COLOR_DEEP_PURPLE, Font.BOLD);
         Pair<Integer, Integer> size = painter.getStringWidthAndHeight(title);
-        int lineWidth = (WIDTH - size.getFirst()) / 2 - MARGIN - 30;
-        int lineY = y + size.getSecond() / 2;
+        int lineWidth = (WIDTH - size.getLeft()) / 2 - MARGIN - 30;
+        int lineY = y + size.getRight() / 2;
         painter.drawRoundedRectangle(MARGIN, lineY, lineWidth, 2, 2, COLOR_BORDER);
         painter.drawRoundedRectangle(WIDTH - MARGIN - lineWidth, lineY, lineWidth, 2, 2, COLOR_BORDER);
         drawCenteredText(painter, title, WIDTH / 2, y);
@@ -375,7 +376,7 @@ public class StatusCommand implements StarBotCommand {
      */
     private BufferedImage renderVersion(CommonPainter painter, String version) {
         String text = "v" + version;
-        int width = Math.min(400, painter.getStringWidthAndHeight(text, 32).getFirst() + 48);
+        int width = Math.min(400, painter.getStringWidthAndHeight(text, 32).getLeft() + 48);
         CommonPainter badge = factory.create(width, 80, true).setPos(24, 10).setRowSpace(0);
         badge.drawTextWithStyle(List.of(new TextWithStyle(text, 32, COLOR_ACCENT)), null, true, 24);
         badge.movePos(0, 10);
@@ -434,7 +435,7 @@ public class StatusCommand implements StarBotCommand {
         }
 
         TextWithStyle percentage = new TextWithStyle(formatPercentage(usage.getSystem()), 48, COLOR_DEEP_PURPLE, Font.BOLD);
-        int textHeight = painter.getStringWidthAndHeight(percentage).getSecond();
+        int textHeight = painter.getStringWidthAndHeight(percentage).getRight();
         drawCenteredText(painter, percentage, width / 2, 140 - textHeight / 2);
         drawCenteredText(painter, new TextWithStyle(name, 32, COLOR_DEEP_PURPLE, Font.BOLD), width / 2, 270);
         drawResourceText(painter, details, 20, new Color(132, 122, 151), width, 316);
@@ -454,7 +455,7 @@ public class StatusCommand implements StarBotCommand {
      */
     private void drawResourceText(CommonPainter painter, String text, int fontSize, Color color, int width, int y) {
         TextWithStyle style = new TextWithStyle(text, fontSize, color);
-        while (fontSize > 12 && painter.getStringWidthAndHeight(style).getFirst() > width - 24) {
+        while (fontSize > 12 && painter.getStringWidthAndHeight(style).getLeft() > width - 24) {
             style = new TextWithStyle(text, --fontSize, color);
         }
         drawCenteredText(painter, style, width / 2, y);
@@ -527,7 +528,7 @@ public class StatusCommand implements StarBotCommand {
      */
     private void drawLegend(CommonPainter painter, int centerX, String text, Color color) {
         TextWithStyle label = new TextWithStyle(text, 24, COLOR_DEEP_PURPLE);
-        int width = painter.getStringWidthAndHeight(label).getFirst() + 34;
+        int width = painter.getStringWidthAndHeight(label).getLeft() + 34;
         int x = centerX - width / 2;
         painter.drawRoundedRectangle(x, 449, 22, 22, 22, color);
         painter.drawTextWithStyle(List.of(label), new Point(x + 34, 444));

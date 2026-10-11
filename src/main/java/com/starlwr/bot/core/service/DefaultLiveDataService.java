@@ -8,6 +8,8 @@ import com.starlwr.bot.core.event.live.base.StarBotLiveUserEvent;
 import com.starlwr.bot.core.event.live.common.*;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.ContextClosedEvent;
@@ -78,7 +80,7 @@ public class DefaultLiveDataService implements LiveDataService {
             try {
                 String content = Files.readString(Path.of(path));
                 JSONObject loadedCache;
-                if (content.isBlank()) {
+                if (StringUtils.isBlank(content)) {
                     log.warn("直播数据文件 {} 内容为空，使用空数据", path);
                     loadedCache = new JSONObject();
                 } else {
@@ -415,7 +417,7 @@ public class DefaultLiveDataService implements LiveDataService {
      * @return 父级 JSON 对象，中间层级不存在且 create 为 false 时返回 null
      */
     private JSONObject locateParent(@NonNull String[] keys, boolean create) {
-        if (keys == null || keys.length == 0) {
+        if (ArrayUtils.isEmpty(keys)) {
             throw new IllegalArgumentException("自定义键路径不能为空");
         }
 

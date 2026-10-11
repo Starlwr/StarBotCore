@@ -3,15 +3,14 @@ package com.starlwr.bot.core.model;
 import com.alibaba.fastjson2.JSONObject;
 import com.starlwr.bot.core.enums.GroupRole;
 import com.starlwr.bot.core.enums.PushTargetType;
-import com.starlwr.bot.core.util.StringUtil;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
+import org.apache.commons.lang3.StringUtils;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -68,7 +67,7 @@ public final class CommandContext {
      * @return 命令上下文
      */
     public static Optional<CommandContext> tryCreate(@NonNull CommandMessage message, String prefix) {
-        String normalized = Objects.requireNonNullElse(message.getContent(), "").strip();
+        String normalized = StringUtils.defaultString(message.getContent()).strip();
         Matcher matcher = IGNORED_ELEMENT_BEFORE_PREFIX_PATTERN.matcher(normalized);
         int prefixStart = matcher.lookingAt() ? matcher.end() : 0;
         if (!normalized.startsWith(prefix, prefixStart)) {
@@ -77,7 +76,7 @@ public final class CommandContext {
 
         String content = (normalized.substring(0, prefixStart) + normalized.substring(prefixStart + prefix.length())).strip();
         String text = IGNORED_ELEMENT_PATTERN.matcher(content).replaceAll(" ").strip();
-        if (StringUtil.isEmpty(text)) {
+        if (StringUtils.isEmpty(text)) {
             return Optional.empty();
         }
 
@@ -210,7 +209,7 @@ public final class CommandContext {
      * @return 命令参数列表
      */
     public List<String> getArguments() {
-        return StringUtil.isEmpty(argumentText) ? List.of() : List.of(argumentText.split("(?U)\\s+"));
+        return StringUtils.isEmpty(argumentText) ? List.of() : List.of(argumentText.split("(?U)\\s+"));
     }
 
     /**
@@ -219,7 +218,7 @@ public final class CommandContext {
      */
     public List<String> getImageArguments() {
         List<String> arguments = new ArrayList<>();
-        Matcher matcher = IMAGE_ELEMENT_PATTERN.matcher(Objects.requireNonNullElse(content, ""));
+        Matcher matcher = IMAGE_ELEMENT_PATTERN.matcher(StringUtils.defaultString(content));
         while (matcher.find()) {
             arguments.add(matcher.group());
         }
@@ -231,7 +230,7 @@ public final class CommandContext {
      * @param content 可包含占位符的消息内容
      */
     public void reply(@NonNull String content) {
-        if (StringUtil.isNotBlank(getMessageId())) {
+        if (StringUtils.isNotBlank(getMessageId())) {
             message.reply("{reply=" + getMessageId() + "}" + content);
         } else {
             message.reply(content);

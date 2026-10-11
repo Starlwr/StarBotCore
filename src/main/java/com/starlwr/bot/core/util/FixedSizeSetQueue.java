@@ -1,5 +1,8 @@
 package com.starlwr.bot.core.util;
 
+import org.apache.commons.collections4.MultiSet;
+import org.apache.commons.collections4.multiset.HashMultiSet;
+
 import java.util.*;
 
 /**
@@ -9,7 +12,7 @@ import java.util.*;
 public class FixedSizeSetQueue<T> {
     private final int capacity;
     private final Deque<T> queue = new ArrayDeque<>();
-    private final Map<T, Integer> map = new HashMap<>();
+    private final MultiSet<T> elements = new HashMultiSet<>();
 
     public FixedSizeSetQueue(int capacity) {
         this.capacity = capacity;
@@ -23,11 +26,11 @@ public class FixedSizeSetQueue<T> {
     public synchronized boolean add(T element) {
         if (queue.size() >= capacity) {
             T oldest = queue.pollFirst();
-            map.merge(oldest, -1, (oldVal, v) -> (oldVal + v == 0) ? null : oldVal + v);
+            elements.remove(oldest);
         }
 
         queue.offerLast(element);
-        map.merge(element, 1, Integer::sum);
+        elements.add(element);
 
         return true;
     }
@@ -51,7 +54,7 @@ public class FixedSizeSetQueue<T> {
      * @return 容器中是否存在该元素
      */
     public boolean contains(T element) {
-        return map.containsKey(element);
+        return elements.contains(element);
     }
 
     /**
@@ -67,7 +70,7 @@ public class FixedSizeSetQueue<T> {
      */
     public synchronized void clear() {
         queue.clear();
-        map.clear();
+        elements.clear();
     }
 
     @Override

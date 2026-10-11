@@ -1,7 +1,7 @@
 package com.starlwr.bot.core.converter;
 
-import com.starlwr.bot.core.util.StringUtil;
 import lombok.NonNull;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
@@ -16,11 +16,11 @@ import java.awt.*;
 public class ColorConverter implements Converter<String, Color> {
     @Override
     public Color convert(@NonNull String source) {
-        if (StringUtil.isBlank(source)) {
+        if (StringUtils.isBlank(source)) {
             return null;
         }
 
-        String value = source.trim();
+        String value = source.strip();
 
         try {
             try {

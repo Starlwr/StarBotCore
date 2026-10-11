@@ -6,8 +6,8 @@ import com.starlwr.bot.core.model.Message;
 import com.starlwr.bot.core.model.Sender;
 import com.starlwr.bot.core.service.StarBotSenderService;
 import com.starlwr.bot.core.util.HttpUtil;
-import com.starlwr.bot.core.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -99,7 +99,7 @@ public class StarBotMessageSender {
      */
     private void doSend(Sender sender, Message message) {
         Map<String, String> headers = new HashMap<>();
-        if (StringUtil.isNotBlank(sender.getToken())) {
+        if (StringUtils.isNotBlank(sender.getToken())) {
             headers.put("Authorization", "Bearer " + sender.getToken());
         }
 

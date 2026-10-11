@@ -6,6 +6,7 @@ import com.starlwr.bot.core.enums.CommandScope;
 import com.starlwr.bot.core.model.CommandContext;
 import com.starlwr.bot.core.service.StarBotCommandPolicy;
 import com.starlwr.bot.core.service.StarBotCommandRegistry;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -77,7 +78,7 @@ public class DisableCommand implements StarBotCommand {
 
         String query = arguments.get(0);
         List<StarBotCommand> matches = registry.find(query);
-        if (matches.isEmpty()) {
+        if (CollectionUtils.isEmpty(matches)) {
             context.reply("要禁用的命令不存在~");
             return;
         }
