@@ -57,7 +57,7 @@ public abstract class AbstractDataSource {
      * @param user 推送用户
      */
     public synchronized void add(@NonNull PushUser user) {
-        add(Collections.singletonList(user));
+        add(new ArrayList<>(Collections.singletonList(user)));
     }
 
     /**
@@ -120,9 +120,7 @@ public abstract class AbstractDataSource {
             throw new DataSourceException("数据源中不存在该推送用户 (平台: " + user.getPlatform() + ", UID: " + user.getUid() + "), 无需移除");
         }
 
-        dataSourceServiceRegistry.getDataSourceService(user.getPlatform())
-                .orElseThrow(() -> new DataSourceException("未找到数据源服务实现类: " + user.getPlatform()))
-                .completePushUser(user);
+        user = this.userMap.get(user.getPlatform()).get(user.getUid());
 
         this.userMap.get(user.getPlatform()).remove(user.getUid());
         if (this.userMap.get(user.getPlatform()).isEmpty()) {
@@ -200,6 +198,7 @@ public abstract class AbstractDataSource {
                 continue;
             }
 
+            this.users.set(this.users.indexOf(oldUser), user);
             this.userMap.get(user.getPlatform()).put(user.getUid(), user);
 
             initPushMessageParams(user);
