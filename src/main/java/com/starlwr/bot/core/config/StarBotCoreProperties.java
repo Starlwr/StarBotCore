@@ -1,6 +1,7 @@
 package com.starlwr.bot.core.config;
 
 import ch.qos.logback.classic.Level;
+import com.starlwr.bot.core.model.AiModel;
 import com.starlwr.bot.core.model.Sender;
 import com.starlwr.bot.core.model.TextWithStyle;
 import jakarta.annotation.PostConstruct;
@@ -26,6 +27,9 @@ public class StarBotCoreProperties {
     private final CommandThread commandThread = new CommandThread();
 
     @Getter
+    private final AiThread aiThread = new AiThread();
+
+    @Getter
     private final Log log = new Log();
 
     @Getter
@@ -48,6 +52,9 @@ public class StarBotCoreProperties {
 
     @Getter
     private final Mail mail = new Mail();
+
+    @Getter
+    private final Ai ai = new Ai();
 
     /**
      * 非插件实现的推送平台配置
@@ -102,6 +109,33 @@ public class StarBotCoreProperties {
          * 线程池任务队列容量
          */
         private int queueCapacity = Integer.MAX_VALUE;
+
+        /**
+         * 非核心线程存活时间，单位：秒
+         */
+        private int keepAliveSeconds = 60;
+    }
+
+    /**
+     * AI 线程相关
+     */
+    @Getter
+    @Setter
+    public static class AiThread {
+        /**
+         * 线程池核心线程数
+         */
+        private int corePoolSize = 5;
+
+        /**
+         * 线程池最大线程数
+         */
+        private int maxPoolSize = 30;
+
+        /**
+         * 线程池任务队列容量
+         */
+        private int queueCapacity = 10;
 
         /**
          * 非核心线程存活时间，单位：秒
@@ -283,6 +317,23 @@ public class StarBotCoreProperties {
          * 默认收件邮箱
          */
         private String defaultTo;
+    }
+
+    /**
+     * AI 相关
+     */
+    @Getter
+    @Setter
+    public static class Ai {
+        /**
+         * 默认模型名称，配置多个模型时必须指定
+         */
+        private String defaultModel;
+
+        /**
+         * AI 模型配置
+         */
+        private Map<String, AiModel> models = new LinkedHashMap<>();
     }
 
     @PostConstruct

@@ -49,6 +49,19 @@ public class StarBotCoreThreadPoolConfig {
         return executor;
     }
 
+    @Bean
+    public ThreadPoolTaskExecutor aiThreadPool() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(properties.getAiThread().getCorePoolSize());
+        executor.setMaxPoolSize(properties.getAiThread().getMaxPoolSize());
+        executor.setQueueCapacity(properties.getAiThread().getQueueCapacity());
+        executor.setKeepAliveSeconds(properties.getAiThread().getKeepAliveSeconds());
+        executor.setThreadNamePrefix("ai-thread-");
+        executor.setRejectedExecutionHandler(new AiWithLogAbortPolicy());
+        executor.initialize();
+        return executor;
+    }
+
     private static class NetworkWithLogCallerRunsPolicy implements RejectedExecutionHandler {
         @Override
         public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
@@ -64,6 +77,13 @@ public class StarBotCoreThreadPoolConfig {
         @Override
         public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
             throw new RejectedExecutionException("命令线程池资源已耗尽");
+        }
+    }
+
+    private static class AiWithLogAbortPolicy implements RejectedExecutionHandler {
+        @Override
+        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+            throw new RejectedExecutionException("AI 线程池资源已耗尽");
         }
     }
 }
