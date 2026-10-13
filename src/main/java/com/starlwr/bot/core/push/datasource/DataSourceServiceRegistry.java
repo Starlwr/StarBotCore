@@ -1,5 +1,6 @@
 package com.starlwr.bot.core.push.datasource;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -18,9 +19,13 @@ public class DataSourceServiceRegistry {
     @Autowired
     public DataSourceServiceRegistry(List<DataSourceService> services) {
         for (DataSourceService service : services) {
-            DataSourceServiceConfig annotation = service.getClass().getAnnotation(DataSourceServiceConfig.class);
-            if (annotation != null) {
-                serviceMap.put(annotation.name(), service);
+            String platform = service.getPlatform();
+            if (StringUtils.isBlank(platform)) {
+                throw new IllegalArgumentException("数据源服务的直播平台名称不能为空: " + service.getClass().getName());
+            }
+
+            if (serviceMap.putIfAbsent(platform, service) != null) {
+                throw new IllegalArgumentException("直播平台 " + platform + " 存在重复的数据源服务");
             }
         }
     }
