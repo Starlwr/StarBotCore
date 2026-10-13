@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.Point;
@@ -103,9 +104,9 @@ class StatusCommandTest {
     @BeforeEach
     void setup() {
         properties = new StarBotCoreProperties();
-        properties.init();
+        ReflectionTestUtils.invokeMethod(properties, "init");
         var font = new FontService(new DefaultResourceLoader(), properties);
-        font.init();
+        ReflectionTestUtils.invokeMethod(font, "init");
         Properties versions = new Properties();
         versions.setProperty("version", "3.0.0");
         build = new BuildProperties(versions);

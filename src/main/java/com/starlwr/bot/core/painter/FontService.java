@@ -39,7 +39,7 @@ public class FontService {
     }
 
     @PostConstruct
-    public void init() {
+    private void init() {
         GraphicsEnvironment graphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment();
         systemFonts = Arrays.stream(graphicsEnvironment.getAvailableFontFamilyNames())
                 .map(String::toLowerCase)

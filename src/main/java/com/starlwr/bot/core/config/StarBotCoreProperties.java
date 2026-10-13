@@ -337,7 +337,7 @@ public class StarBotCoreProperties {
     }
 
     @PostConstruct
-    public void init() {
+    private void init() {
         String os = System.getProperty("os.name").toLowerCase();
         paint.getFonts().add("内置");
         if (os.contains("win")) {

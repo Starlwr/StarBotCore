@@ -17,6 +17,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -69,9 +70,9 @@ class HelpCommandTest {
     @Test
     void rendersCommandStatesAndExpandsForLongText() throws Exception {
         var properties = new StarBotCoreProperties();
-        properties.init();
+        ReflectionTestUtils.invokeMethod(properties, "init");
         var font = new FontService(new DefaultResourceLoader(), properties);
-        font.init();
+        ReflectionTestUtils.invokeMethod(font, "init");
         Properties build = new Properties();
         build.setProperty("version", "3.0.0");
         var factory = new StarBotCommonPainterFactory(new BuildProperties(build), properties, font);

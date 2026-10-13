@@ -132,7 +132,7 @@ public class AiChatModelFactory {
      * 释放模型持有的 HTTP 连接和后台线程
      */
     @PreDestroy
-    public void destroy() {
+    private void destroy() {
         for (Runnable closeHandler : closeHandlers) {
             try {
                 closeHandler.run();
