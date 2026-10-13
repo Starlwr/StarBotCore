@@ -1,7 +1,7 @@
 package com.starlwr.bot.core.event.datasource.change;
 
 import com.starlwr.bot.core.event.datasource.base.StarBotDataSourceChangeEvent;
-import com.starlwr.bot.core.model.PushUser;
+import com.starlwr.bot.core.push.model.PushUser;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

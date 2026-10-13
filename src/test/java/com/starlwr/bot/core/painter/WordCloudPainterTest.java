@@ -240,7 +240,7 @@ public class WordCloudPainterTest {
     /**
      * 加载项目内置字体，加载失败时回退至系统字体
      * <p>
-     * 优先加载模块资源目录下的 fonts/font.ttf（与生产环境 FontUtil.parseFont("内置") 一致），
+     * 优先加载模块资源目录下的 fonts/font.ttf（与生产环境 FontService.parseFont("内置") 一致），
      * 加载失败或文件不存在时回退至系统 SANS_SERIF 字体
      *
      * @return 字体，25 号字号

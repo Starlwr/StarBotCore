@@ -1,21 +1,21 @@
 package com.starlwr.bot.core.command.builtin;
 
-import com.starlwr.bot.core.enums.PushTargetType;
+import com.starlwr.bot.core.command.CommandContext;
+import com.starlwr.bot.core.command.CommandMessage;
 import com.starlwr.bot.core.config.StarBotCoreProperties;
-import com.starlwr.bot.core.factory.StarBotCommonPainterFactory;
-import com.starlwr.bot.core.model.CommandContext;
-import com.starlwr.bot.core.model.CommandMessage;
-import com.starlwr.bot.core.model.Message;
-import com.starlwr.bot.core.model.SystemResourceSnapshot;
-import com.starlwr.bot.core.model.SystemResourceSnapshot.Usage;
-import com.starlwr.bot.core.model.TextWithStyle;
+import com.starlwr.bot.core.message.Message;
+import com.starlwr.bot.core.message.PushTargetType;
+import com.starlwr.bot.core.message.StarBotMessageSender;
 import com.starlwr.bot.core.painter.CommonPainter;
+import com.starlwr.bot.core.painter.FontService;
+import com.starlwr.bot.core.painter.StarBotCommonPainterFactory;
+import com.starlwr.bot.core.painter.TextWithStyle;
 import com.starlwr.bot.core.plugin.StarBotPlugin;
 import com.starlwr.bot.core.plugin.StarBotPluginLoader;
 import com.starlwr.bot.core.plugin.StarBotPluginMeta;
-import com.starlwr.bot.core.sender.StarBotMessageSender;
-import com.starlwr.bot.core.service.SystemResourceService;
-import com.starlwr.bot.core.util.FontUtil;
+import com.starlwr.bot.core.support.system.SystemResourceService;
+import com.starlwr.bot.core.support.system.SystemResourceSnapshot.Usage;
+import com.starlwr.bot.core.support.system.SystemResourceSnapshot;
 import lombok.NonNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -104,7 +104,7 @@ class StatusCommandTest {
     void setup() {
         properties = new StarBotCoreProperties();
         properties.init();
-        var font = new FontUtil(new DefaultResourceLoader(), properties);
+        var font = new FontService(new DefaultResourceLoader(), properties);
         font.init();
         Properties versions = new Properties();
         versions.setProperty("version", "3.0.0");

@@ -1,8 +1,8 @@
 package com.starlwr.bot.core.event.live.base;
 
-import com.starlwr.bot.core.enums.LivePlatform;
-import com.starlwr.bot.core.model.LiveStreamerInfo;
-import com.starlwr.bot.core.model.UserInfo;
+import com.starlwr.bot.core.event.model.LivePlatform;
+import com.starlwr.bot.core.event.model.LiveStreamerInfo;
+import com.starlwr.bot.core.event.model.UserInfo;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

@@ -1,9 +1,9 @@
 package com.starlwr.bot.core.config;
 
 import ch.qos.logback.classic.Level;
-import com.starlwr.bot.core.model.AiModel;
-import com.starlwr.bot.core.model.Sender;
-import com.starlwr.bot.core.model.TextWithStyle;
+import com.starlwr.bot.core.ai.AiModel;
+import com.starlwr.bot.core.message.Sender;
+import com.starlwr.bot.core.painter.TextWithStyle;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.Setter;

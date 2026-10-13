@@ -1,17 +1,17 @@
 package com.starlwr.bot.core.command.builtin;
 
+import com.starlwr.bot.core.command.CommandContext;
+import com.starlwr.bot.core.command.CommandMessage;
+import com.starlwr.bot.core.command.CommandScope;
 import com.starlwr.bot.core.command.StarBotCommand;
+import com.starlwr.bot.core.command.StarBotCommandPolicy;
+import com.starlwr.bot.core.command.StarBotCommandRegistry;
 import com.starlwr.bot.core.config.StarBotCoreProperties;
-import com.starlwr.bot.core.enums.CommandScope;
-import com.starlwr.bot.core.enums.PushTargetType;
-import com.starlwr.bot.core.factory.StarBotCommonPainterFactory;
-import com.starlwr.bot.core.model.CommandContext;
-import com.starlwr.bot.core.model.CommandMessage;
+import com.starlwr.bot.core.message.PushTargetType;
+import com.starlwr.bot.core.painter.FontService;
+import com.starlwr.bot.core.painter.StarBotCommonPainterFactory;
 import com.starlwr.bot.core.plugin.StarBotPluginLoader;
-import com.starlwr.bot.core.service.StarBotCommandPolicy;
-import com.starlwr.bot.core.service.StarBotCommandRegistry;
-import com.starlwr.bot.core.service.SystemResourceService;
-import com.starlwr.bot.core.util.FontUtil;
+import com.starlwr.bot.core.support.system.SystemResourceService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.info.BuildProperties;
@@ -70,7 +70,7 @@ class HelpCommandTest {
     void rendersCommandStatesAndExpandsForLongText() throws Exception {
         var properties = new StarBotCoreProperties();
         properties.init();
-        var font = new FontUtil(new DefaultResourceLoader(), properties);
+        var font = new FontService(new DefaultResourceLoader(), properties);
         font.init();
         Properties build = new Properties();
         build.setProperty("version", "3.0.0");

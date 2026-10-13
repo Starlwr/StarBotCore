@@ -1,13 +1,13 @@
 package com.starlwr.bot.core.command.builtin;
 
+import com.starlwr.bot.core.command.CommandContext;
 import com.starlwr.bot.core.command.StarBotCommand;
+import com.starlwr.bot.core.command.StarBotCommandPolicy;
+import com.starlwr.bot.core.command.StarBotCommandRegistry;
 import com.starlwr.bot.core.config.StarBotCoreProperties;
-import com.starlwr.bot.core.factory.StarBotCommonPainterFactory;
-import com.starlwr.bot.core.model.CommandContext;
-import com.starlwr.bot.core.model.TextWithStyle;
 import com.starlwr.bot.core.painter.CommonPainter;
-import com.starlwr.bot.core.service.StarBotCommandPolicy;
-import com.starlwr.bot.core.service.StarBotCommandRegistry;
+import com.starlwr.bot.core.painter.StarBotCommonPainterFactory;
+import com.starlwr.bot.core.painter.TextWithStyle;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;

@@ -1,8 +1,5 @@
 package com.starlwr.bot.core.command;
 
-import com.starlwr.bot.core.enums.CommandPermission;
-import com.starlwr.bot.core.enums.CommandScope;
-import com.starlwr.bot.core.model.CommandContext;
 import com.starlwr.bot.core.plugin.StarBotComponent;
 import org.springframework.aop.support.AopUtils;
 

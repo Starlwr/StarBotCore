@@ -1,11 +1,11 @@
 package com.starlwr.bot.core.command.builtin;
 
+import com.starlwr.bot.core.command.CommandContext;
+import com.starlwr.bot.core.command.CommandPermission;
+import com.starlwr.bot.core.command.CommandScope;
 import com.starlwr.bot.core.command.StarBotCommand;
-import com.starlwr.bot.core.enums.CommandPermission;
-import com.starlwr.bot.core.enums.CommandScope;
-import com.starlwr.bot.core.model.CommandContext;
-import com.starlwr.bot.core.service.StarBotCommandPolicy;
-import com.starlwr.bot.core.service.StarBotCommandRegistry;
+import com.starlwr.bot.core.command.StarBotCommandPolicy;
+import com.starlwr.bot.core.command.StarBotCommandRegistry;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

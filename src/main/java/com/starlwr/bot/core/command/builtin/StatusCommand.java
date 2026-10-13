@@ -1,17 +1,17 @@
 package com.starlwr.bot.core.command.builtin;
 
+import com.starlwr.bot.core.command.CommandContext;
 import com.starlwr.bot.core.command.StarBotCommand;
 import com.starlwr.bot.core.config.StarBotCoreProperties;
-import com.starlwr.bot.core.factory.StarBotCommonPainterFactory;
-import com.starlwr.bot.core.model.CommandContext;
-import com.starlwr.bot.core.model.SystemResourceSnapshot;
-import com.starlwr.bot.core.model.SystemResourceSnapshot.Usage;
-import com.starlwr.bot.core.model.TextWithStyle;
 import com.starlwr.bot.core.painter.CommonPainter;
+import com.starlwr.bot.core.painter.StarBotCommonPainterFactory;
+import com.starlwr.bot.core.painter.TextWithStyle;
 import com.starlwr.bot.core.plugin.StarBotPlugin;
 import com.starlwr.bot.core.plugin.StarBotPluginLoader;
 import com.starlwr.bot.core.plugin.StarBotPluginMeta;
-import com.starlwr.bot.core.service.SystemResourceService;
+import com.starlwr.bot.core.support.system.SystemResourceService;
+import com.starlwr.bot.core.support.system.SystemResourceSnapshot.Usage;
+import com.starlwr.bot.core.support.system.SystemResourceSnapshot;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;

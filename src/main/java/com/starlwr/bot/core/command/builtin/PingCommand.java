@@ -1,7 +1,7 @@
 package com.starlwr.bot.core.command.builtin;
 
+import com.starlwr.bot.core.command.CommandContext;
 import com.starlwr.bot.core.command.StarBotCommand;
-import com.starlwr.bot.core.model.CommandContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Component;

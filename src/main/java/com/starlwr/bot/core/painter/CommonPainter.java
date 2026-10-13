@@ -1,8 +1,6 @@
 package com.starlwr.bot.core.painter;
 
 import com.starlwr.bot.core.config.StarBotCoreProperties;
-import com.starlwr.bot.core.model.TextWithStyle;
-import com.starlwr.bot.core.util.FontUtil;
 import jakarta.annotation.Nullable;
 import lombok.Getter;
 import lombok.NonNull;
@@ -36,7 +34,7 @@ public class CommonPainter {
 
     private final StarBotCoreProperties properties;
 
-    private final FontUtil fontUtil;
+    private final FontService fontService;
 
     @Getter
     private Integer rowSpace = 10;
@@ -71,10 +69,10 @@ public class CommonPainter {
      * @param height 画布高度
      * @param autoExpand 是否自动扩展画布高度
      */
-    public CommonPainter(BuildProperties buildProperties, StarBotCoreProperties properties, FontUtil fontUtil, int width, int height, boolean autoExpand) {
+    public CommonPainter(BuildProperties buildProperties, StarBotCoreProperties properties, FontService fontService, int width, int height, boolean autoExpand) {
         this.buildProperties = buildProperties;
         this.properties = properties;
-        this.fontUtil = fontUtil;
+        this.fontService = fontService;
 
         this.width = width;
         this.height = height;
@@ -688,7 +686,7 @@ public class CommonPainter {
 
                     i += Character.charCount(codePoint);
 
-                    Font font = text.getFont() != null ? text.getFont() : fontUtil.findFontForCharacter(codePoint).deriveFont(text.getStyle(), text.getSize());
+                    Font font = text.getFont() != null ? text.getFont() : fontService.findFontForCharacter(codePoint).deriveFont(text.getStyle(), text.getSize());
                     this.draw.setFont(font);
 
                     FontMetrics metrics = this.draw.getFontMetrics();
@@ -807,7 +805,7 @@ public class CommonPainter {
             return this;
         }
 
-        List<Pair<Integer, Integer>> sizes = texts.stream().map(text -> fontUtil.getStringWidthAndHeight(this.draw, text)).toList();
+        List<Pair<Integer, Integer>> sizes = texts.stream().map(text -> fontService.getStringWidthAndHeight(this.draw, text)).toList();
 
         for (int i = 0; i < sizes.size(); i++) {
             Pair<Integer, Integer> size = sizes.get(i);
@@ -873,7 +871,7 @@ public class CommonPainter {
      * @return 宽度，高度
      */
     public Pair<Integer, Integer> getStringWidthAndHeight(String text) {
-        return fontUtil.getStringWidthAndHeight(this.draw, new TextWithStyle(text, TEXT_FONT_SIZE));
+        return fontService.getStringWidthAndHeight(this.draw, new TextWithStyle(text, TEXT_FONT_SIZE));
     }
 
     /**
@@ -884,7 +882,7 @@ public class CommonPainter {
      * @return 宽度，高度
      */
     public Pair<Integer, Integer> getStringWidthAndHeight(String text, int size) {
-        return fontUtil.getStringWidthAndHeight(this.draw, new TextWithStyle(text, size));
+        return fontService.getStringWidthAndHeight(this.draw, new TextWithStyle(text, size));
     }
 
     /**
@@ -893,7 +891,7 @@ public class CommonPainter {
      * @return 宽度，高度
      */
     public Pair<Integer, Integer> getStringWidthAndHeight(TextWithStyle text) {
-        return fontUtil.getStringWidthAndHeight(this.draw, text);
+        return fontService.getStringWidthAndHeight(this.draw, text);
     }
 
     /**
@@ -948,7 +946,7 @@ public class CommonPainter {
         if (font != null) {
             this.draw.setFont(font);
         } else {
-            this.draw.setFont(fontUtil.findFontForCharacter(codePoint).deriveFont(Font.PLAIN, Objects.requireNonNullElse(size, TEXT_FONT_SIZE)));
+            this.draw.setFont(fontService.findFontForCharacter(codePoint).deriveFont(Font.PLAIN, Objects.requireNonNullElse(size, TEXT_FONT_SIZE)));
         }
         FontMetrics metrics = this.draw.getFontMetrics();
         int charWidth = metrics.stringWidth(charStr);
@@ -1012,7 +1010,7 @@ public class CommonPainter {
             if (font != null) {
                 this.draw.setFont(font);
             } else {
-                this.draw.setFont(fontUtil.findFontForCharacter(codePoint).deriveFont(Font.PLAIN, Objects.requireNonNullElse(size, TEXT_FONT_SIZE)));
+                this.draw.setFont(fontService.findFontForCharacter(codePoint).deriveFont(Font.PLAIN, Objects.requireNonNullElse(size, TEXT_FONT_SIZE)));
             }
             FontMetrics metrics = this.draw.getFontMetrics();
             sum = sum + metrics.stringWidth(charStr);
@@ -1115,7 +1113,7 @@ public class CommonPainter {
         if (font != null) {
             this.draw.setFont(font);
         } else {
-            this.draw.setFont(fontUtil.findFontForCharacter(codePoint).deriveFont(Font.PLAIN, Objects.requireNonNullElse(size, TEXT_FONT_SIZE)));
+            this.draw.setFont(fontService.findFontForCharacter(codePoint).deriveFont(Font.PLAIN, Objects.requireNonNullElse(size, TEXT_FONT_SIZE)));
         }
         this.draw.setColor(color != null ? color : Color.BLACK);
         FontMetrics metrics = this.draw.getFontMetrics();

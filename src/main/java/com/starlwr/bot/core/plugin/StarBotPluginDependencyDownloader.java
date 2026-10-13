@@ -1,7 +1,7 @@
 package com.starlwr.bot.core.plugin;
 
 import com.starlwr.bot.core.config.StarBotCoreProperties;
-import com.starlwr.bot.core.util.HttpUtil;
+import com.starlwr.bot.core.support.http.HttpService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,10 +42,10 @@ public class StarBotPluginDependencyDownloader {
 
     private final StarBotCoreProperties properties;
 
-    private final HttpUtil http;
+    private final HttpService http;
 
     @Autowired
-    public StarBotPluginDependencyDownloader(ApplicationContext context, ApplicationArguments arguments, StarBotPluginLoader loader, StarBotCoreProperties properties, HttpUtil http) {
+    public StarBotPluginDependencyDownloader(ApplicationContext context, ApplicationArguments arguments, StarBotPluginLoader loader, StarBotCoreProperties properties, HttpService http) {
         this.context = context;
         this.arguments = arguments;
         this.loader = loader;
