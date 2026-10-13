@@ -334,9 +334,16 @@ public class ChartPainter {
             left = Math.max(left, metrics.stringWidth(label) + 16);
         }
 
-        int right = 24;
+        List<String> timeLabels = new ArrayList<>(5);
+        for (int index = 0; index < 5; index++) {
+            double ratio = index / 4.0;
+            timeLabels.add(TIME_FORMAT.format(Instant.ofEpochMilli(start + (long) ((end - start) * ratio)).atZone(ZoneId.systemDefault())));
+        }
+
+        left = Math.max(left, metrics.stringWidth(timeLabels.get(0)) / 2 + 8);
+        int right = Math.max(24, metrics.stringWidth(timeLabels.get(4)) / 2 + 8);
         int top = 22;
-        int bottom = 58;
+        int bottom = Math.max(58, metrics.getHeight() + 20);
         int plotWidth = width - left - right;
         int plotHeight = height - top - bottom;
         int zeroY = yToPixel(0, yMin, yMax, top, plotHeight);
@@ -354,18 +361,6 @@ public class ChartPainter {
             draw.setColor(Color.DARK_GRAY);
             String label = tickLabels.get(index);
             draw.drawString(label, left - metrics.stringWidth(label) - 8, y + 5);
-        }
-
-        // 绘制纵向时间刻度
-        for (int index = 0; index < 5; index++) {
-            double ratio = index / 4.0;
-            int x = left + (int) (plotWidth * ratio);
-            String label = TIME_FORMAT.format(Instant.ofEpochMilli(start + (long) ((end - start) * ratio)).atZone(ZoneId.systemDefault()));
-
-            draw.setColor(Color.DARK_GRAY);
-            int labelX = Math.max(0, Math.min(width - draw.getFontMetrics().stringWidth(label),
-                    x - draw.getFontMetrics().stringWidth(label) / 2));
-            draw.drawString(label, labelX, height - 20);
         }
 
         // 绘制坐标轴
@@ -462,6 +457,18 @@ public class ChartPainter {
             }
         }
         draw.draw(line);
+
+        // 绘制时间刻度
+        int labelY = top + plotHeight + 8 + metrics.getAscent();
+        draw.setColor(Color.DARK_GRAY);
+        for (int index = 0; index < 5; index++) {
+            double ratio = index / 4.0;
+            int x = left + (int) (plotWidth * ratio);
+            String label = timeLabels.get(index);
+            int labelWidth = metrics.stringWidth(label);
+            int labelX = Math.max(8, Math.min(width - labelWidth - 8, x - labelWidth / 2));
+            draw.drawString(label, labelX, labelY);
+        }
 
         draw.dispose();
         return Optional.of(image);
