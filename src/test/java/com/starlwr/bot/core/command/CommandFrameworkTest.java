@@ -3,14 +3,19 @@ package com.starlwr.bot.core.command;
 import com.alibaba.fastjson2.JSONObject;
 import com.starlwr.bot.core.command.builtin.DisableCommand;
 import com.starlwr.bot.core.command.builtin.EnableCommand;
+import com.starlwr.bot.core.command.builtin.HelpCommand;
 import com.starlwr.bot.core.command.builtin.PingCommand;
+import com.starlwr.bot.core.command.builtin.StatusCommand;
 import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.config.StarBotCoreThreadPoolConfig;
 import com.starlwr.bot.core.message.GroupRole;
 import com.starlwr.bot.core.message.Message;
 import com.starlwr.bot.core.message.PushTargetType;
 import com.starlwr.bot.core.message.StarBotMessageSender;
+import com.starlwr.bot.core.painter.StarBotCommonPainterFactory;
 import com.starlwr.bot.core.plugin.StarBotComponent;
+import com.starlwr.bot.core.plugin.StarBotPluginLoader;
+import com.starlwr.bot.core.support.system.SystemResourceService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,7 +60,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -239,6 +249,127 @@ class CommandFrameworkTest {
     }
 
     /**
+     * 验证默认参数个数不限制命令执行
+     */
+    @Test
+    void defaultArgumentCountDoesNotRestrictDispatch() throws Exception {
+        List<List<String>> arguments = new CopyOnWriteArrayList<>();
+        var unrestricted = command("unrestricted", c -> arguments.add(c.getArguments()));
+        assertEquals(-1, unrestricted.getArgumentCount());
+        register(List.of(unrestricted));
+
+        for (String content : List.of("你好", "hello one", "你好 one two", "hello one two three")) {
+            dispatch(message(content));
+        }
+
+        assertEquals(List.of(List.of(), List.of("one"), List.of("one", "two"), List.of("one", "two", "three")), arguments);
+        assertTrue(replies.isEmpty());
+    }
+
+    /**
+     * 验证固定参数个数同时约束命令名称和别名，不符时不会调用触发规则
+     */
+    @Test
+    void fixedArgumentCountAppliesToNamesAndAliases() throws Exception {
+        List<List<String>> expectedArguments = List.of(List.of(), List.of("one"), List.of("one", "two"));
+        for (int argumentCount : List.of(0, 1, 2)) {
+            List<List<String>> arguments = new CopyOnWriteArrayList<>();
+            var fixed = spy(command("fixed", c -> arguments.add(c.getArguments())));
+            when(fixed.getArgumentCount()).thenReturn(argumentCount);
+            register(List.of(fixed));
+
+            for (String name : List.of("你好", "HeLLo")) {
+                for (String suffix : List.of("", " one", " one two", " one two three")) {
+                    dispatch(message(name + suffix));
+                }
+            }
+
+            assertEquals(List.of(expectedArguments.get(argumentCount), expectedArguments.get(argumentCount)), arguments);
+            verify(fixed, times(2)).isTrigger(any());
+        }
+        assertTrue(replies.isEmpty());
+    }
+
+    /**
+     * 验证参数不符时跳过自定义触发规则和权限提示，且不影响其他命令
+     */
+    @Test
+    void argumentMismatchSkipsCustomTriggerAndPolicyWithoutStoppingOtherCommands() throws Exception {
+        List<String> executed = new CopyOnWriteArrayList<>();
+        var custom = spy(new DefaultIdCommand() {
+            @Override
+            public int getArgumentCount() {
+                return 1;
+            }
+
+            @Override
+            public CommandPermission getPermission() {
+                return CommandPermission.OWNER;
+            }
+
+            @Override
+            public boolean isTrigger(CommandContext context) {
+                return true;
+            }
+
+            @Override
+            public void execute(CommandContext context) {
+                executed.add("custom");
+            }
+        });
+        register(List.of(custom, command("unrestricted", c -> executed.add("unrestricted"))));
+
+        dispatch(message("你好"));
+
+        verify(custom, never()).isTrigger(any());
+        verify(custom, never()).execute(any());
+        assertEquals(List.of("unrestricted"), executed);
+        assertTrue(replies.isEmpty());
+
+        properties.getCommand().getOwners().put("bot-a", List.of(9L));
+        dispatch(messageBuilder("任意命令 one").senderId(9L).build());
+
+        verify(custom).isTrigger(any());
+        verify(custom).execute(any());
+        assertEquals(List.of("unrestricted", "custom"), executed);
+    }
+
+    /**
+     * 验证统一计数沿用空白分隔规则，提及和图片占位符不计入参数个数
+     */
+    @Test
+    void fixedArgumentCountIgnoresElementsAndSplitsOnWhitespace() throws Exception {
+        List<List<String>> arguments = new CopyOnWriteArrayList<>();
+        var fixed = spy(command("fixed", c -> arguments.add(c.getArguments())));
+        when(fixed.getArgumentCount()).thenReturn(2);
+        register(List.of(fixed));
+        properties.getCommand().setPrefix("/");
+
+        dispatch(message(" {at=1} /HELLO {at=2} 参数一 \t　{image_path=/opt/a.jpg} 参数二 {at=all} "
+                + "{image_url=https://example.com/a.jpg} {image_base64=YWJj} "));
+
+        assertEquals(List.of(List.of("参数一", "参数二")), arguments);
+        assertTrue(replies.isEmpty());
+    }
+
+    /**
+     * 验证单个命令获取参数个数异常不会影响后续命令
+     */
+    @Test
+    void argumentCountFailureDoesNotStopLaterCommands() throws Exception {
+        List<String> executed = new CopyOnWriteArrayList<>();
+        var broken = spy(command("broken", c -> fail("参数个数异常的命令不应执行")));
+        when(broken.getArgumentCount()).thenThrow(new IllegalStateException("参数个数异常"));
+        register(List.of(broken, command("good", c -> executed.add("good"))));
+
+        dispatch(message("你好"));
+
+        verify(broken, never()).isTrigger(any());
+        assertEquals(List.of("good"), executed);
+        assertTrue(replies.isEmpty());
+    }
+
+    /**
      * 验证连通性命令通过统一调度匹配触发词并仅回复版本信息
      */
     @Test
@@ -248,13 +379,45 @@ class CommandFrameworkTest {
         register(List.of(new PingCommand(new BuildProperties(build))));
 
         dispatch(message("starbot"));
+        dispatch(message("StarBot 1"));
         properties.getCommand().setPrefix("/");
         dispatch(message("/StarBot"));
+        dispatch(message("/StarBot 1"));
         dispatch(message("/status"));
         dispatch(message("/ping"));
 
         assertEquals(List.of("Running on StarBot v3.0.0", "Running on StarBot v3.0.0"),
                 replies.stream().map(Message::getContent).toList());
+    }
+
+    /**
+     * 验证帮助和状态命令仅接受零个文本参数
+     */
+    @Test
+    void helpAndStatusRequireNoArguments() throws Exception {
+        var factory = mock(StarBotCommonPainterFactory.class);
+        var help = spy(new HelpCommand(registry, policy, properties, factory));
+        var status = spy(new StatusCommand(mock(BuildProperties.class), properties,
+                mock(StarBotPluginLoader.class), factory, mock(SystemResourceService.class)));
+        doNothing().when(help).execute(any());
+        doNothing().when(status).execute(any());
+        register(List.of(help, status));
+
+        for (String content : List.of("帮助 1", "help 1", "状态 1", "status 1")) {
+            dispatch(message(content));
+        }
+
+        verify(help, never()).isTrigger(any());
+        verify(status, never()).isTrigger(any());
+        verify(help, never()).execute(any());
+        verify(status, never()).execute(any());
+        assertTrue(replies.isEmpty());
+
+        dispatch(message("菜单 {at=2} {image_base64=YWJj}"));
+        dispatch(message("status"));
+
+        verify(help).execute(any());
+        verify(status).execute(any());
     }
 
     /**
@@ -875,7 +1038,7 @@ class CommandFrameworkTest {
     }
 
     /**
-     * 验证启用和禁用命令仅接受一个参数
+     * 验证启用和禁用命令静默忽略参数数量不符的消息
      */
     @Test
     void managerCommandsRequireExactlyOneArgument() throws Exception {
@@ -883,13 +1046,20 @@ class CommandFrameworkTest {
         });
         register(List.of(new DisableCommand(registry, policy), new EnableCommand(registry, policy), target));
 
-        for (String content : List.of("禁用", "禁用 a extra", "启用", "启用 a extra")) {
+        for (String content : List.of("禁用", "禁用 a extra", "disable", "disable a extra")) {
             dispatch(messageBuilder(content).role(GroupRole.ADMIN).build());
         }
 
-        assertEquals(4, replies.size());
-        assertTrue(replies.stream().allMatch(reply -> reply.getContent().startsWith("用法: ")));
+        assertTrue(replies.isEmpty());
         assertFalse(policy.evaluate(target, context(message("你好"))).isDisabled());
+
+        policy.setGroupDisabled("bot-a", 100L, target.getId(), true);
+        for (String content : List.of("启用", "启用 a extra", "enable", "enable a extra")) {
+            dispatch(messageBuilder(content).role(GroupRole.ADMIN).build());
+        }
+
+        assertTrue(replies.isEmpty());
+        assertTrue(policy.evaluate(target, context(message("你好"))).isGroupDisabled());
     }
 
     /**

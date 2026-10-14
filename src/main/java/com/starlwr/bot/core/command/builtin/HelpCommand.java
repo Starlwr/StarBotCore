@@ -134,6 +134,11 @@ public class HelpCommand implements StarBotCommand {
     }
 
     @Override
+    public int getArgumentCount() {
+        return 0;
+    }
+
+    @Override
     public void execute(CommandContext context) {
         Optional<String> optionalBase64 = render(context);
         if (optionalBase64.isPresent()) {

@@ -34,6 +34,11 @@ public class PingCommand implements StarBotCommand {
     }
 
     @Override
+    public int getArgumentCount() {
+        return 0;
+    }
+
+    @Override
     public void execute(CommandContext context) {
         context.reply("Running on StarBot v" + build.getVersion());
     }

@@ -46,8 +46,16 @@ public interface StarBotCommand {
     }
 
     /**
-     * 执行命令所需权限，默认所有人均可使用
-     * @return 执行命令所需权限
+     * 命令所需参数个数，参数自动按空白分隔，非负数表示必须恰好具有该数量的参数，参数数量不符将不会触发命令，默认 -1 表示不限制，由命令自行处理
+     * @return 命令参数个数
+     */
+    default int getArgumentCount() {
+        return -1;
+    }
+
+    /**
+     * 执行命令所需的默认权限，默认所有人均可使用，可通过 starbot.core.command.permissions 按命令 ID 覆盖
+     * @return 执行命令所需的默认权限
      */
     default CommandPermission getPermission() {
         return CommandPermission.EVERYONE;

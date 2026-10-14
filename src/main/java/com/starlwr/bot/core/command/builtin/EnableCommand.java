@@ -54,6 +54,11 @@ public class EnableCommand implements StarBotCommand {
     }
 
     @Override
+    public int getArgumentCount() {
+        return 1;
+    }
+
+    @Override
     public CommandPermission getPermission() {
         return CommandPermission.ADMIN;
     }
@@ -70,13 +75,7 @@ public class EnableCommand implements StarBotCommand {
 
     @Override
     public void execute(CommandContext context) {
-        List<String> arguments = context.getArguments();
-        if (arguments.size() != 1) {
-            context.reply("用法: " + context.getPrefix() + getUsage());
-            return;
-        }
-
-        String query = arguments.get(0);
+        String query = context.getArguments().get(0);
         List<StarBotCommand> matches = registry.find(query);
         if (CollectionUtils.isEmpty(matches)) {
             context.reply("要启用的命令不存在~");

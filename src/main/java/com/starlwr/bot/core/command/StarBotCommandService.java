@@ -126,9 +126,15 @@ public class StarBotCommandService {
         CommandContext context = optionalContext.get();
 
         // 查找所有匹配的命令
+        int argumentCount = context.getArguments().size();
         List<StarBotCommand> matched = new ArrayList<>();
         for (StarBotCommand command : registry.getCommands()) {
             try {
+                int expectedArgumentCount = command.getArgumentCount();
+                if (expectedArgumentCount >= 0 && expectedArgumentCount != argumentCount) {
+                    continue;
+                }
+
                 if (command.isTrigger(context)) {
                     matched.add(command);
                 }

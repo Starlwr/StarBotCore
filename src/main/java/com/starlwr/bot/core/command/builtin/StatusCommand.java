@@ -113,6 +113,11 @@ public class StatusCommand implements StarBotCommand {
     }
 
     @Override
+    public int getArgumentCount() {
+        return 0;
+    }
+
+    @Override
     public void execute(CommandContext context) {
         Optional<String> optionalBase64 = render();
         if (optionalBase64.isPresent()) {
