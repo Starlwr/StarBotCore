@@ -96,7 +96,7 @@ public final class CommandContext {
      * 获取机器人账号
      * @return 机器人账号
      */
-    public Long getBotId() {
+    public String getBotId() {
         return message.getBotId();
     }
 
@@ -112,7 +112,7 @@ public final class CommandContext {
      * 获取群号，仅群聊使用
      * @return 群号
      */
-    public Long getGroupId() {
+    public String getGroupId() {
         return message.getGroupId();
     }
 
@@ -128,7 +128,7 @@ public final class CommandContext {
      * 获取消息发送者账号
      * @return 消息发送者账号
      */
-    public Long getSenderId() {
+    public String getSenderId() {
         return message.getSenderId();
     }
 
@@ -200,7 +200,7 @@ public final class CommandContext {
      * 自动根据会话类型获取回复目标账号或群号
      * @return 回复目标账号或群号
      */
-    public Long getTargetId() {
+    public String getTargetId() {
         return message.getTargetId();
     }
 

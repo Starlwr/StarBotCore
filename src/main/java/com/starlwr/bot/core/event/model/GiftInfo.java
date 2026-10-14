@@ -16,7 +16,7 @@ public class GiftInfo {
     /**
      * 礼物 ID
      */
-    private Long id;
+    private String id;
 
     /**
      * 礼物名称
@@ -38,7 +38,7 @@ public class GiftInfo {
      */
     private String url;
 
-    public GiftInfo(Long id, String name, Double price, Integer count, String url) {
+    public GiftInfo(String id, String name, Double price, Integer count, String url) {
         this.id = id;
         this.name = name;
         this.price = price;

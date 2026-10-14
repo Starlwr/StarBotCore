@@ -42,12 +42,12 @@ class DefaultLiveDataServiceTest {
     /**
      * 测试主播 UID
      */
-    private static final long SOURCE_UID = 1001L;
+    private static final String SOURCE_UID = "streamer:001";
 
     /**
      * 测试观众 UID
      */
-    private static final long SENDER_UID = 2001L;
+    private static final String SENDER_UID = "viewer:002";
 
     /**
      * 并发写线程数量
@@ -162,7 +162,7 @@ class DefaultLiveDataServiceTest {
         List<JSONObject> events = service.getDanmu(PLATFORM, SOURCE_UID, JSONObject.class);
 
         assertEquals(1, events.size());
-        assertEquals(String.valueOf(SENDER_UID), events.get(0).getString("sender"));
+        assertEquals(SENDER_UID, events.get(0).getString("sender"));
         events.get(0).put("mutatedFromAllEvents", true);
         List<JSONObject> userEvents = service.getUserDanmu(
                 PLATFORM, SOURCE_UID, SENDER_UID, JSONObject.class);
@@ -172,8 +172,8 @@ class DefaultLiveDataServiceTest {
         JSONObject storedEvent = JSONObject.parseObject(Files.readString(dataPath))
                 .getJSONObject(PLATFORM)
                 .getJSONObject("Danmu")
-                .getJSONObject(String.valueOf(SOURCE_UID))
-                .getJSONArray(String.valueOf(SENDER_UID))
+                .getJSONObject(SOURCE_UID)
+                .getJSONArray(SENDER_UID)
                 .getJSONObject(0);
         assertFalse(storedEvent.containsKey("sender"));
         assertFalse(storedEvent.containsKey("mutatedFromAllEvents"));
@@ -307,9 +307,9 @@ class DefaultLiveDataServiceTest {
             DefaultLiveDataService service = new DefaultLiveDataService(properties);
             try {
                 service.onApplicationReadyEvent();
-                assertTrue(service.getLiveStatus("bilibili", 1L).isEmpty());
-                service.setLiveStatus("bilibili", 1L, true);
-                assertTrue(service.getLiveStatus("bilibili", 1L).orElseThrow());
+                assertTrue(service.getLiveStatus("bilibili", "1").isEmpty());
+                service.setLiveStatus("bilibili", "1", true);
+                assertTrue(service.getLiveStatus("bilibili", "1").orElseThrow());
             } finally {
                 service.onContextClosedEvent();
             }
@@ -321,7 +321,7 @@ class DefaultLiveDataServiceTest {
      * 验证关闭持久化后仍可正常使用内存数据
      */
     @Test
-    void persistenceDisabledStillInitializesUsableMemory() throws Exception {
+    void persistenceDisabledStillInitializesUsableMemory() {
         Path path = tempDir.resolve("disabled.json");
         StarBotCoreProperties properties = new StarBotCoreProperties();
         properties.getLive().setSaveLiveData(false);
@@ -329,8 +329,8 @@ class DefaultLiveDataServiceTest {
         DefaultLiveDataService service = new DefaultLiveDataService(properties);
         try {
             service.onApplicationReadyEvent();
-            service.setLiveStatus("bilibili", 1L, true);
-            assertTrue(service.getLiveStatus("bilibili", 1L).orElseThrow());
+            service.setLiveStatus("bilibili", "1", true);
+            assertTrue(service.getLiveStatus("bilibili", "1").orElseThrow());
         } finally {
             service.onContextClosedEvent();
         }
@@ -349,7 +349,7 @@ class DefaultLiveDataServiceTest {
         DefaultLiveDataService service = new DefaultLiveDataService(properties);
         try {
             service.onApplicationReadyEvent();
-            assertTrue(service.getLiveStatus("bilibili", 1L).isEmpty());
+            assertTrue(service.getLiveStatus("bilibili", "1").isEmpty());
         } finally {
             service.onContextClosedEvent();
         }
@@ -369,7 +369,7 @@ class DefaultLiveDataServiceTest {
         DefaultLiveDataService service = new DefaultLiveDataService(properties);
         try {
             service.onApplicationReadyEvent();
-            service.setLiveStatus("bilibili", 1L, true);
+            service.setLiveStatus("bilibili", "1", true);
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             while ((!Files.exists(path) || !Files.readString(path).contains("true")) && System.nanoTime() < deadline) {
                 Thread.sleep(30);
@@ -394,8 +394,8 @@ class DefaultLiveDataServiceTest {
         DefaultLiveDataService service = new DefaultLiveDataService(properties);
         try {
             service.onApplicationReadyEvent();
-            assertTrue(service.getLiveStatus("bilibili", 1L).orElseThrow());
-            service.setLiveStatus("bilibili", 1L, false);
+            assertTrue(service.getLiveStatus("bilibili", "1").orElseThrow());
+            service.setLiveStatus("bilibili", "1", false);
         } finally {
             service.onContextClosedEvent();
         }
@@ -415,7 +415,7 @@ class DefaultLiveDataServiceTest {
     }
 
     private DanmuEvent createDanmu(String content) {
-        LiveStreamerInfo source = new LiveStreamerInfo(SOURCE_UID, "streamer", 3001L);
+        LiveStreamerInfo source = new LiveStreamerInfo(SOURCE_UID, "streamer", "3001");
         UserInfo sender = new UserInfo(SENDER_UID, "viewer");
         return new DanmuEvent(PLATFORM, source, sender, content);
     }

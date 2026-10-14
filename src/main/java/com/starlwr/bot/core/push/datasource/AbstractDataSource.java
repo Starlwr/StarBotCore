@@ -35,7 +35,7 @@ public abstract class AbstractDataSource {
 
     protected final List<PushUser> users = new ArrayList<>();
 
-    private final Map<String, Map<Long, PushUser>> userMap = new HashMap<>();
+    private final Map<String, Map<String, PushUser>> userMap = new HashMap<>();
 
     @Autowired
     public AbstractDataSource(ApplicationEventPublisher eventPublisher, DataSourceServiceRegistry dataSourceServiceRegistry, StarBotEventHandlerService handlerService) {
@@ -283,7 +283,7 @@ public abstract class AbstractDataSource {
      * @param uid UID
      * @return 推送用户
      */
-    public Optional<PushUser> getUser(@NonNull String livePlatform, @NonNull Long uid) {
+    public Optional<PushUser> getUser(@NonNull String livePlatform, @NonNull String uid) {
         if (this.userMap.containsKey(livePlatform)) {
             return Optional.ofNullable(this.userMap.get(livePlatform).get(uid));
         } else {

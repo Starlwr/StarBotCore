@@ -28,7 +28,7 @@ public final class CommandMessage {
     /**
      * 机器人账号
      */
-    private final Long botId;
+    private final String botId;
 
     /**
      * 会话类型
@@ -38,7 +38,7 @@ public final class CommandMessage {
     /**
      * 群号，仅群聊使用
      */
-    private final Long groupId;
+    private final String groupId;
 
     /**
      * 群名称，仅群聊使用
@@ -48,7 +48,7 @@ public final class CommandMessage {
     /**
      * 消息发送者账号
      */
-    private final Long senderId;
+    private final String senderId;
 
     /**
      * 消息发送者昵称
@@ -106,7 +106,7 @@ public final class CommandMessage {
      * 自动根据会话类型获取回复目标账号或群号
      * @return 回复目标账号或群号
      */
-    public Long getTargetId() {
+    public String getTargetId() {
         return type == PushTargetType.GROUP ? groupId : senderId;
     }
 

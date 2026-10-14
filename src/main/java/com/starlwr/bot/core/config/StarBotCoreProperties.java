@@ -251,7 +251,7 @@ public class StarBotCoreProperties {
         /**
          * 主人账号列表，按推送平台名称分别配置
          */
-        private Map<String, List<Long>> owners = new HashMap<>();
+        private Map<String, List<String>> owners = new HashMap<>();
 
         /**
          * 命令禁用配置文件路径

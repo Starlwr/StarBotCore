@@ -13,7 +13,7 @@ public class UserInfo {
     /**
      * UID
      */
-    private Long uid;
+    private String uid;
 
     /**
      * 昵称
@@ -25,12 +25,12 @@ public class UserInfo {
      */
     private String face;
 
-    public UserInfo(Long uid, String uname) {
+    public UserInfo(String uid, String uname) {
         this.uid = uid;
         this.uname = uname;
     }
 
-    public UserInfo(Long uid, String uname, String face) {
+    public UserInfo(String uid, String uname, String face) {
         this.uid = uid;
         this.uname = uname;
         this.face = face;

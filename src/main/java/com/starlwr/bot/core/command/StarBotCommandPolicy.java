@@ -57,7 +57,7 @@ public class StarBotCommandPolicy {
         /**
          * 群号
          */
-        private final Long groupId;
+        private final String groupId;
     }
 
     /**
@@ -128,7 +128,7 @@ public class StarBotCommandPolicy {
                 }
 
                 for (Object entry : rules) {
-                    if (!(entry instanceof JSONObject rule) || !(rule.get("platform") instanceof String platform) || StringUtils.isBlank(platform) || rule.getLong("groupId") == null || !(rule.get("disabled") instanceof JSONArray ids)) {
+                    if (!(entry instanceof JSONObject rule) || !(rule.get("platform") instanceof String platform) || StringUtils.isBlank(platform) || rule.getString("groupId") == null || !(rule.get("disabled") instanceof JSONArray ids)) {
                         throw new IllegalArgumentException("命令禁用配置文件格式错误, 禁用规则缺少有效的 platform/groupId/disabled, 请检查后再尝试启动: " + entry);
                     }
 
@@ -140,7 +140,7 @@ public class StarBotCommandPolicy {
                         commands.add(value);
                     }
 
-                    GroupKey key = new GroupKey(platform, rule.getLong("groupId"));
+                    GroupKey key = new GroupKey(platform, rule.getString("groupId"));
                     if (loaded.putIfAbsent(key, Set.copyOf(commands)) != null) {
                         throw new IllegalArgumentException("命令禁用配置文件格式错误, 配置中存在重复的群, 请检查后再尝试启动: " + entry);
                     }
@@ -196,7 +196,7 @@ public class StarBotCommandPolicy {
      * @param disabled 是否禁用
      * @return 是否实际修改
      */
-    public synchronized boolean setGroupDisabled(String platform, Long groupId, String commandId, boolean disabled) {
+    public synchronized boolean setGroupDisabled(String platform, String groupId, String commandId, boolean disabled) {
         GroupKey key = new GroupKey(Objects.requireNonNull(platform), Objects.requireNonNull(groupId));
         Objects.requireNonNull(commandId);
 

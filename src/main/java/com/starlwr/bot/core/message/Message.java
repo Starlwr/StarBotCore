@@ -39,7 +39,7 @@ public class Message {
     /**
      * 账号或群号，根据推送目标类型而定
      */
-    private Long num;
+    private String num;
 
     /**
      * 可包含占位符的消息内容
@@ -104,7 +104,7 @@ public class Message {
      * @param content 可包含占位符的消息内容
      * @return 通过 next 字段和 previous 字段相连接的消息列表
      */
-    public static List<Message> create(String platform, PushTargetType type, Long num, String content) {
+    public static List<Message> create(String platform, PushTargetType type, String num, String content) {
         List<Message> messages = new ArrayList<>();
 
         String[] parts = content.split("\\{next}");

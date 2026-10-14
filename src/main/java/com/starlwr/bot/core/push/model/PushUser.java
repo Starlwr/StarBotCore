@@ -33,7 +33,7 @@ public class PushUser {
      * UID
      */
     @Column(name = "uid")
-    private Long uid;
+    private String uid;
 
     /**
      * 昵称，非必填，会自动获取
@@ -45,7 +45,7 @@ public class PushUser {
      * 房间号，非必填，会自动获取
      */
     @Column(name = "room_id")
-    private Long roomId;
+    private String roomId;
 
     /**
      * 头像，非必填，会自动获取
@@ -108,7 +108,7 @@ public class PushUser {
      * @return 兼容未开通直播间的房间号字符串
      */
     public String getRoomIdString() {
-        return roomId == null ? "未开通" : roomId.toString();
+        return roomId == null ? "未开通" : roomId;
     }
 
     /**

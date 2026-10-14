@@ -403,7 +403,7 @@ class StatusCommandTest {
      * @return 命令上下文
      */
     private static CommandContext context(StarBotMessageSender sender) {
-        CommandMessage message = CommandMessage.builder().platform("test").senderId(1L)
+        CommandMessage message = CommandMessage.builder().platform("test").senderId("1")
                 .type(PushTargetType.FRIEND).content("状态").messageSender(sender).build();
         return CommandContext.tryCreate(message, "").orElseThrow();
     }

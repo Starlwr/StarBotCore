@@ -90,7 +90,7 @@ class HelpCommandTest {
                 new EnableCommand(registry, policy), new PingCommand(new BuildProperties(build)), new StatusCommand(new BuildProperties(build), properties,
                         mock(StarBotPluginLoader.class), factory, mock(SystemResourceService.class)), hello));
         properties.getCommand().getDisabled().add(hello.getId());
-        var message = CommandMessage.builder().platform("bot-a").senderId(2L).groupId(100L)
+        var message = CommandMessage.builder().platform("bot-a").senderId("2").groupId("100")
                 .type(PushTargetType.GROUP).content("帮助").build();
         var context = CommandContext.tryCreate(message, "").orElseThrow();
         var image = decode(render(help, context));
@@ -221,7 +221,7 @@ class HelpCommandTest {
         var hello = command("test.hello");
         refresh(registry, applicationContext, List.of(hello));
         var help = new HelpCommand(registry, policy, properties, mock(StarBotCommonPainterFactory.class));
-        var message = CommandMessage.builder().platform("bot-a").senderId(2L).groupId(100L)
+        var message = CommandMessage.builder().platform("bot-a").senderId("2").groupId("100")
                 .type(PushTargetType.GROUP).content("帮助").build();
         var context = CommandContext.tryCreate(message, "").orElseThrow();
 
@@ -250,7 +250,7 @@ class HelpCommandTest {
         when(factory.create(anyInt(), anyInt(), anyBoolean())).thenThrow(new IllegalStateException("测试绘图失败"));
         var help = new HelpCommand(registry, policy, properties, factory);
         refresh(registry, applicationContext, List.of(help));
-        var message = CommandMessage.builder().platform("bot-a").senderId(2L).type(PushTargetType.FRIEND).content("帮助").build();
+        var message = CommandMessage.builder().platform("bot-a").senderId("2").type(PushTargetType.FRIEND).content("帮助").build();
         var context = CommandContext.tryCreate(message, "").orElseThrow();
         assertThrows(IllegalStateException.class, () -> help.execute(context));
     }

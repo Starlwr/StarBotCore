@@ -1,5 +1,6 @@
 package com.starlwr.bot.core.command;
 
+import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.starlwr.bot.core.command.builtin.DisableCommand;
 import com.starlwr.bot.core.command.builtin.EnableCommand;
@@ -143,8 +144,8 @@ class CommandFrameworkTest {
      * @return 命令消息构建器
      */
     private CommandMessage.CommandMessageBuilder messageBuilder(String content) {
-        return CommandMessage.builder().platform("bot-a").botId(1L)
-                .senderId(2L).groupId(100L).type(PushTargetType.GROUP).content(content)
+        return CommandMessage.builder().platform("bot-a").botId("1")
+                .senderId("2").groupId("100").type(PushTargetType.GROUP).content(content)
                 .rawMessage(new JSONObject().fluentPut("raw_message", content)).messageSender(sender);
     }
 
@@ -326,8 +327,8 @@ class CommandFrameworkTest {
         assertEquals(List.of("unrestricted"), executed);
         assertTrue(replies.isEmpty());
 
-        properties.getCommand().getOwners().put("bot-a", List.of(9L));
-        dispatch(messageBuilder("任意命令 one").senderId(9L).build());
+        properties.getCommand().getOwners().put("bot-a", List.of("9"));
+        dispatch(messageBuilder("任意命令 one").senderId("9").build());
 
         verify(custom).isTrigger(any());
         verify(custom).execute(any());
@@ -603,7 +604,7 @@ class CommandFrameworkTest {
      */
     @Test
     void permissionAndScopeMatrix() {
-        properties.getCommand().getOwners().put("bot-a", List.of(9L));
+        properties.getCommand().getOwners().put("bot-a", List.of("9"));
         for (CommandPermission permission : CommandPermission.values()) {
             for (CommandScope scope : CommandScope.values()) {
                 StarBotCommand command = new DefaultIdCommand() {
@@ -619,10 +620,10 @@ class CommandFrameworkTest {
                 };
                 for (PushTargetType type : List.of(PushTargetType.FRIEND, PushTargetType.GROUP)) {
                     for (var role : GroupRole.values()) {
-                        for (long user : List.of(2L, 9L)) {
+                        for (String user : List.of("2", "9")) {
                             boolean expectedScope = scope == CommandScope.ALL || (scope == CommandScope.GROUP) == (type == PushTargetType.GROUP);
                             boolean isAdmin = type == PushTargetType.GROUP && (role == GroupRole.OWNER || role == GroupRole.ADMIN);
-                            boolean expectedPermission = permission == CommandPermission.EVERYONE || user == 9L
+                            boolean expectedPermission = permission == CommandPermission.EVERYONE || "9".equals(user)
                                     || permission == CommandPermission.ADMIN && isAdmin;
                             var decision = policy.evaluate(command, context(messageBuilder("x")
                                     .type(type).role(role).senderId(user).build()));
@@ -639,8 +640,8 @@ class CommandFrameworkTest {
      */
     @Test
     void permissionOverridesReplaceCommandDefaults() {
-        properties.getCommand().getOwners().put("bot-a", List.of(9L));
-        properties.getCommand().getOwners().put("bot-b", List.of(8L));
+        properties.getCommand().getOwners().put("bot-a", List.of("9"));
+        properties.getCommand().getOwners().put("bot-b", List.of("8"));
         for (CommandPermission defaultPermission : CommandPermission.values()) {
             StarBotCommand command = new DefaultIdCommand() {
                 @Override
@@ -653,8 +654,8 @@ class CommandFrameworkTest {
                 for (String platform : List.of("bot-a", "bot-b", "unconfigured")) {
                     for (PushTargetType type : List.of(PushTargetType.FRIEND, PushTargetType.GROUP)) {
                         for (var role : GroupRole.values()) {
-                            for (long user : List.of(2L, 8L, 9L)) {
-                                boolean owner = "bot-a".equals(platform) && user == 9L || "bot-b".equals(platform) && user == 8L;
+                            for (String user : List.of("2", "8", "9")) {
+                                boolean owner = "bot-a".equals(platform) && "9".equals(user) || "bot-b".equals(platform) && "8".equals(user);
                                 boolean admin = type == PushTargetType.GROUP && (role == GroupRole.OWNER || role == GroupRole.ADMIN);
                                 boolean expected = override == CommandPermission.EVERYONE || owner || override == CommandPermission.ADMIN && admin;
                                 var decision = policy.evaluate(command, context(messageBuilder("x")
@@ -690,8 +691,8 @@ class CommandFrameworkTest {
         assertEquals("您没有执行此命令的权限~", replies.get(0).getContent());
 
         executed.clear();
-        properties.getCommand().getOwners().put("bot-a", List.of(9L));
-        dispatch(messageBuilder("hello").senderId(9L).build());
+        properties.getCommand().getOwners().put("bot-a", List.of("9"));
+        dispatch(messageBuilder("hello").senderId("9").build());
         assertEquals(List.of("restricted", "unchanged"), executed);
     }
 
@@ -710,7 +711,7 @@ class CommandFrameworkTest {
         var group = context(message("x"));
         assertTrue(policy.evaluate(command, group).isPermissionAllowed());
         assertFalse(policy.evaluate(command, group).isAllowed());
-        policy.setGroupDisabled("bot-a", 100L, command.getId(), true);
+        policy.setGroupDisabled("bot-a", "100", command.getId(), true);
         assertTrue(policy.evaluate(command, group).isGroupDisabled());
         assertFalse(policy.evaluate(command, group).isAllowed());
 
@@ -726,8 +727,8 @@ class CommandFrameworkTest {
      */
     @Test
     void ownerPermissionsAreIsolatedByPlatform() {
-        properties.getCommand().getOwners().put("bot-a", List.of(9L));
-        properties.getCommand().getOwners().put("bot-b", List.of(8L));
+        properties.getCommand().getOwners().put("bot-a", List.of("9"));
+        properties.getCommand().getOwners().put("bot-b", List.of("8"));
         for (CommandPermission permission : List.of(CommandPermission.OWNER, CommandPermission.ADMIN)) {
             StarBotCommand command = new DefaultIdCommand() {
                 @Override
@@ -736,14 +737,14 @@ class CommandFrameworkTest {
                 }
             };
             for (PushTargetType type : List.of(PushTargetType.FRIEND, PushTargetType.GROUP)) {
-                CommandMessage owner = messageBuilder("x").type(type).senderId(9L).build();
+                CommandMessage owner = messageBuilder("x").type(type).senderId("9").build();
                 assertTrue(policy.evaluate(command, context(owner)).isAllowed());
                 assertFalse(policy.evaluate(command, context(messageBuilder("x")
-                        .type(type).senderId(9L).platform("bot-b").build())).isAllowed());
+                        .type(type).senderId("9").platform("bot-b").build())).isAllowed());
                 assertFalse(policy.evaluate(command, context(messageBuilder("x")
-                        .type(type).senderId(9L).platform("unconfigured").build())).isAllowed());
+                        .type(type).senderId("9").platform("unconfigured").build())).isAllowed());
                 assertTrue(policy.evaluate(command, context(messageBuilder("x")
-                        .type(type).platform("bot-b").senderId(8L).build())).isAllowed());
+                        .type(type).platform("bot-b").senderId("8").build())).isAllowed());
             }
         }
     }
@@ -793,15 +794,15 @@ class CommandFrameworkTest {
     void groupPersistenceIsolationAndGlobalPriority() throws Exception {
         StarBotCommand command = command("persist", c -> {
         });
-        assertTrue(policy.setGroupDisabled("bot-a", 100L, "persist", true));
-        assertFalse(policy.setGroupDisabled("bot-a", 100L, "persist", true));
+        assertTrue(policy.setGroupDisabled("bot-a", "100", "persist", true));
+        assertFalse(policy.setGroupDisabled("bot-a", "100", "persist", true));
         assertTrue(Files.readString(directory.resolve("disabled-command.json")).contains("\"persist\""));
         policy.onApplicationReadyEvent();
         assertTrue(policy.evaluate(command, context(message("你好"))).isGroupDisabled());
-        assertFalse(policy.evaluate(command, context(messageBuilder("你好").groupId(101L).build())).isDisabled());
+        assertFalse(policy.evaluate(command, context(messageBuilder("你好").groupId("101").build())).isDisabled());
         assertFalse(policy.evaluate(command, context(messageBuilder("你好").platform("bot-b").build())).isDisabled());
         properties.getCommand().getDisabled().add("persist");
-        policy.setGroupDisabled("bot-a", 100L, "persist", false);
+        policy.setGroupDisabled("bot-a", "100", "persist", false);
         assertTrue(policy.evaluate(command, context(message("你好"))).isGlobalDisabled());
     }
 
@@ -817,7 +818,7 @@ class CommandFrameworkTest {
             assertThrows(IllegalStateException.class, invalid::onApplicationReadyEvent);
             assertEquals(content, Files.readString(path));
         }
-        policy.setGroupDisabled("bot-a", 100L, "x", true);
+        policy.setGroupDisabled("bot-a", "100", "x", true);
         Files.writeString(path, "broken");
         assertThrows(IllegalStateException.class, policy::onApplicationReadyEvent);
         assertTrue(policy.evaluate(command("x", c -> {
@@ -857,13 +858,13 @@ class CommandFrameworkTest {
      */
     @Test
     void failedImmediateSavePreservesCurrentMemoryState() throws Exception {
-        policy.setGroupDisabled("bot-a", 100L, "x", true);
+        policy.setGroupDisabled("bot-a", "100", "x", true);
         Path original = directory.resolve("disabled-command.json");
 
         Path blocker = directory.resolve("not-a-directory");
         Files.writeString(blocker, "file");
         properties.getCommand().setDisabledCommandPath(blocker.resolve("rules.json").toString());
-        policy.setGroupDisabled("bot-a", 100L, "x", false);
+        policy.setGroupDisabled("bot-a", "100", "x", false);
         assertFalse(policy.evaluate(command("x", c -> {
         }), context(message("你好"))).isGroupDisabled());
         assertTrue(Files.readString(original).contains("\"x\""));
@@ -876,7 +877,7 @@ class CommandFrameworkTest {
     void concurrentGroupUpdatesSurviveReload() throws Exception {
         List<CompletableFuture<Void>> writes = new ArrayList<>();
         for (long i = 0; i < 20; i++) {
-            long group = i;
+            String group = String.valueOf(i);
             writes.add(CompletableFuture.runAsync(
                     () -> policy.setGroupDisabled("bot-a", group, "x", true)));
         }
@@ -885,7 +886,7 @@ class CommandFrameworkTest {
         policy.onApplicationReadyEvent();
         for (long i = 0; i < 20; i++) {
             assertTrue(policy.evaluate(command("x", c -> {
-            }), context(messageBuilder("你好").groupId(i).build())).isGroupDisabled());
+            }), context(messageBuilder("你好").groupId(String.valueOf(i)).build())).isGroupDisabled());
         }
     }
 
@@ -899,7 +900,7 @@ class CommandFrameworkTest {
         properties.getCommand().getDisabled().add("a");
         dispatch(message("你好"));
         assertEquals(List.of("b"), executed);
-        policy.setGroupDisabled("bot-a", 100L, "b", true);
+        policy.setGroupDisabled("bot-a", "100", "b", true);
         dispatch(message("你好"));
         assertEquals(List.of("b"), executed);
         assertEquals(1, replies.size());
@@ -914,9 +915,9 @@ class CommandFrameworkTest {
     @Test
     void changesAreSavedImmediatelyAndEmptyStatePersists() throws Exception {
         Path path = directory.resolve("disabled-command.json");
-        policy.setGroupDisabled("bot-a", 100L, "x", true);
+        policy.setGroupDisabled("bot-a", "100", "x", true);
         assertTrue(Files.readString(path).contains("\"x\""));
-        policy.setGroupDisabled("bot-a", 100L, "x", false);
+        policy.setGroupDisabled("bot-a", "100", "x", false);
         assertEquals("[]", Files.readString(path));
         StarBotCommandPolicy restored = new StarBotCommandPolicy(properties);
         restored.onApplicationReadyEvent();
@@ -946,7 +947,7 @@ class CommandFrameworkTest {
                 return;
             }
             application.getBean(StarBotCommandPolicy.class)
-                    .setGroupDisabled("bot-a", 100L, "saved-on-exit", true);
+                    .setGroupDisabled("bot-a", "100", "saved-on-exit", true);
         }));
         application.register(StarBotCoreThreadPoolConfig.class, StarBotCommandPolicy.class,
                 StarBotCommandRegistry.class, StarBotCommandService.class);
@@ -1053,7 +1054,7 @@ class CommandFrameworkTest {
         assertTrue(replies.isEmpty());
         assertFalse(policy.evaluate(target, context(message("你好"))).isDisabled());
 
-        policy.setGroupDisabled("bot-a", 100L, target.getId(), true);
+        policy.setGroupDisabled("bot-a", "100", target.getId(), true);
         for (String content : List.of("启用", "启用 a extra", "enable", "enable a extra")) {
             dispatch(messageBuilder(content).role(GroupRole.ADMIN).build());
         }
@@ -1070,10 +1071,39 @@ class CommandFrameworkTest {
         context(message("x")).reply("文本{image_url=https://example.com/a.png}{next}{at=2}");
         assertEquals(2, replies.size());
         assertEquals("bot-a", replies.get(0).getPlatform());
-        assertEquals(100L, replies.get(0).getNum());
+        assertEquals("100", replies.get(0).getNum());
         assertEquals(PushTargetType.GROUP, replies.get(0).getType());
         assertTrue(replies.get(0).getContent().contains("{image_url="));
         assertSame(replies.get(1), replies.get(0).getNext());
+    }
+
+    /**
+     * 验证字符串账号的主人权限、群禁用持久化和回复目标保持一致
+     */
+    @Test
+    void opaqueIdentifiersWorkAcrossPermissionsPersistenceAndReplies() throws Exception {
+        String ownerId = "owner:0001";
+        String groupId = "group:0007";
+        properties.getCommand().getOwners().put("bot-a", List.of(ownerId));
+        StarBotCommand command = new DefaultIdCommand() {
+            @Override
+            public CommandPermission getPermission() {
+                return CommandPermission.OWNER;
+            }
+        };
+        CommandContext owner = context(messageBuilder("x").senderId(ownerId).groupId(groupId).build());
+        assertTrue(policy.evaluate(command, owner).isAllowed());
+        assertFalse(policy.evaluate(command,
+                context(messageBuilder("x").senderId("owner:1").groupId(groupId).build())).isAllowed());
+
+        policy.setGroupDisabled("bot-a", groupId, command.getId(), true);
+        policy.onApplicationReadyEvent();
+        assertTrue(policy.evaluate(command, owner).isGroupDisabled());
+        assertEquals(groupId, JSON.parseArray(Files.readString(directory.resolve("disabled-command.json")))
+                .getJSONObject(0).get("groupId"));
+
+        owner.reply("字符串目标");
+        assertEquals(groupId, replies.get(0).getNum());
     }
 
     /**
@@ -1094,7 +1124,7 @@ class CommandFrameworkTest {
         assertEquals("custom.json", defaults.getCommand().getDisabledCommandPath());
         assertTrue(defaults.getCommand().isMention());
         assertEquals(3, defaults.getCommandThread().getCorePoolSize());
-        assertEquals(List.of(123L), defaults.getCommand().getOwners().get("bot-a"));
+        assertEquals(List.of("123"), defaults.getCommand().getOwners().get("bot-a"));
         assertEquals(Map.of("starbot.builtin.status", CommandPermission.OWNER,
                 "com.example.HelloCommand", CommandPermission.ADMIN), defaults.getCommand().getPermissions());
         assertEquals("command-thread-", executor.getThreadNamePrefix());
@@ -1133,7 +1163,7 @@ class CommandFrameworkTest {
             var first = submit(limited, message("你好"));
             assertTrue(started.await(3, TimeUnit.SECONDS));
             assertThrows(ExecutionException.class, () -> submit(limited,
-                    messageBuilder("你好").groupId(200L).build()).get(1, TimeUnit.SECONDS));
+                    messageBuilder("你好").groupId("200").build()).get(1, TimeUnit.SECONDS));
             release.countDown();
             first.get(3, TimeUnit.SECONDS);
         } finally {

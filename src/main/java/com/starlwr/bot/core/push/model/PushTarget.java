@@ -53,7 +53,7 @@ public class PushTarget {
      * 账号或群号，根据推送目标类型而定
      */
     @Column(name = "num")
-    private Long num;
+    private String num;
 
     /**
      * 是否启用

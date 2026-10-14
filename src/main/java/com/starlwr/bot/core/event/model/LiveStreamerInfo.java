@@ -13,14 +13,14 @@ public class LiveStreamerInfo extends UserInfo {
     /**
      * 房间号
      */
-    private Long roomId;
+    private String roomId;
 
-    public LiveStreamerInfo(Long uid, String uname, Long roomId) {
+    public LiveStreamerInfo(String uid, String uname, String roomId) {
         super(uid, uname);
         this.roomId = roomId;
     }
 
-    public LiveStreamerInfo(Long uid, String uname, Long roomId, String face) {
+    public LiveStreamerInfo(String uid, String uname, String roomId, String face) {
         super(uid, uname, face);
         this.roomId = roomId;
     }
@@ -30,6 +30,6 @@ public class LiveStreamerInfo extends UserInfo {
      * @return 兼容未开通直播间的房间号字符串
      */
     public String getRoomIdString() {
-        return roomId == null ? "未开通" : roomId.toString();
+        return roomId == null ? "未开通" : roomId;
     }
 }

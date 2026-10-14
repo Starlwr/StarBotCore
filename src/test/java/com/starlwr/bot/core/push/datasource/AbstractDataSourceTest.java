@@ -109,21 +109,21 @@ class AbstractDataSourceTest {
      */
     @Test
     void reloadUsesNewConfigurationForExistingUsers(@TempDir Path directory) throws IOException {
-        PushUser original = addUser("bilibili", 1001L);
-        PushUser removed = addUser("bilibili", 1002L);
+        PushUser original = addUser("bilibili", "1001");
+        PushUser removed = addUser("bilibili", "1002");
         Path path = directory.resolve("datasource.json");
         Files.writeString(path, """
                 [{
-                    "uid": 1001,
+                    "uid": "1001",
                     "platform": "bilibili",
                     "targets": [{
                         "platform": "test-bot",
                         "type": 1,
-                        "num": 2002,
+                        "num": "2002",
                         "messages": [{"handler": "test.live"}]
                     }]
                 }, {
-                    "uid": 1003,
+                    "uid": "1003",
                     "platform": "bilibili"
                 }]
                 """);
@@ -132,12 +132,12 @@ class AbstractDataSourceTest {
 
         ReflectionTestUtils.invokeMethod(dataSource, "reload");
 
-        PushUser updated = dataSource.getUser("bilibili", 1001L).orElseThrow();
+        PushUser updated = dataSource.getUser("bilibili", "1001").orElseThrow();
         assertNotSame(original, updated);
-        assertEquals(2002L, updated.getTargets().get(0).getNum());
+        assertEquals("2002", updated.getTargets().get(0).getNum());
         assertEquals(2, dataSource.getAllUsers().size());
-        assertTrue(dataSource.getUser("bilibili", 1002L).isEmpty());
-        assertTrue(dataSource.getUser("bilibili", 1003L).isPresent());
+        assertTrue(dataSource.getUser("bilibili", "1002").isEmpty());
+        assertTrue(dataSource.getUser("bilibili", "1003").isPresent());
         assertEquals(1, eventsOfType(StarBotDataSourceAddEvent.class).size());
         assertEquals(1, eventsOfType(StarBotDataSourceUpdateEvent.class).size());
         assertEquals(1, removeEvents.size());
@@ -149,11 +149,11 @@ class AbstractDataSourceTest {
      */
     @Test
     void addSingleUserInitializesAndStoresUser() {
-        PushUser user = parseUser("bilibili", 1001L, true);
+        PushUser user = parseUser("bilibili", "1001", true);
 
         dataSource.add(user);
 
-        assertSame(user, dataSource.getUser("bilibili", 1001L).orElseThrow());
+        assertSame(user, dataSource.getUser("bilibili", "1001").orElseThrow());
         assertTrue(user.hasEnabledLiveEvent());
     }
 
@@ -162,13 +162,13 @@ class AbstractDataSourceTest {
      */
     @Test
     void updateKeepsAllQueriesConsistent() {
-        addUser("bilibili", 1001L);
-        PushUser updated = parseUser("bilibili", 1001L, true);
+        addUser("bilibili", "1001");
+        PushUser updated = parseUser("bilibili", "1001", true);
         updated.setUname("更新后的主播");
 
         dataSource.update(updated);
 
-        assertSame(updated, dataSource.getUser("bilibili", 1001L).orElseThrow());
+        assertSame(updated, dataSource.getUser("bilibili", "1001").orElseThrow());
         assertSame(updated, dataSource.getUsers("bilibili").get(0));
         assertSame(updated, dataSource.getAllUsers().get(0));
     }
@@ -178,15 +178,15 @@ class AbstractDataSourceTest {
      */
     @Test
     void removeUsesStoredUserWhenOnlyIdentityIsProvided() {
-        PushUser original = addUser("bilibili", 1001L);
+        PushUser original = addUser("bilibili", "1001");
         PushUser identity = new PushUser();
         identity.setPlatform("bilibili");
-        identity.setUid(1001L);
+        identity.setUid("1001");
 
         dataSource.remove(identity);
 
         assertRemoved(original);
-        assertEquals(3001L, removeEvents.get(0).getUser().getRoomId());
+        assertEquals("3001", removeEvents.get(0).getUser().getRoomId());
     }
 
     /**
@@ -194,8 +194,8 @@ class AbstractDataSourceTest {
      */
     @Test
     void disablingParsedUserPublishesInitializedStoredUser() {
-        PushUser original = addUser("bilibili", 1001L);
-        PushUser disabled = parseUser("bilibili", 1001L, false);
+        PushUser original = addUser("bilibili", "1001");
+        PushUser disabled = parseUser("bilibili", "1001", false);
         assertNull(disabled.getTargets().get(0).getMessages().get(0).getEventClass());
         eventListener = event -> assertTrue(event.getUser().hasEnabledLiveEvent(), "删除事件应保留用户原有的直播事件类型");
 
@@ -210,13 +210,13 @@ class AbstractDataSourceTest {
      */
     @Test
     void removeKeepsUserWithSameUidOnAnotherPlatform() {
-        PushUser original = addUser("bilibili", 1001L);
-        PushUser other = addUser("other", 1001L);
+        PushUser original = addUser("bilibili", "1001");
+        PushUser other = addUser("other", "1001");
 
-        dataSource.remove(parseUser("bilibili", 1001L, false));
+        dataSource.remove(parseUser("bilibili", "1001", false));
 
         assertRemoved(original);
-        assertSame(other, dataSource.getUser("other", 1001L).orElseThrow());
+        assertSame(other, dataSource.getUser("other", "1001").orElseThrow());
         assertEquals(List.of(other), dataSource.getAllUsers());
     }
 
@@ -225,10 +225,10 @@ class AbstractDataSourceTest {
      */
     @Test
     void removeDoesNotRequireRefreshingUserInfo() {
-        PushUser original = addUser("bilibili", 1001L);
+        PushUser original = addUser("bilibili", "1001");
         doThrow(new IllegalStateException("平台接口不可用")).when(service).completePushUser(any(PushUser.class));
 
-        dataSource.remove(parseUser("bilibili", 1001L, false));
+        dataSource.remove(parseUser("bilibili", "1001", false));
 
         assertRemoved(original);
     }
@@ -238,12 +238,12 @@ class AbstractDataSourceTest {
      */
     @ParameterizedTest
     @CsvSource({"other, 1001", "bilibili, 1002"})
-    void removeRejectsUnknownUser(String platform, long uid) {
-        PushUser original = addUser("bilibili", 1001L);
+    void removeRejectsUnknownUser(String platform, String uid) {
+        PushUser original = addUser("bilibili", "1001");
 
         assertThrows(DataSourceException.class, () -> dataSource.remove(parseUser(platform, uid, false)));
 
-        assertSame(original, dataSource.getUser("bilibili", 1001L).orElseThrow());
+        assertSame(original, dataSource.getUser("bilibili", "1001").orElseThrow());
         assertEquals(List.of(original), dataSource.getAllUsers());
         assertTrue(removeEvents.isEmpty());
     }
@@ -258,7 +258,7 @@ class AbstractDataSourceTest {
          */
         @Test
         void singleDisabledUserIsIgnored() {
-            dataSource.add(parseUser("bilibili", 1001L, false));
+            dataSource.add(parseUser("bilibili", "1001", false));
 
             assertTrue(dataSource.getAllUsers().isEmpty());
             assertTrue(events.isEmpty());
@@ -270,11 +270,11 @@ class AbstractDataSourceTest {
          */
         @Test
         void batchAddFiltersDisabledUsersTargetsAndMessages() {
-            PushUser enabled = configuredUser("bilibili", 1001L);
-            PushUser disabled = parseUser("bilibili", 1001L, false);
+            PushUser enabled = configuredUser("bilibili", "1001");
+            PushUser disabled = parseUser("bilibili", "1001", false);
             PushTarget target = enabled.getTargets().get(0);
             addMessage(target, "test.dynamic", false, null);
-            PushTarget disabledTarget = addTarget(enabled, 2002L, false);
+            PushTarget disabledTarget = addTarget(enabled, "2002", false);
             addMessage(disabledTarget, "test.live", true, null);
 
             dataSource.add(new ArrayList<>(List.of(enabled, disabled)));
@@ -293,9 +293,9 @@ class AbstractDataSourceTest {
         void batchAddCompletesUsersByPlatformAndPublishesEachUser() {
             var otherService = mock(DataSourceService.class);
             when(registry.getDataSourceService("other")).thenReturn(Optional.of(otherService));
-            PushUser first = configuredUser("bilibili", 1001L);
-            PushUser second = configuredUser("bilibili", 1002L);
-            PushUser other = configuredUser("other", 1001L);
+            PushUser first = configuredUser("bilibili", "1001");
+            PushUser second = configuredUser("bilibili", "1002");
+            PushUser other = configuredUser("other", "1001");
             doAnswer(invocation -> {
                 List<PushUser> users = invocation.getArgument(0);
                 users.forEach(user -> user.setUname("补全后的主播"));
@@ -318,14 +318,14 @@ class AbstractDataSourceTest {
          */
         @Test
         void duplicateUsersInBatchAreRejectedBeforeAnyWrites() {
-            PushUser first = configuredUser("bilibili", 1001L);
-            PushUser duplicate = configuredUser("bilibili", 1001L);
+            PushUser first = configuredUser("bilibili", "1001");
+            PushUser duplicate = configuredUser("bilibili", "1001");
 
             assertThrows(DataSourceException.class,
                     () -> dataSource.add(new ArrayList<>(List.of(first, duplicate))));
 
             assertTrue(dataSource.getAllUsers().isEmpty());
-            assertTrue(dataSource.getUser("bilibili", 1001L).isEmpty());
+            assertTrue(dataSource.getUser("bilibili", "1001").isEmpty());
             assertTrue(events.isEmpty());
             verifyNoInteractions(service, handlerService);
         }
@@ -335,16 +335,16 @@ class AbstractDataSourceTest {
          */
         @Test
         void existingUserInBatchPreventsPartialAdds() {
-            PushUser original = addUser("bilibili", 1001L);
-            PushUser added = configuredUser("bilibili", 1002L);
+            PushUser original = addUser("bilibili", "1001");
+            PushUser added = configuredUser("bilibili", "1002");
             clearEvents();
             clearInvocations(service, handlerService);
 
             assertThrows(DataSourceException.class, () -> dataSource.add(new ArrayList<>(
-                    List.of(added, configuredUser("bilibili", 1001L)))));
+                    List.of(added, configuredUser("bilibili", "1001")))));
 
             assertStoredUsers(original);
-            assertTrue(dataSource.getUser("bilibili", 1002L).isEmpty());
+            assertTrue(dataSource.getUser("bilibili", "1002").isEmpty());
             assertTrue(events.isEmpty());
             verifyNoInteractions(service, handlerService);
         }
@@ -355,13 +355,13 @@ class AbstractDataSourceTest {
         @Test
         void unsupportedPlatformsAreSkippedWithoutAffectingSupportedUsers() {
             when(registry.getDataSourceService("unsupported")).thenReturn(Optional.empty());
-            PushUser supported = configuredUser("bilibili", 1001L);
-            PushUser unsupported = configuredUser("unsupported", 1002L);
+            PushUser supported = configuredUser("bilibili", "1001");
+            PushUser unsupported = configuredUser("unsupported", "1002");
 
             dataSource.add(new ArrayList<>(List.of(unsupported, supported)));
 
             assertStoredUsers(supported);
-            assertTrue(dataSource.getUser("unsupported", 1002L).isEmpty());
+            assertTrue(dataSource.getUser("unsupported", "1002").isEmpty());
             assertEquals(1, events.size());
             assertSame(supported, events.get(0).getUser());
         }
@@ -373,12 +373,12 @@ class AbstractDataSourceTest {
         void completionFailureLeavesDataSourceUnchanged() {
             var failure = new IllegalStateException("平台接口不可用");
             doThrow(failure).when(service).completePushUsers(anyList());
-            PushUser user = configuredUser("bilibili", 1001L);
+            PushUser user = configuredUser("bilibili", "1001");
 
             assertSame(failure, assertThrows(IllegalStateException.class, () -> dataSource.add(user)));
 
             assertTrue(dataSource.getAllUsers().isEmpty());
-            assertTrue(dataSource.getUser("bilibili", 1001L).isEmpty());
+            assertTrue(dataSource.getUser("bilibili", "1001").isEmpty());
             assertTrue(events.isEmpty());
             verifyNoInteractions(handlerService);
         }
@@ -388,7 +388,7 @@ class AbstractDataSourceTest {
          */
         @Test
         void addEventObservesInitializedStoredUser() {
-            PushUser user = configuredUser("bilibili", 1001L);
+            PushUser user = configuredUser("bilibili", "1001");
             eventListener = event -> {
                 assertInstanceOf(StarBotDataSourceAddEvent.class, event);
                 assertSame(user, event.getUser());
@@ -426,7 +426,7 @@ class AbstractDataSourceTest {
          */
         @Test
         void unknownEnabledUserIsAdded() {
-            PushUser user = configuredUser("bilibili", 1001L);
+            PushUser user = configuredUser("bilibili", "1001");
 
             dataSource.update(user);
 
@@ -441,14 +441,14 @@ class AbstractDataSourceTest {
          */
         @Test
         void unknownDisabledUserIsIgnored() {
-            PushUser original = addUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
             clearEvents();
             clearInvocations(registry, service, handlerService);
 
-            dataSource.update(parseUser("bilibili", 1002L, false));
+            dataSource.update(parseUser("bilibili", "1002", false));
 
             assertStoredUsers(original);
-            assertTrue(dataSource.getUser("bilibili", 1002L).isEmpty());
+            assertTrue(dataSource.getUser("bilibili", "1002").isEmpty());
             assertTrue(events.isEmpty());
             verifyNoInteractions(registry, service, handlerService);
         }
@@ -458,11 +458,11 @@ class AbstractDataSourceTest {
          */
         @Test
         void unchangedUserKeepsOriginalWithoutUpdateEvent() {
-            PushUser original = addUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
             clearEvents();
             clearInvocations(handlerService);
 
-            dataSource.update(configuredUser("bilibili", 1001L));
+            dataSource.update(configuredUser("bilibili", "1001"));
 
             assertStoredUsers(original);
             assertTrue(events.isEmpty());
@@ -474,8 +474,8 @@ class AbstractDataSourceTest {
          */
         @Test
         void updateEventObservesOldAndInitializedNewUser() {
-            PushUser original = addUser("bilibili", 1001L);
-            PushUser updated = configuredUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
+            PushUser updated = configuredUser("bilibili", "1001");
             firstMessage(updated).setHandler("test.dynamic");
             clearEvents();
             eventListener = event -> {
@@ -501,12 +501,12 @@ class AbstractDataSourceTest {
          */
         @Test
         void updateFiltersDisabledTargetsAndMessages() {
-            PushUser original = addUser("bilibili", 1001L);
-            PushUser updated = configuredUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
+            PushUser updated = configuredUser("bilibili", "1001");
             PushTarget target = updated.getTargets().get(0);
             firstMessage(updated).setEnabled(false);
             PushMessage dynamic = addMessage(target, "test.dynamic", true, "{\"limit\":5}");
-            PushTarget disabledTarget = addTarget(updated, 2002L, false);
+            PushTarget disabledTarget = addTarget(updated, "2002", false);
             addMessage(disabledTarget, "test.live", true, null);
             clearEvents();
 
@@ -526,19 +526,19 @@ class AbstractDataSourceTest {
          */
         @Test
         void mixedBatchAddsRemovesUpdatesAndIgnoresUnknownDisabledUser() {
-            PushUser original = addUser("bilibili", 1001L);
-            PushUser removed = addUser("bilibili", 1002L);
-            PushUser updated = configuredUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
+            PushUser removed = addUser("bilibili", "1002");
+            PushUser updated = configuredUser("bilibili", "1001");
             firstMessage(updated).setParams("{\"limit\":5}");
-            PushUser added = configuredUser("other", 1003L);
+            PushUser added = configuredUser("other", "1003");
             clearEvents();
 
-            dataSource.update(List.of(updated, parseUser("bilibili", 1002L, false), added,
-                    parseUser("other", 1004L, false)));
+            dataSource.update(List.of(updated, parseUser("bilibili", "1002", false), added,
+                    parseUser("other", "1004", false)));
 
             assertStoredUsers(updated, added);
-            assertTrue(dataSource.getUser("bilibili", 1002L).isEmpty());
-            assertTrue(dataSource.getUser("other", 1004L).isEmpty());
+            assertTrue(dataSource.getUser("bilibili", "1002").isEmpty());
+            assertTrue(dataSource.getUser("other", "1004").isEmpty());
             assertEquals(3, events.size());
             assertSame(added, eventsOfType(StarBotDataSourceAddEvent.class).get(0).getUser());
             assertSame(removed, eventsOfType(StarBotDataSourceRemoveEvent.class).get(0).getUser());
@@ -551,8 +551,8 @@ class AbstractDataSourceTest {
          */
         @Test
         void unsupportedPlatformKeepsStoredUser() {
-            PushUser original = addUser("bilibili", 1001L);
-            PushUser updated = configuredUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
+            PushUser updated = configuredUser("bilibili", "1001");
             firstMessage(updated).setParams("{\"limit\":5}");
             when(registry.getDataSourceService("bilibili")).thenReturn(Optional.empty());
             clearEvents();
@@ -568,8 +568,8 @@ class AbstractDataSourceTest {
          */
         @Test
         void completionFailureKeepsStoredUser() {
-            PushUser original = addUser("bilibili", 1001L);
-            PushUser updated = configuredUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
+            PushUser updated = configuredUser("bilibili", "1001");
             firstMessage(updated).setParams("{\"limit\":5}");
             var failure = new IllegalStateException("平台接口不可用");
             doThrow(failure).when(service).completePushUsers(anyList());
@@ -588,13 +588,13 @@ class AbstractDataSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"uname", "face", "roomId"})
         void metadataChangesPublishUpdate(String field) {
-            PushUser original = addUser("bilibili", 1001L);
-            PushUser updated = configuredUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
+            PushUser updated = configuredUser("bilibili", "1001");
             doAnswer(invocation -> {
                 switch (field) {
                     case "uname" -> updated.setUname("新昵称");
                     case "face" -> updated.setFace("https://example.com/new-avatar.png");
-                    case "roomId" -> updated.setRoomId(4001L);
+                    case "roomId" -> updated.setRoomId("4001");
                     default -> throw new IllegalArgumentException(field);
                 }
                 return null;
@@ -607,7 +607,7 @@ class AbstractDataSourceTest {
             assertEquals(1, eventsOfType(StarBotDataSourceUpdateEvent.class).size());
             assertSame(original, eventsOfType(StarBotDataSourceUpdateEvent.class).get(0).getOldUser());
             assertEquals("测试主播", original.getUname());
-            assertEquals(3001L, original.getRoomId());
+            assertEquals("3001", original.getRoomId());
             assertNull(original.getFace());
         }
 
@@ -616,20 +616,20 @@ class AbstractDataSourceTest {
          */
         @Test
         void repeatedUpdatesPreserveOrderAndLatestState() {
-            PushUser first = addUser("bilibili", 1001L);
-            addUser("bilibili", 1002L);
-            PushUser third = addUser("bilibili", 1003L);
-            PushUser updated = configuredUser("bilibili", 1002L);
+            PushUser first = addUser("bilibili", "1001");
+            addUser("bilibili", "1002");
+            PushUser third = addUser("bilibili", "1003");
+            PushUser updated = configuredUser("bilibili", "1002");
             firstMessage(updated).setParams("{\"limit\":5}");
             dataSource.update(updated);
-            PushUser latest = configuredUser("bilibili", 1002L);
+            PushUser latest = configuredUser("bilibili", "1002");
             firstMessage(latest).setParams("{\"limit\":10}");
 
             dataSource.update(latest);
 
             assertStoredUsers(first, latest, third);
             clearEvents();
-            dataSource.remove(parseUser("bilibili", 1002L, false));
+            dataSource.remove(parseUser("bilibili", "1002", false));
             assertStoredUsers(first, third);
             assertSame(latest, removeEvents.get(0).getUser());
         }
@@ -639,7 +639,7 @@ class AbstractDataSourceTest {
          */
         @Test
         void emptyBatchIsIgnored() {
-            PushUser original = addUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
             clearEvents();
             clearInvocations(registry, service, handlerService);
 
@@ -662,7 +662,7 @@ class AbstractDataSourceTest {
         @Test
         void customParamsOverrideDefaultsAndKeepOtherValues() {
             useDefaultParams();
-            PushUser user = configuredUser("bilibili", 1001L);
+            PushUser user = configuredUser("bilibili", "1001");
             firstMessage(user).setParams("{\"limit\":5,\"custom\":true,\"nullable\":null}");
 
             dataSource.add(user);
@@ -685,7 +685,7 @@ class AbstractDataSourceTest {
         @ValueSource(strings = {" ", "\t\r\n"})
         void missingOrBlankParamsUseDefaults(String params) {
             useDefaultParams();
-            PushUser user = configuredUser("bilibili", 1001L);
+            PushUser user = configuredUser("bilibili", "1001");
             firstMessage(user).setParams(params);
 
             dataSource.add(user);
@@ -701,7 +701,7 @@ class AbstractDataSourceTest {
         @ValueSource(strings = {"{", "[]", "null", "123"})
         void invalidParamsKeepDefaultsAndContinueInitializingOtherMessages(String params) {
             useDefaultParams();
-            PushUser user = configuredUser("bilibili", 1001L);
+            PushUser user = configuredUser("bilibili", "1001");
             firstMessage(user).setParams(params);
             PushMessage dynamic = addMessage(user.getTargets().get(0), "test.dynamic", true, "{\"limit\":5}");
 
@@ -720,7 +720,7 @@ class AbstractDataSourceTest {
          */
         @Test
         void unknownHandlerIsRemovedAndStaleRuntimeFieldsAreCleared() {
-            PushUser user = configuredUser("bilibili", 1001L);
+            PushUser user = configuredUser("bilibili", "1001");
             PushTarget target = user.getTargets().get(0);
             PushMessage invalid = addMessage(target, "test.unknown", true, null);
             invalid.setHandlerInstance(liveHandler);
@@ -747,9 +747,9 @@ class AbstractDataSourceTest {
         @Test
         void messagesKeepIndependentParams() {
             useDefaultParams();
-            PushUser first = configuredUser("bilibili", 1001L);
+            PushUser first = configuredUser("bilibili", "1001");
             firstMessage(first).setParams("{\"limit\":5}");
-            PushUser second = configuredUser("bilibili", 1002L);
+            PushUser second = configuredUser("bilibili", "1002");
 
             dataSource.add(new ArrayList<>(List.of(first, second)));
 
@@ -768,7 +768,7 @@ class AbstractDataSourceTest {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void emptyTargetsOrMessagesAreAllowed(boolean emptyTargets) {
-            PushUser user = configuredUser("bilibili", 1001L);
+            PushUser user = configuredUser("bilibili", "1001");
             if (emptyTargets) {
                 user.getTargets().clear();
             } else {
@@ -789,8 +789,8 @@ class AbstractDataSourceTest {
          */
         @Test
         void updateRemovesUnknownHandlerAndKeepsValidMessages() {
-            addUser("bilibili", 1001L);
-            PushUser updated = configuredUser("bilibili", 1001L);
+            addUser("bilibili", "1001");
+            PushUser updated = configuredUser("bilibili", "1001");
             firstMessage(updated).setParams("{\"limit\":5}");
             PushMessage invalid = addMessage(updated.getTargets().get(0), "test.unknown", true, null);
             clearEvents();
@@ -818,7 +818,7 @@ class AbstractDataSourceTest {
         void emptyDataSourceReturnsEmptyResults() {
             assertTrue(dataSource.getAllUsers().isEmpty());
             assertTrue(dataSource.getUsers("missing").isEmpty());
-            assertTrue(dataSource.getUser("missing", 1001L).isEmpty());
+            assertTrue(dataSource.getUser("missing", "1001").isEmpty());
         }
 
         /**
@@ -826,18 +826,18 @@ class AbstractDataSourceTest {
          */
         @Test
         void queriesDistinguishPlatformAndUid() {
-            PushUser first = addUser("bilibili", 1001L);
-            PushUser second = addUser("bilibili", 1002L);
-            PushUser other = addUser("other", 1001L);
+            PushUser first = addUser("bilibili", "1001");
+            PushUser second = addUser("bilibili", "1002");
+            PushUser other = addUser("other", "1001");
 
             assertStoredUsers(first, second, other);
             List<PushUser> bilibiliUsers = dataSource.getUsers("bilibili");
             assertEquals(2, bilibiliUsers.size());
             assertTrue(bilibiliUsers.containsAll(List.of(first, second)));
             assertEquals(List.of(other), dataSource.getUsers("other"));
-            assertSame(first, dataSource.getUser("bilibili", 1001L).orElseThrow());
-            assertSame(other, dataSource.getUser("other", 1001L).orElseThrow());
-            assertTrue(dataSource.getUser("bilibili", 9999L).isEmpty());
+            assertSame(first, dataSource.getUser("bilibili", "1001").orElseThrow());
+            assertSame(other, dataSource.getUser("other", "1001").orElseThrow());
+            assertTrue(dataSource.getUser("bilibili", "9999").isEmpty());
             assertTrue(dataSource.getUsers("missing").isEmpty());
         }
 
@@ -847,15 +847,15 @@ class AbstractDataSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"all", "bilibili", "missing"})
         void changingReturnedListDoesNotMutateStoredUsers(String query) {
-            PushUser original = addUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
             List<PushUser> snapshot = "all".equals(query)
                     ? dataSource.getAllUsers() : dataSource.getUsers(query);
 
             snapshot.clear();
-            snapshot.add(configuredUser("other", 1002L));
+            snapshot.add(configuredUser("other", "1002"));
 
             assertStoredUsers(original);
-            assertTrue(dataSource.getUser("other", 1002L).isEmpty());
+            assertTrue(dataSource.getUser("other", "1002").isEmpty());
             assertTrue(dataSource.getUsers("missing").isEmpty());
         }
     }
@@ -870,11 +870,11 @@ class AbstractDataSourceTest {
          */
         @Test
         void removingOneUserKeepsOthersOnSamePlatform() {
-            PushUser removed = addUser("bilibili", 1001L);
-            PushUser retained = addUser("bilibili", 1002L);
+            PushUser removed = addUser("bilibili", "1001");
+            PushUser retained = addUser("bilibili", "1002");
             clearEvents();
 
-            dataSource.remove(parseUser("bilibili", 1001L, false));
+            dataSource.remove(parseUser("bilibili", "1001", false));
 
             assertRemoved(removed);
             assertStoredUsers(retained);
@@ -886,10 +886,10 @@ class AbstractDataSourceTest {
          */
         @Test
         void removedLastUserCanBeAddedAgain() {
-            PushUser original = addUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
             dataSource.remove(original);
             assertTrue(dataSource.getUsers("bilibili").isEmpty());
-            PushUser replacement = configuredUser("bilibili", 1001L);
+            PushUser replacement = configuredUser("bilibili", "1001");
 
             dataSource.add(replacement);
 
@@ -904,12 +904,12 @@ class AbstractDataSourceTest {
          */
         @Test
         void userWithoutLiveEventsCanBeRemoved() {
-            PushUser user = configuredUser("bilibili", 1001L);
+            PushUser user = configuredUser("bilibili", "1001");
             firstMessage(user).setHandler("test.dynamic");
             dataSource.add(user);
             clearEvents();
 
-            dataSource.remove(parseUser("bilibili", 1001L, false));
+            dataSource.remove(parseUser("bilibili", "1001", false));
 
             assertRemoved(user);
             assertFalse(removeEvents.get(0).getUser().hasEnabledLiveEvent());
@@ -921,7 +921,7 @@ class AbstractDataSourceTest {
          */
         @Test
         void removeEventObservesUserAlreadyRemovedFromQueries() {
-            PushUser original = addUser("bilibili", 1001L);
+            PushUser original = addUser("bilibili", "1001");
             clearEvents();
             eventListener = event -> {
                 assertInstanceOf(StarBotDataSourceRemoveEvent.class, event);
@@ -929,10 +929,10 @@ class AbstractDataSourceTest {
                 assertTrue(original.hasEnabledLiveEvent());
                 assertStoredUsers();
                 assertTrue(dataSource.getUsers("bilibili").isEmpty());
-                assertTrue(dataSource.getUser("bilibili", 1001L).isEmpty());
+                assertTrue(dataSource.getUser("bilibili", "1001").isEmpty());
             };
 
-            dataSource.remove(parseUser("bilibili", 1001L, false));
+            dataSource.remove(parseUser("bilibili", "1001", false));
 
             assertEquals(1, events.size());
         }
@@ -951,12 +951,34 @@ class AbstractDataSourceTest {
     }
 
     /**
+     * 验证非数字、前导零和超长 UID 不会被转换，并按平台独立索引
+     */
+    @Test
+    void stringIdentifiersPreserveTheirValuesAndPlatformIsolation() {
+        for (String uid : List.of("user:AbC", "user:abc", "000123", "18446744073709551616")) {
+            PushUser first = addUser("first-platform", uid);
+            PushUser second = addUser("second-platform", uid);
+            first.getTargets().get(0).setNum("group:0007");
+
+            assertSame(first, dataSource.getUser("first-platform", uid).orElseThrow());
+            assertSame(second, dataSource.getUser("second-platform", uid).orElseThrow());
+            assertEquals(uid, first.getUid());
+            assertEquals("group:0007", first.getTargets().get(0).getNum());
+
+            dataSource.remove(first);
+            assertTrue(dataSource.getUser("first-platform", uid).isEmpty());
+            assertSame(second, dataSource.getUser("second-platform", uid).orElseThrow());
+        }
+        assertEquals(4, dataSource.getUsers("second-platform").size());
+    }
+
+    /**
      * 创建并添加已启用的测试用户，由数据源完成消息初始化
      * @param platform 直播平台
      * @param uid 主播 UID
      * @return 已添加并完成消息初始化的推送用户
      */
-    private PushUser addUser(String platform, long uid) {
+    private PushUser addUser(String platform, String uid) {
         PushUser user = configuredUser(platform, uid);
         dataSource.add(new ArrayList<>(List.of(user)));
         return user;
@@ -968,10 +990,10 @@ class AbstractDataSourceTest {
      * @param uid 主播 UID
      * @return 尚未由数据源初始化的推送用户
      */
-    private PushUser configuredUser(String platform, long uid) {
+    private PushUser configuredUser(String platform, String uid) {
         PushUser user = parseUser(platform, uid, true);
         user.setUname("测试主播");
-        user.setRoomId(3001L);
+        user.setRoomId("3001");
         return user;
     }
 
@@ -982,7 +1004,7 @@ class AbstractDataSourceTest {
      * @param enabled 是否启用
      * @return 新增的推送目标
      */
-    private PushTarget addTarget(PushUser user, long num, boolean enabled) {
+    private PushTarget addTarget(PushUser user, String num, boolean enabled) {
         PushTarget target = new PushTarget();
         target.setUser(user);
         target.setPlatform("test-bot");
@@ -1060,16 +1082,16 @@ class AbstractDataSourceTest {
      * @param enabled 是否启用
      * @return 尚未初始化处理器和消息参数的推送用户
      */
-    private PushUser parseUser(String platform, long uid, boolean enabled) {
+    private PushUser parseUser(String platform, String uid, boolean enabled) {
         String json = """
                 [{
-                    "uid": %d,
+                    "uid": "%s",
                     "platform": "%s",
                     "enabled": %s,
                     "targets": [{
                         "platform": "test-bot",
                         "type": 1,
-                        "num": 2001,
+                        "num": "2001",
                         "messages": [{"handler": "test.live"}]
                     }]
                 }]

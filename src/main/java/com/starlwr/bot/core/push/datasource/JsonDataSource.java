@@ -176,7 +176,7 @@ public class JsonDataSource extends AbstractDataSource {
             }
 
             PushUser user = new PushUser();
-            user.setUid(userObject.getLong("uid"));
+            user.setUid(userObject.getString("uid"));
             user.setPlatform(userObject.getString("platform"));
             if (!userObject.containsKey("enabled")) {
                 user.setEnabled(true);
@@ -197,7 +197,7 @@ public class JsonDataSource extends AbstractDataSource {
                     target.setUser(user);
                     target.setPlatform(targetObject.getString("platform"));
                     target.setType(PushTargetType.of(targetObject.getInteger("type")));
-                    target.setNum(targetObject.getLong("num"));
+                    target.setNum(targetObject.getString("num"));
                     if (!targetObject.containsKey("enabled")) {
                         target.setEnabled(true);
                     } else {
