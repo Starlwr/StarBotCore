@@ -32,7 +32,6 @@ import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -190,48 +189,12 @@ public class StatusCommand implements StarBotCommand {
             return;
         }
 
-        drawStar(painter, 100, 100, 26, COLOR_STAR);
-        drawStar(painter, WIDTH - 105, 175, 22, COLOR_STAR);
-        drawStar(painter, 90, 205, 15, Color.WHITE);
-        drawStar(painter, WIDTH - 80, 85, 14, Color.WHITE);
+        painter.drawStar(100, 100, 26, COLOR_STAR);
+        painter.drawStar(WIDTH - 105, 175, 22, COLOR_STAR);
+        painter.drawStar(90, 205, 15, Color.WHITE);
+        painter.drawStar(WIDTH - 80, 85, 14, Color.WHITE);
         painter.drawRoundedRectangle(130, 160, 20, 20, 20, COLOR_BORDER);
         painter.drawRoundedRectangle(WIDTH - 125, 85, 20, 20, 20, COLOR_DECORATION_PINK);
-    }
-
-    /**
-     * 绘制装饰星星
-     * @param painter 绘图器
-     * @param x 中心 X 坐标
-     * @param y 中心 Y 坐标
-     * @param radius 外半径
-     * @param color 颜色
-     */
-    private void drawStar(CommonPainter painter, int x, int y, int radius, Color color) {
-        List<Point> vertices = new ArrayList<>();
-        for (int index = 0; index < 10; index++) {
-            double angle = -Math.PI / 2 + index * Math.PI / 5;
-            double length = index % 2 == 0 ? radius : radius * 0.5;
-            vertices.add(new Point(x + (int) Math.round(Math.cos(angle) * length), y + (int) Math.round(Math.sin(angle) * length)));
-        }
-
-        List<Point> points = new ArrayList<>();
-        for (int index = 0; index < vertices.size(); index++) {
-            Point previous = vertices.get((index + vertices.size() - 1) % vertices.size());
-            Point current = vertices.get(index);
-            Point next = vertices.get((index + 1) % vertices.size());
-            double startX = current.x + (previous.x - current.x) * 0.25;
-            double startY = current.y + (previous.y - current.y) * 0.25;
-            double endX = current.x + (next.x - current.x) * 0.25;
-            double endY = current.y + (next.y - current.y) * 0.25;
-            for (int step = 0; step <= 8; step++) {
-                double t = step / 8.0;
-                double inverse = 1 - t;
-                points.add(new Point((int) Math.round(inverse * inverse * startX + 2 * inverse * t * current.x + t * t * endX),
-                        (int) Math.round(inverse * inverse * startY + 2 * inverse * t * current.y + t * t * endY)));
-            }
-        }
-
-        painter.drawPolygon(points, color);
     }
 
     /**
@@ -271,7 +234,7 @@ public class StatusCommand implements StarBotCommand {
      * @param direction 装饰朝向，左侧为 -1，右侧为 1
      */
     private void drawTitleDecoration(CommonPainter painter, int x, int y, int direction) {
-        drawStar(painter, x, y, 28, COLOR_STAR);
+        painter.drawStar(x, y, 28, COLOR_STAR);
         drawDecorationRay(painter, x + direction * 45, y - 18, x + direction * 58, y - 29);
         drawDecorationRay(painter, x + direction * 47, y + 12, x + direction * 62, y + 17);
     }
@@ -598,10 +561,10 @@ public class StatusCommand implements StarBotCommand {
         footer.drawRoundedRectangle(WIDTH - 125, height - 17, 110, 110, 110, pinkCloud);
         footer.drawRoundedRectangle(128, 35, 23, 23, 23, COLOR_DECORATION_PINK);
         footer.drawRoundedRectangle(WIDTH - 265, height - 37, 19, 19, 19, COLOR_BORDER);
-        drawStar(footer, 210, 76, 19, Color.WHITE);
-        drawStar(footer, 75, height - 112, 12, COLOR_STAR);
-        drawStar(footer, WIDTH - 110, height - 62, 11, COLOR_STAR);
-        drawStar(footer, WIDTH - 190, height - 45, 19, Color.WHITE);
+        footer.drawStar(210, 76, 19, Color.WHITE);
+        footer.drawStar(75, height - 112, 12, COLOR_STAR);
+        footer.drawStar(WIDTH - 110, height - 62, 11, COLOR_STAR);
+        footer.drawStar(WIDTH - 190, height - 45, 19, Color.WHITE);
         footer.drawImage(copyrightImage, new Point(0, 0));
 
         int y = painter.getY() + 12;

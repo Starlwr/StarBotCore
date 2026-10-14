@@ -10,9 +10,12 @@ import com.starlwr.bot.core.command.StarBotCommandRegistry;
 import com.starlwr.bot.core.config.StarBotCoreProperties;
 import com.starlwr.bot.core.message.PushTargetType;
 import com.starlwr.bot.core.painter.FontService;
+import com.starlwr.bot.core.painter.CommonPainter;
 import com.starlwr.bot.core.painter.StarBotCommonPainterFactory;
+import com.starlwr.bot.core.painter.TextWithStyle;
 import com.starlwr.bot.core.plugin.StarBotPluginLoader;
 import com.starlwr.bot.core.support.system.SystemResourceService;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.info.BuildProperties;
@@ -22,6 +25,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
+import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
@@ -54,8 +58,8 @@ class HelpCommandTest {
     /**
      * 是否将生成的帮助图片保存至本地 TestCommandHelp 目录
      * <p>
-     * 设为 false 时仅在内存中绘制并断言图片尺寸；设为 true 时额外保存普通版和长文本版图片，
-     * 并验证文件存在、非空且能够重新读取。
+     * 设为 false 时仅在内存中绘制并验证；需要人工审阅时手动改为 true，
+     * 额外保存生成的图片，并验证文件存在、非空且能够重新读取。
      */
     private static final boolean SAVE_IMAGE = false;
 
@@ -71,12 +75,10 @@ class HelpCommandTest {
     @Test
     void rendersCommandStatesAndExpandsForLongText() throws Exception {
         var properties = new StarBotCoreProperties();
-        ReflectionTestUtils.invokeMethod(properties, "init");
-        var font = new FontService(new DefaultResourceLoader(), properties);
-        ReflectionTestUtils.invokeMethod(font, "init");
         Properties build = new Properties();
         build.setProperty("version", "3.0.0");
-        var factory = new StarBotCommonPainterFactory(new BuildProperties(build), properties, font);
+        List<String> drawnTexts = new ArrayList<>();
+        var factory = recordingFactory(properties, drawnTexts);
         var applicationContext = mock(ApplicationContext.class);
         var registry = new StarBotCommandRegistry(applicationContext);
         properties.getCommand().setDisabledCommandPath(directory.resolve("rules.json").toString());
@@ -85,7 +87,7 @@ class HelpCommandTest {
         var help = new HelpCommand(registry, policy, properties, factory);
         var hello = command("com.example.HelloCommand");
         refresh(registry, applicationContext, List.of(help, new DisableCommand(registry, policy),
-                new EnableCommand(registry, policy), new StatusCommand(new BuildProperties(build), properties,
+                new EnableCommand(registry, policy), new PingCommand(new BuildProperties(build)), new StatusCommand(new BuildProperties(build), properties,
                         mock(StarBotPluginLoader.class), factory, mock(SystemResourceService.class)), hello));
         properties.getCommand().getDisabled().add(hello.getId());
         var message = CommandMessage.builder().platform("bot-a").senderId(2L).groupId(100L)
@@ -95,15 +97,20 @@ class HelpCommandTest {
         refresh(registry, applicationContext, registry.getCommands().stream()
                 .filter(registered -> !hello.getId().equals(registered.getId())).toList());
         var visibleImage = decode(render(help, context));
-        assertEquals(1000, image.getWidth());
+        assertEquals(1200, image.getWidth());
         assertEquals(visibleImage.getHeight(), image.getHeight(), "全局禁用命令不应占用帮助图片空间");
         assertTrue(image.getHeight() > 1000);
         assertEquals(255, (image.getRGB(500, image.getHeight() - 1) >>> 24), "底部不应残留透明扩展区域");
+        assertTrue(drawnTexts.contains("命令列表"), "开启 Logo 时应使用命令列表标题");
         properties.getPaint().setDrawLogo(false);
+        drawnTexts.clear();
         var noLogoImage = decode(render(help, context));
         assertEquals(visibleImage.getHeight() - 225, noLogoImage.getHeight(), "关闭 Logo 后正文应上移");
+        assertTrue(drawnTexts.contains("StarBot 命令列表"), "关闭 Logo 时标题应保留 StarBot 文字");
+        assertEquals(new Color(245, 241, 255).getRGB(), noLogoImage.getRGB(100, 100), "关闭 Logo 后不应绘制顶部星星");
         properties.getPaint().setDrawLogo(true);
         saveImage(image, "command-help.png");
+        saveImage(noLogoImage, "command-help-no-logo.png");
 
         List<StarBotCommand> longCommands = new ArrayList<>();
         for (int index = 0; index < 8; index++) {
@@ -124,6 +131,60 @@ class HelpCommandTest {
         var longImage = decode(render(help, context));
         assertTrue(longImage.getHeight() > 3000);
         saveImage(longImage, "command-help-long.png");
+    }
+
+    /**
+     * 验证两行用法保留左右分区，超过两行后改为底部通栏并保留全部内容
+     */
+    @Test
+    void wrapsUsageAndSwitchesToFullWidthForMoreThanTwoLines() throws Exception {
+        var properties = new StarBotCoreProperties();
+        properties.getCommand().setPrefix("/");
+        List<String> drawnTexts = new ArrayList<>();
+        var factory = recordingFactory(properties, drawnTexts);
+        var help = new HelpCommand(mock(StarBotCommandRegistry.class), mock(StarBotCommandPolicy.class), properties, factory);
+        var oneLine = renderCard(help, previewCommand("查询 <关键词>", "example.query", List.of("查找", "search"), "按关键词查询记录"));
+        var twoLines = renderCard(help, previewCommand("查询 <关键词>\n[开始时间] [结束时间]", "example.query", List.of("查找", "search"), "按关键词查询记录"));
+        String longUsage = "查询 <关键词>\n[开始时间：YYYY-MM-DD HH:mm:ss]\n[结束时间：YYYY-MM-DD HH:mm:ss]";
+        drawnTexts.clear();
+        var fullWidth = renderCard(help, previewCommand(longUsage, "example.query", List.of("查找", "search"), "按关键词查询记录"));
+
+        assertEquals(1100, oneLine.getWidth());
+        assertEquals(1, horizontalDividers(oneLine));
+        assertEquals(1, horizontalDividers(twoLines));
+        assertEquals(2, horizontalDividers(fullWidth), "通栏用法应与别名以第二条横线分隔");
+        assertTrue(twoLines.getHeight() > oneLine.getHeight());
+        assertTrue(fullWidth.getHeight() > twoLines.getHeight());
+        String content = String.join("", drawnTexts);
+        assertTrue(content.contains("example.query"), "卡片应展示命令 ID");
+        assertTrue(content.contains("/" + longUsage.replace("\n", "")), "换行后应完整展示带前缀的用法");
+        saveImage(oneLine, "command-help-usage-short.png");
+        saveImage(twoLines, "command-help-usage-two-lines.png");
+        saveImage(fullWidth, "command-help-usage-full-width.png");
+    }
+
+    /**
+     * 验证自动换行、长 ID、长别名及包含补充字符的单个长参数不会丢失内容
+     */
+    @Test
+    void preservesLongIdsAliasesAndUnicodeParameters() throws Exception {
+        var properties = new StarBotCoreProperties();
+        List<String> drawnTexts = new ArrayList<>();
+        var factory = recordingFactory(properties, drawnTexts);
+        var help = new HelpCommand(mock(StarBotCommandRegistry.class), mock(StarBotCommandPolicy.class), properties, factory);
+        String id = "com.example." + "LongCommand".repeat(20);
+        String alias = "这是一个很长的命令别名".repeat(10);
+        String usage = "查询 <" + "长参数😀".repeat(35) + ">";
+        var image = renderCard(help, previewCommand(usage, id, List.of(alias, "search"), "这是一段较长的命令简介。".repeat(12)));
+
+        String content = String.join("", drawnTexts);
+        assertTrue(content.contains(id), "长 ID 换行后应完整保留");
+        assertTrue(content.contains(alias), "长别名标签换行后应完整保留");
+        assertTrue(content.contains(usage), "单个长参数按码点换行后应完整保留");
+        assertEquals(2, horizontalDividers(image), "自动测量超过两行时也应使用通栏用法");
+        assertTrue(image.getHeight() > 500);
+        assertEquals(255, image.getRGB(image.getWidth() / 2, image.getHeight() - 1) >>> 24);
+        saveImage(image, "command-help-long-fields.png");
     }
 
     /**
@@ -255,6 +316,89 @@ class HelpCommandTest {
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("调用帮助图片绘制方法失败", e);
         }
+    }
+
+    /**
+     * 创建真实绘图器并记录实际绘制的文字，验证换行不会丢失内容
+     */
+    private static StarBotCommonPainterFactory recordingFactory(StarBotCoreProperties properties, List<String> drawnTexts) {
+        ReflectionTestUtils.invokeMethod(properties, "init");
+        var font = new FontService(new DefaultResourceLoader(), properties);
+        ReflectionTestUtils.invokeMethod(font, "init");
+        Properties versions = new Properties();
+        versions.setProperty("version", "3.0.0");
+        var build = new BuildProperties(versions);
+        return new StarBotCommonPainterFactory(build, properties, font) {
+            @Override
+            public CommonPainter create(int width, int height, boolean autoExpand) {
+                return new CommonPainter(build, properties, font, width, height, autoExpand) {
+                    @Override
+                    public CommonPainter drawTextWithStyle(@NotNull List<TextWithStyle> texts, Point location, boolean autoWrap, int marginRight) {
+                        texts.forEach(text -> drawnTexts.add(text.getText()));
+                        return super.drawTextWithStyle(texts, location, autoWrap, marginRight);
+                    }
+                };
+            }
+        };
+    }
+
+    /**
+     * 绘制单张可用命令卡片
+     */
+    private static BufferedImage renderCard(HelpCommand help, StarBotCommand command) {
+        BufferedImage image = ReflectionTestUtils.invokeMethod(help, "renderCommand", command,
+                state(help, CommandScope.ALL, decision(false, false, true, true)));
+        assertNotNull(image);
+        return image;
+    }
+
+    /**
+     * 统计横向分隔线，用于区分左右分区与底部通栏的实际绘图结果
+     */
+    private static int horizontalDividers(BufferedImage image) {
+        int color = new Color(237, 230, 247).getRGB();
+        int count = 0;
+        boolean previous = false;
+        for (int y = 0; y < image.getHeight(); y++) {
+            boolean current = image.getRGB(image.getWidth() / 4, y) == color;
+            if (current && !previous) {
+                count++;
+            }
+            previous = current;
+        }
+        return count;
+    }
+
+    /**
+     * 创建具有指定展示内容的测试命令
+     */
+    private static StarBotCommand previewCommand(String usage, String id, List<String> aliases, String description) {
+        return new DefaultIdCommand() {
+            @Override
+            public String getId() {
+                return id;
+            }
+
+            @Override
+            public String getName() {
+                return "查询";
+            }
+
+            @Override
+            public List<String> getAliases() {
+                return aliases;
+            }
+
+            @Override
+            public String getDescription() {
+                return description;
+            }
+
+            @Override
+            public String getUsage() {
+                return usage;
+            }
+        };
     }
 
     /**

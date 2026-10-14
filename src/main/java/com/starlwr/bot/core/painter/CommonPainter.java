@@ -19,6 +19,7 @@ import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
@@ -266,6 +267,44 @@ public class CommonPainter {
             this.draw.setColor(originalColor);
         }
         return this;
+    }
+
+    /**
+     * 绘制圆角五角星，此方法不会移动绘图坐标
+     * @param x 中心 X 坐标
+     * @param y 中心 Y 坐标
+     * @param radius 外半径
+     * @param color 颜色
+     * @return 当前绘图器实例
+     */
+    public CommonPainter drawStar(int x, int y, int radius, @NonNull Color color) {
+        // 交替使用外半径和内半径，计算五角星的十个顶点
+        List<Point> vertices = new ArrayList<>();
+        for (int index = 0; index < 10; index++) {
+            double angle = -Math.PI / 2 + index * Math.PI / 5;
+            double length = index % 2 == 0 ? radius : radius * 0.5;
+            vertices.add(new Point(x + (int) Math.round(Math.cos(angle) * length), y + (int) Math.round(Math.sin(angle) * length)));
+        }
+
+        // 在每个顶点两侧采样二次贝塞尔曲线，使星角平滑圆润
+        List<Point> points = new ArrayList<>();
+        for (int index = 0; index < vertices.size(); index++) {
+            Point previous = vertices.get((index + vertices.size() - 1) % vertices.size());
+            Point current = vertices.get(index);
+            Point next = vertices.get((index + 1) % vertices.size());
+            double startX = current.x + (previous.x - current.x) * 0.25;
+            double startY = current.y + (previous.y - current.y) * 0.25;
+            double endX = current.x + (next.x - current.x) * 0.25;
+            double endY = current.y + (next.y - current.y) * 0.25;
+            for (int step = 0; step <= 8; step++) {
+                double t = step / 8.0;
+                double inverse = 1 - t;
+                points.add(new Point((int) Math.round(inverse * inverse * startX + 2 * inverse * t * current.x + t * t * endX),
+                        (int) Math.round(inverse * inverse * startY + 2 * inverse * t * current.y + t * t * endY)));
+            }
+        }
+
+        return drawPolygon(points, color);
     }
 
     /**
