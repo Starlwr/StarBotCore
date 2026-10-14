@@ -2,6 +2,7 @@ package com.starlwr.bot.core.config;
 
 import ch.qos.logback.classic.Level;
 import com.starlwr.bot.core.ai.AiModel;
+import com.starlwr.bot.core.command.CommandPermission;
 import com.starlwr.bot.core.message.Sender;
 import com.starlwr.bot.core.painter.TextWithStyle;
 import jakarta.annotation.PostConstruct;
@@ -241,6 +242,11 @@ public class StarBotCoreProperties {
          * 全局禁用的命令 ID 列表
          */
         private List<String> disabled = new ArrayList<>();
+
+        /**
+         * 命令权限覆盖配置，按命令 ID 配置，未配置时使用命令默认权限
+         */
+        private Map<String, CommandPermission> permissions = new HashMap<>();
 
         /**
          * 主人账号列表，按推送平台名称分别配置

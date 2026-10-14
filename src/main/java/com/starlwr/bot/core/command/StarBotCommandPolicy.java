@@ -173,7 +173,8 @@ public class StarBotCommandPolicy {
         };
         boolean owner = properties.getCommand().getOwners().getOrDefault(context.getPlatform(), List.of()).contains(context.getSenderId());
         boolean admin = group && (context.getRole() == GroupRole.OWNER || context.getRole() == GroupRole.ADMIN);
-        boolean permission = switch (command.getPermission()) {
+        CommandPermission requiredPermission = properties.getCommand().getPermissions().getOrDefault(command.getId(), command.getPermission());
+        boolean permission = switch (requiredPermission) {
             case OWNER -> owner;
             case ADMIN -> owner || admin;
             case EVERYONE -> true;

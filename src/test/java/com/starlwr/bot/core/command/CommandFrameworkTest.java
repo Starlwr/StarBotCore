@@ -19,6 +19,7 @@ import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -471,6 +472,93 @@ class CommandFrameworkTest {
     }
 
     /**
+     * 验证配置权限可收紧或放宽命令默认权限，群聊角色和各平台主人规则仍然生效
+     */
+    @Test
+    void permissionOverridesReplaceCommandDefaults() {
+        properties.getCommand().getOwners().put("bot-a", List.of(9L));
+        properties.getCommand().getOwners().put("bot-b", List.of(8L));
+        for (CommandPermission defaultPermission : CommandPermission.values()) {
+            StarBotCommand command = new DefaultIdCommand() {
+                @Override
+                public CommandPermission getPermission() {
+                    return defaultPermission;
+                }
+            };
+            for (CommandPermission override : CommandPermission.values()) {
+                properties.getCommand().getPermissions().put(command.getId(), override);
+                for (String platform : List.of("bot-a", "bot-b", "unconfigured")) {
+                    for (PushTargetType type : List.of(PushTargetType.FRIEND, PushTargetType.GROUP)) {
+                        for (var role : GroupRole.values()) {
+                            for (long user : List.of(2L, 8L, 9L)) {
+                                boolean owner = "bot-a".equals(platform) && user == 9L || "bot-b".equals(platform) && user == 8L;
+                                boolean admin = type == PushTargetType.GROUP && (role == GroupRole.OWNER || role == GroupRole.ADMIN);
+                                boolean expected = override == CommandPermission.EVERYONE || owner || override == CommandPermission.ADMIN && admin;
+                                var decision = policy.evaluate(command, context(messageBuilder("x")
+                                        .platform(platform).type(type).role(role).senderId(user).build()));
+                                assertEquals(expected, decision.isAllowed(), defaultPermission + "/" + override + "/" + platform + "/" + type + "/" + role + "/" + user);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 验证权限覆盖按命令 ID 匹配，并应用于命令名称和别名的实际执行
+     */
+    @Test
+    void permissionOverridesApplyToDispatchById() throws Exception {
+        List<String> executed = new CopyOnWriteArrayList<>();
+        var restricted = command("test.restricted", c -> executed.add("restricted"));
+        var unchanged = command("test.unchanged", c -> executed.add("unchanged"));
+        register(List.of(restricted, unchanged));
+        properties.getCommand().getPermissions().put("你好", CommandPermission.OWNER);
+        properties.getCommand().getPermissions().put("hello", CommandPermission.OWNER);
+        dispatch(message("hello"));
+        assertEquals(List.of("restricted", "unchanged"), executed);
+        assertTrue(replies.isEmpty());
+
+        executed.clear();
+        properties.getCommand().getPermissions().put(restricted.getId(), CommandPermission.OWNER);
+        dispatch(message("你好"));
+        assertEquals(List.of("unchanged"), executed);
+        assertEquals("您没有执行此命令的权限~", replies.get(0).getContent());
+
+        executed.clear();
+        properties.getCommand().getOwners().put("bot-a", List.of(9L));
+        dispatch(messageBuilder("hello").senderId(9L).build());
+        assertEquals(List.of("restricted", "unchanged"), executed);
+    }
+
+    /**
+     * 验证权限覆盖不会绕过会话范围、群禁用或全局禁用
+     */
+    @Test
+    void permissionOverridesPreserveScopeAndDisabledRules() {
+        StarBotCommand command = new DefaultIdCommand() {
+            @Override
+            public CommandScope getScope() {
+                return CommandScope.PRIVATE;
+            }
+        };
+        properties.getCommand().getPermissions().put(command.getId(), CommandPermission.EVERYONE);
+        var group = context(message("x"));
+        assertTrue(policy.evaluate(command, group).isPermissionAllowed());
+        assertFalse(policy.evaluate(command, group).isAllowed());
+        policy.setGroupDisabled("bot-a", 100L, command.getId(), true);
+        assertTrue(policy.evaluate(command, group).isGroupDisabled());
+        assertFalse(policy.evaluate(command, group).isAllowed());
+
+        var privateChat = context(messageBuilder("x").type(PushTargetType.FRIEND).build());
+        assertTrue(policy.evaluate(command, privateChat).isAllowed());
+        properties.getCommand().getDisabled().add(command.getId());
+        assertTrue(policy.evaluate(command, privateChat).isGlobalDisabled());
+        assertFalse(policy.evaluate(command, privateChat).isAllowed());
+    }
+
+    /**
      * 验证机器人所有者权限按平台隔离
      */
     @Test
@@ -825,16 +913,30 @@ class CommandFrameworkTest {
     void configurationDefaultsAndBinding() {
         var defaults = new StarBotCoreProperties();
         assertEquals("disabled-command.json", defaults.getCommand().getDisabledCommandPath());
+        assertTrue(defaults.getCommand().getPermissions().isEmpty());
         assertEquals(Integer.MAX_VALUE, defaults.getCommandThread().getQueueCapacity());
         var source = new MapConfigurationPropertySource(Map.of("starbot.core.command.disabled-command-path", "custom.json",
                 "starbot.core.command.mention", "true",
-                "starbot.core.command-thread.core-pool-size", "3", "starbot.core.command.owners.bot-a[0]", "123"));
+                "starbot.core.command-thread.core-pool-size", "3", "starbot.core.command.owners.bot-a[0]", "123",
+                "starbot.core.command.permissions.starbot.builtin.status", "OWNER",
+                "starbot.core.command.permissions[com.example.HelloCommand]", "ADMIN"));
         new Binder(source).bind("starbot.core", Bindable.ofInstance(defaults));
         assertEquals("custom.json", defaults.getCommand().getDisabledCommandPath());
         assertTrue(defaults.getCommand().isMention());
         assertEquals(3, defaults.getCommandThread().getCorePoolSize());
         assertEquals(List.of(123L), defaults.getCommand().getOwners().get("bot-a"));
+        assertEquals(Map.of("starbot.builtin.status", CommandPermission.OWNER,
+                "com.example.HelloCommand", CommandPermission.ADMIN), defaults.getCommand().getPermissions());
         assertEquals("command-thread-", executor.getThreadNamePrefix());
+    }
+
+    /**
+     * 验证无效的命令权限配置会导致绑定失败
+     */
+    @Test
+    void invalidPermissionOverrideFailsBinding() {
+        var source = new MapConfigurationPropertySource(Map.of("starbot.core.command.permissions[test.command]", "UNKNOWN"));
+        assertThrows(BindException.class, () -> new Binder(source).bind("starbot.core", Bindable.ofInstance(new StarBotCoreProperties())));
     }
 
     /**

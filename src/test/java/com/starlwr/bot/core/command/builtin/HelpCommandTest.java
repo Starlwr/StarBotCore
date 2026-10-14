@@ -2,6 +2,7 @@ package com.starlwr.bot.core.command.builtin;
 
 import com.starlwr.bot.core.command.CommandContext;
 import com.starlwr.bot.core.command.CommandMessage;
+import com.starlwr.bot.core.command.CommandPermission;
 import com.starlwr.bot.core.command.CommandScope;
 import com.starlwr.bot.core.command.StarBotCommand;
 import com.starlwr.bot.core.command.StarBotCommandPolicy;
@@ -143,6 +144,34 @@ class HelpCommandTest {
         assertEquals("禁用", stateText(state(help, CommandScope.PRIVATE, decision(false, true, false, false))));
         assertEquals(stateColor(permissionDenied), stateColor(privateOnly));
         assertEquals(stateColor(permissionDenied), stateColor(groupOnly));
+    }
+
+    /**
+     * 验证帮助菜单使用配置覆盖后的权限展示命令状态
+     */
+    @Test
+    void commandViewsUsePermissionOverrides() {
+        var properties = new StarBotCoreProperties();
+        properties.getCommand().setDisabledCommandPath(directory.resolve("rules.json").toString());
+        var policy = new StarBotCommandPolicy(properties);
+        policy.onApplicationReadyEvent();
+        var applicationContext = mock(ApplicationContext.class);
+        var registry = new StarBotCommandRegistry(applicationContext);
+        var hello = command("test.hello");
+        refresh(registry, applicationContext, List.of(hello));
+        var help = new HelpCommand(registry, policy, properties, mock(StarBotCommonPainterFactory.class));
+        var message = CommandMessage.builder().platform("bot-a").senderId(2L).groupId(100L)
+                .type(PushTargetType.GROUP).content("帮助").build();
+        var context = CommandContext.tryCreate(message, "").orElseThrow();
+
+        for (CommandPermission permission : List.of(CommandPermission.OWNER, CommandPermission.EVERYONE)) {
+            properties.getCommand().getPermissions().put(hello.getId(), permission);
+            List<?> views = ReflectionTestUtils.invokeMethod(help, "commandViews", context);
+            assertNotNull(views);
+            assertEquals(1, views.size());
+            Object state = ReflectionTestUtils.invokeMethod(views.get(0), "getState");
+            assertEquals(permission == CommandPermission.OWNER ? "权限不足" : "可用", stateText(state));
+        }
     }
 
     /**
