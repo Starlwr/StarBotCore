@@ -28,8 +28,10 @@ import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -129,9 +131,12 @@ public class StatusCommand implements StarBotCommand {
         List<StarBotPlugin> plugins = pluginLoader.getPlugins();
         CommonPainter painter = factory.create(WIDTH, 1200, true).setPos(MARGIN, 50);
         drawLogo(painter);
+        drawHeaderDecoration(painter);
         drawTitle(painter);
         drawCoreVersion(painter);
-        drawOperatingSystem(painter, snapshot.getOperatingSystem());
+        drawOverviewCard(painter, "操作系统", snapshot.getOperatingSystem());
+        drawOverviewCard(painter, "运行时间", formatUptime(ManagementFactory.getRuntimeMXBean().getUptime()));
+        painter.movePos(0, 12);
         drawSectionTitle(painter, "已安装插件");
 
         if (CollectionUtils.isEmpty(plugins)) {
@@ -164,17 +169,28 @@ public class StatusCommand implements StarBotCommand {
         try (InputStream input = resourceLoader.getResource("classpath:logo.png").getInputStream()) {
             BufferedImage logo = ImageIO.read(input);
             if (logo != null) {
-                drawStar(painter, 100, 100, 26, COLOR_STAR);
-                drawStar(painter, WIDTH - 105, 175, 22, COLOR_STAR);
-                drawStar(painter, 90, 205, 15, Color.WHITE);
-                drawStar(painter, WIDTH - 80, 85, 14, Color.WHITE);
-                painter.drawRoundedRectangle(130, 160, 20, 20, 20, COLOR_BORDER);
-                painter.drawRoundedRectangle(WIDTH - 125, 85, 20, 20, 20, COLOR_DECORATION_PINK);
                 painter.drawImage(logo, new Point((WIDTH - logo.getWidth()) / 2, 55)).setPos(MARGIN, 275);
             }
         } catch (IOException e) {
             log.error("加载 StarBot Logo 失败", e);
         }
+    }
+
+    /**
+     * 绘制顶部装饰
+     * @param painter 绘图器
+     */
+    private void drawHeaderDecoration(CommonPainter painter) {
+        if (!properties.getPaint().isDrawLogo()) {
+            return;
+        }
+
+        drawStar(painter, 100, 100, 26, COLOR_STAR);
+        drawStar(painter, WIDTH - 105, 175, 22, COLOR_STAR);
+        drawStar(painter, 90, 205, 15, Color.WHITE);
+        drawStar(painter, WIDTH - 80, 85, 14, Color.WHITE);
+        painter.drawRoundedRectangle(130, 160, 20, 20, 20, COLOR_BORDER);
+        painter.drawRoundedRectangle(WIDTH - 125, 85, 20, 20, 20, COLOR_DECORATION_PINK);
     }
 
     /**
@@ -231,7 +247,8 @@ public class StatusCommand implements StarBotCommand {
      */
     private void drawTitle(CommonPainter painter) {
         int y = painter.getY();
-        TextWithStyle title = new TextWithStyle("运行状态", 72, COLOR_DEEP_PURPLE, Font.BOLD);
+        String text = properties.getPaint().isDrawLogo() ? "运行状态" : "StarBot 运行状态";
+        TextWithStyle title = new TextWithStyle(text, 72, COLOR_DEEP_PURPLE, Font.BOLD);
         Pair<Integer, Integer> size = painter.getStringWidthAndHeight(title);
         int titleHeight = size.getRight();
         int decorationY = y + titleHeight / 2;
@@ -299,14 +316,15 @@ public class StatusCommand implements StarBotCommand {
     }
 
     /**
-     * 绘制操作系统卡片
+     * 绘制信息卡片
      * @param painter 绘图器
-     * @param operatingSystem 操作系统信息
+     * @param name 信息名称
+     * @param text 信息内容
      */
-    private void drawOperatingSystem(CommonPainter painter, String operatingSystem) {
+    private void drawOverviewCard(CommonPainter painter, String name, String text) {
         int width = WIDTH - MARGIN * 2;
-        TextWithStyle label = new TextWithStyle("操作系统", 32, COLOR_DEEP_PURPLE, Font.BOLD);
-        TextWithStyle value = new TextWithStyle(operatingSystem, 30, COLOR_DEEP_PURPLE);
+        TextWithStyle label = new TextWithStyle(name, 32, COLOR_DEEP_PURPLE, Font.BOLD);
+        TextWithStyle value = new TextWithStyle(text, 30, COLOR_DEEP_PURPLE);
         int availableWidth = width - PADDING * 2 - painter.getStringWidthAndHeight(label).getLeft() - 32;
         int valueWidth = Math.min(availableWidth, painter.getStringWidthAndHeight(value).getLeft() + 1);
         CommonPainter content = factory.create(valueWidth, 80, true).setRowSpace(0);
@@ -322,7 +340,27 @@ public class StatusCommand implements StarBotCommand {
 
         int y = painter.getY();
         painter.drawImageWithBorder(card.createSolidRoundedRectangleBackground(COLOR_OVERVIEW, 32).getBufferedImage(), new Point(MARGIN, y), COLOR_BORDER, 32, 3);
-        painter.setPos(MARGIN, y + height + 34);
+        painter.setPos(MARGIN, y + height + 22);
+    }
+
+    /**
+     * 格式化本次进程运行时间
+     * @param milliseconds 进程运行毫秒数
+     * @return 本次进程运行时间
+     */
+    private String formatUptime(long milliseconds) {
+        Duration uptime = Duration.ofMillis(milliseconds);
+        StringBuilder text = new StringBuilder();
+        if (uptime.toDays() > 0) {
+            text.append(uptime.toDays()).append(" 天 ");
+        }
+        if (uptime.toHours() > 0) {
+            text.append(uptime.toHoursPart()).append(" 小时 ");
+        }
+        if (uptime.toMinutes() > 0) {
+            text.append(uptime.toMinutesPart()).append(" 分 ");
+        }
+        return text.append(uptime.toSecondsPart()).append(" 秒").toString();
     }
 
     /**

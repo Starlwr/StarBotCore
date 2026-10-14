@@ -28,6 +28,8 @@ import javax.imageio.ImageIO;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -44,6 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -174,6 +177,50 @@ class StatusCommandTest {
         BufferedImage noLogoImage = render(plugins);
         assertEquals(image.getHeight() - 225, noLogoImage.getHeight());
         saveImage(image, "command-status-long.png");
+    }
+
+    /**
+     * 验证运行时间来自当前进程并随查询更新，顶部装饰跟随 Logo 开关
+     */
+    @Test
+    void rendersCurrentProcessUptimeAndHeaderWithoutLogo() throws Exception {
+        var runtime = mock(RuntimeMXBean.class);
+        when(runtime.getUptime()).thenReturn(184722000L, 184723000L);
+        List<StarBotPlugin> plugins = List.of(plugin("OneBot Adapter", "1.2.3", "Alice"),
+                plugin("Example Command", "2.0.0", "Bob"));
+        try (var management = mockStatic(ManagementFactory.class)) {
+            management.when(ManagementFactory::getRuntimeMXBean).thenReturn(runtime);
+            BufferedImage image = render(plugins);
+            assertEquals(new java.awt.Color(255, 229, 154).getRGB(), image.getRGB(100, 100));
+            assertEquals(new java.awt.Color(252, 203, 224).getRGB(), image.getRGB(1085, 95));
+            assertTrue(drawnTexts.containsAll(List.of("运行状态", "运行时间", "2 天 3 小时 18 分 42 秒")));
+            assertTrue(drawnTexts.indexOf("操作系统") < drawnTexts.indexOf("运行时间"));
+            assertTrue(drawnTexts.indexOf("运行时间") < drawnTexts.indexOf("已安装插件"));
+            saveImage(image, "command-status-uptime.png");
+
+            drawnTexts.clear();
+            properties.getPaint().setDrawLogo(false);
+            BufferedImage noLogoImage = render(plugins);
+            assertEquals(image.getHeight() - 225, noLogoImage.getHeight());
+            assertEquals(new java.awt.Color(245, 241, 255).getRGB(), noLogoImage.getRGB(100, 70));
+            assertEquals(new java.awt.Color(245, 241, 255).getRGB(), noLogoImage.getRGB(1085, 65));
+            assertTrue(drawnTexts.containsAll(List.of("StarBot 运行状态", "2 天 3 小时 18 分 43 秒")));
+            assertFalse(drawnTexts.contains("运行状态"));
+            saveImage(noLogoImage, "command-status-no-logo.png");
+        }
+    }
+
+    /**
+     * 验证运行时间在秒、分、小时和天的边界正确换算，保留中间的零值单位
+     */
+    @Test
+    void formatsUptimeAcrossUnitBoundaries() {
+        long[] milliseconds = {0, 999, 1000, 59999, 60000, 3600000, 86400000, 86461000};
+        String[] expected = {"0 秒", "0 秒", "1 秒", "59 秒", "1 分 0 秒", "1 小时 0 分 0 秒",
+                "1 天 0 小时 0 分 0 秒", "1 天 0 小时 1 分 1 秒"};
+        for (int index = 0; index < milliseconds.length; index++) {
+            assertEquals(expected[index], ReflectionTestUtils.invokeMethod(command, "formatUptime", milliseconds[index]));
+        }
     }
 
     /**
