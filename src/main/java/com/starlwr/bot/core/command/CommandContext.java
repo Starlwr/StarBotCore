@@ -231,7 +231,14 @@ public final class CommandContext {
      */
     public void reply(@NonNull String content) {
         if (StringUtils.isNotBlank(getMessageId())) {
-            message.reply("{reply=" + getMessageId() + "}" + content);
+            String reply = "{reply=" + getMessageId() + "}";
+            List<String> parts = new ArrayList<>();
+            for (String part : content.split("\\{next}")) {
+                if (StringUtils.isNotEmpty(part)) {
+                    parts.add(reply + part);
+                }
+            }
+            message.reply(String.join("{next}", parts));
         } else {
             message.reply(content);
         }

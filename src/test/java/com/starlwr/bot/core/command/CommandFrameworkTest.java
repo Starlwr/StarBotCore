@@ -1068,13 +1068,27 @@ class CommandFrameworkTest {
      */
     @Test
     void replyReusesPlaceholdersSplitAndRouting() {
-        context(message("x")).reply("文本{image_url=https://example.com/a.png}{next}{at=2}");
+        context(messageBuilder("x").messageId("source").build()).reply("文本{image_url=https://example.com/a.png}{next}{at=2}");
         assertEquals(2, replies.size());
         assertEquals("bot-a", replies.get(0).getPlatform());
         assertEquals("100", replies.get(0).getNum());
         assertEquals(PushTargetType.GROUP, replies.get(0).getType());
         assertTrue(replies.get(0).getContent().contains("{image_url="));
+        assertTrue(replies.get(0).getContent().startsWith("{reply="));
+        assertTrue(replies.get(1).getContent().startsWith("{reply="));
         assertSame(replies.get(1), replies.get(0).getNext());
+    }
+
+    /**
+     * 验证补齐回复占位符时不会为空分段创建只有引用的消息
+     */
+    @Test
+    void replySkipsEmptySegmentsWithoutLosingOriginalMessageId() {
+        context(messageBuilder("x").messageId("source").build()).reply("{next}第一段{next}{next}第二段{next}");
+        assertEquals(2, replies.size());
+        assertTrue(replies.get(0).getContent().endsWith("}第一段"));
+        assertTrue(replies.get(1).getContent().endsWith("}第二段"));
+        assertEquals(replies.get(0).getContent().split("}", 2)[0], replies.get(1).getContent().split("}", 2)[0]);
     }
 
     /**
