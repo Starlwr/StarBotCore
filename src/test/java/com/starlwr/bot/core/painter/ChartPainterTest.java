@@ -3,9 +3,11 @@ package com.starlwr.bot.core.painter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,6 +16,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -547,6 +550,45 @@ public class ChartPainterTest {
         assertTrue(ChartPainter.renderRankingChart(items, 0, RANKING_FONT).isEmpty());
         assertTrue(ChartPainter.renderLineChart(zeroSamples, false, 20, 0, LINE_FONT).isEmpty());
         assertTrue(ChartPainter.renderDistributionChart(zeroSlices, -1, DISTRIBUTION_FONT).isEmpty());
+    }
+
+    /**
+     * 测试互动曲线分桶内的金额相互抵消后为零，不残留浮点误差
+     */
+    @Test
+    public void testInteractionBucketCancelsToZero() {
+        List<ChartPainter.LinePoint> samples = List.of(new ChartPainter.LinePoint(1, 0.1),
+                new ChartPainter.LinePoint(2, 0.2), new ChartPainter.LinePoint(3, -0.3));
+
+        double[] values = ReflectionTestUtils.invokeMethod(ChartPainter.class, "divide", samples, 0L, 100L, false, 2);
+
+        assertArrayEquals(new double[]{0, 0, 0}, values);
+    }
+
+    /**
+     * 测试累计曲线跨桶累加金额时保持精确总值
+     */
+    @Test
+    public void testCumulativeBucketsPreserveExactTotal() {
+        List<ChartPainter.LinePoint> samples = List.of(new ChartPainter.LinePoint(1, 0.1),
+                new ChartPainter.LinePoint(40, 0.2), new ChartPainter.LinePoint(80, -0.3));
+
+        double[] values = ReflectionTestUtils.invokeMethod(ChartPainter.class, "divide", samples, 0L, 100L, true, 3);
+
+        assertArrayEquals(new double[]{0, 0.1, 0.3, 0}, values);
+    }
+
+    /**
+     * 测试不分桶的累计曲线按时间排序后精确累加金额
+     */
+    @Test
+    public void testRawCumulativePointsPreserveExactTotal() {
+        List<ChartPainter.LinePoint> samples = List.of(new ChartPainter.LinePoint(80, -0.3),
+                new ChartPainter.LinePoint(1, 0.1), new ChartPainter.LinePoint(40, 0.2));
+
+        List<Point2D.Double> points = ReflectionTestUtils.invokeMethod(ChartPainter.class, "buildRawPoints", samples, 0L, 100L, true);
+
+        assertEquals(List.of(0.0, 0.1, 0.3, 0.0), points.stream().map(Point2D.Double::getY).toList());
     }
 
     /**

@@ -10,11 +10,13 @@ import java.awt.*;
 import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -878,31 +880,24 @@ public class ChartPainter {
      * @return 分桶聚合结果
      */
     private static double[] divide(List<LinePoint> samples, long start, long end, boolean cumulative, int bucketCount) {
-        double[] result = new double[bucketCount];
+        BigDecimal[] buckets = new BigDecimal[bucketCount];
+        Arrays.fill(buckets, BigDecimal.ZERO);
         long duration = end - start;
 
         for (LinePoint sample : samples) {
             long timestamp = sample.getTimestamp();
             if (timestamp >= start && timestamp <= end) {
                 int index = (int) Math.min(Math.max((timestamp - start) * bucketCount / duration, 0), bucketCount - 1);
-                result[index] += sample.getValue();
+                buckets[index] = buckets[index].add(BigDecimal.valueOf(sample.getValue()));
             }
         }
 
         // 累计模式转换为前缀和，末位元素即为全部样本的累计总和；非累计模式保持各桶实际数值
-        if (cumulative) {
-            double[] cumulativeValues = new double[bucketCount + 1];
-            double total = 0;
-            for (int index = 0; index < bucketCount; index++) {
-                total += result[index];
-                cumulativeValues[index + 1] = total;
-            }
-            result = cumulativeValues;
-        } else {
-            double[] interactionValues = new double[bucketCount + 1];
-            interactionValues[0] = 0;
-            System.arraycopy(result, 0, interactionValues, 1, bucketCount);
-            result = interactionValues;
+        double[] result = new double[bucketCount + 1];
+        BigDecimal total = BigDecimal.ZERO;
+        for (int index = 0; index < bucketCount; index++) {
+            total = cumulative ? total.add(buckets[index]) : buckets[index];
+            result[index + 1] = total.doubleValue();
         }
 
         return result;
@@ -923,7 +918,7 @@ public class ChartPainter {
 
         List<Point2D.Double> points = new ArrayList<>();
         double duration = end - start;
-        double running = 0;
+        BigDecimal running = BigDecimal.ZERO;
 
         if (cumulative) {
             points.add(new Point2D.Double(0.0, 0.0));
@@ -932,8 +927,8 @@ public class ChartPainter {
         for (LinePoint sample : sorted) {
             double value = sample.getValue();
             if (cumulative) {
-                running += value;
-                value = running;
+                running = running.add(BigDecimal.valueOf(value));
+                value = running.doubleValue();
             }
             double x = Math.max(0, Math.min(1, (double) (sample.getTimestamp() - start) / duration));
             points.add(new Point2D.Double(x, value));
