@@ -1126,7 +1126,7 @@ class CommandFrameworkTest {
     @Test
     void configurationDefaultsAndBinding() {
         var defaults = new StarBotCoreProperties();
-        assertEquals("disabled-command.json", defaults.getCommand().getDisabledCommandPath());
+        assertEquals("data/disabled-command.json", defaults.getCommand().getDisabledCommandPath());
         assertTrue(defaults.getCommand().getPermissions().isEmpty());
         assertEquals(Integer.MAX_VALUE, defaults.getCommandThread().getQueueCapacity());
         var source = new MapConfigurationPropertySource(Map.of("starbot.core.command.disabled-command-path", "custom.json",

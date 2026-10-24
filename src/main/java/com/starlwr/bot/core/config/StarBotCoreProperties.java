@@ -256,7 +256,7 @@ public class StarBotCoreProperties {
         /**
          * 命令禁用配置文件路径
          */
-        private String disabledCommandPath = "disabled-command.json";
+        private String disabledCommandPath = "data/disabled-command.json";
     }
 
     /**
@@ -273,7 +273,7 @@ public class StarBotCoreProperties {
         /**
          * 直播数据文件路径，仅使用默认直播数据服务时生效
          */
-        private String liveDataPath = "data.json";
+        private String liveDataPath = "data/data.json";
 
         /**
          * 自动保存直播数据间隔，单位：秒，仅使用默认直播数据服务时生效
