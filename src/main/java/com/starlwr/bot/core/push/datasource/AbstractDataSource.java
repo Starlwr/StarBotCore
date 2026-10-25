@@ -44,6 +44,11 @@ public abstract class AbstractDataSource {
         this.handlerService = handlerService;
     }
 
+    /**
+     * 获取数据源名称
+     * @return 数据源名称
+     */
+    public abstract String getName();
 
     /**
      * 加载数据源，读取完毕后需调用 add 方法将推送用户添加至数据源中

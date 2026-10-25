@@ -195,6 +195,11 @@ public class StarBotCoreProperties {
     @Setter
     public static class DataSource {
         /**
+         * 数据源类型
+         */
+        private String type = "json";
+
+        /**
          * JSON 文件路径，仅使用 JSON 数据源时生效
          */
         private String jsonPath = "datasource.json";

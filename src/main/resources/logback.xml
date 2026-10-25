@@ -6,7 +6,6 @@
     <springProperty name="consoleLogLevel" source="starbot.core.log.console"/>
     <springProperty name="fileLogLevel" source="starbot.core.log.file"/>
 
-    <logger name="org.reflections.Reflections" level="OFF"/>
     <logger name="org.apache.catalina.loader.WebappLoader" level="OFF"/>
 
     <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">

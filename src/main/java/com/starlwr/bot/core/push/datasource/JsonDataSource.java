@@ -13,7 +13,7 @@ import com.starlwr.bot.core.push.model.PushUser;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.SetUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -28,10 +28,9 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * JSON 数据源
  */
-@Profile("json")
 @Slf4j
 @Service
-@DataSource(name = "json")
+@ConditionalOnProperty(name = "starbot.core.datasource.type", havingValue = "json", matchIfMissing = true)
 public class JsonDataSource extends AbstractDataSource {
     private final StarBotCoreProperties properties;
 
@@ -49,6 +48,11 @@ public class JsonDataSource extends AbstractDataSource {
     public JsonDataSource(ApplicationEventPublisher eventPublisher, DataSourceServiceRegistry dataSourceServiceRegistry, StarBotEventHandlerService handlerService, StarBotCoreProperties properties) {
         super(eventPublisher, dataSourceServiceRegistry, handlerService);
         this.properties = properties;
+    }
+
+    @Override
+    public String getName() {
+        return "json";
     }
 
     /**
