@@ -1,14 +1,13 @@
-package com.starlwr.bot.core.event.config;
+package com.starlwr.bot.core.event.multicaster;
 
-import com.starlwr.bot.core.event.multicaster.InterruptibleEventMulticaster;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * 事件配置类
+ * 事件广播器配置类
  */
 @Configuration
-public class EventConfig {
+public class EventMulticasterConfig {
     @Bean
     public InterruptibleEventMulticaster applicationEventMulticaster() {
         return new InterruptibleEventMulticaster();
