@@ -32,14 +32,6 @@ public class StarBotMailService {
     }
 
     /**
-     * 获取邮件发送器
-     * @return 邮件发送器
-     */
-    private JavaMailSender getMailSender() {
-        return mailSenderProvider.getIfUnique();
-    }
-
-    /**
      * 获取默认收件邮箱
      * @return 默认收件邮箱
      */
@@ -48,34 +40,14 @@ public class StarBotMailService {
     }
 
     /**
-     * 判断邮件是否可发送
-     * @param receiver 收件邮箱
-     * @param subject 主题
-     * @param content 内容
-     * @return 邮件是否可发送
-     */
-    private boolean canSend(String receiver, String subject, String content) {
-        if (StringUtils.isBlank(receiver)) {
-            log.warn("未配置默认邮件接收地址, 无法发送邮件, 主题: {}, 内容: {}", subject, content);
-            return false;
-        }
-
-        JavaMailSender sender = getMailSender();
-        if (sender == null) {
-            log.warn("未配置邮件发送服务, 无法向 {} 发送邮件, 主题: {}, 内容: {}", receiver, subject, content);
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
      * 发送纯文本邮件到默认收件邮箱
      * @param subject 主题
      * @param content 内容
      */
     public void sendMail(String subject, String content) {
-        sendMail(getDefaultReceiver(), subject, content);
+        if (properties.getMail().isEnabled()) {
+            sendMail(getDefaultReceiver(), subject, content);
+        }
     }
 
     /**
@@ -85,13 +57,12 @@ public class StarBotMailService {
      * @param content 内容
      */
     public void sendMail(String receiver, String subject, String content) {
-        if (!canSend(receiver, subject, content)) {
+        JavaMailSender mailSender = getMailSender(receiver, subject, content);
+        if (mailSender == null) {
             return;
         }
 
         try {
-            JavaMailSender mailSender = getMailSender();
-
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(from);
             message.setTo(receiver);
@@ -111,7 +82,9 @@ public class StarBotMailService {
      * @param content 内容
      */
     public void sendMimeMail(String subject, String content) {
-        sendMimeMail(getDefaultReceiver(), subject, content);
+        if (properties.getMail().isEnabled()) {
+            sendMimeMail(getDefaultReceiver(), subject, content);
+        }
     }
 
     /**
@@ -121,13 +94,12 @@ public class StarBotMailService {
      * @param content 内容
      */
     public void sendMimeMail(String receiver, String subject, String content) {
-        if (!canSend(receiver, subject, content)) {
+        JavaMailSender mailSender = getMailSender(receiver, subject, content);
+        if (mailSender == null) {
             return;
         }
 
         try {
-            JavaMailSender mailSender = getMailSender();
-
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
             helper.setFrom(from);
@@ -140,5 +112,29 @@ public class StarBotMailService {
         } catch (Exception e) {
             log.error("富文本邮件发送失败, 主题: {}, 内容: {}", subject, content, e);
         }
+    }
+
+    /**
+     * 检查收件邮箱并获取邮件发送器
+     * @param receiver 收件邮箱
+     * @param subject 主题
+     * @param content 内容
+     * @return 邮件发送器
+     */
+    private JavaMailSender getMailSender(String receiver, String subject, String content) {
+        if (!properties.getMail().isEnabled()) {
+            return null;
+        }
+
+        if (StringUtils.isBlank(receiver)) {
+            log.warn("未配置默认邮件接收地址, 无法发送邮件, 主题: {}, 内容: {}", subject, content);
+            return null;
+        }
+
+        JavaMailSender sender = mailSenderProvider.getIfUnique();
+        if (sender == null) {
+            log.warn("未配置邮件发送服务, 无法向 {} 发送邮件, 主题: {}, 内容: {}", receiver, subject, content);
+        }
+        return sender;
     }
 }

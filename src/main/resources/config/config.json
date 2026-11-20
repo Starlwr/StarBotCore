@@ -1,0 +1,1297 @@
+{
+  "title": "Core",
+  "description": "StarBot 核心框架的基础设置，包括日志、线程池、插件、命令等",
+  "configurationClass": "com.starlwr.bot.core.config.StarBotCoreProperties",
+  "basePath": [
+    "starbot",
+    "core"
+  ],
+  "conditions": {
+    "mail-address-provided": {
+      "scope": "current",
+      "path": [],
+      "op": "!=",
+      "value": ""
+    },
+    "plugin-dependency-auto-download": {
+      "path": [
+        "auto-download-dependency"
+      ],
+      "op": "=",
+      "value": true
+    },
+    "mail-enabled": {
+      "scope": "document",
+      "path": [
+        "starbot",
+        "core",
+        "mail",
+        "enabled"
+      ],
+      "op": "=",
+      "value": true
+    },
+    "json-datasource": {
+      "scope": "document",
+      "path": [
+        "starbot",
+        "core",
+        "datasource",
+        "type"
+      ],
+      "op": "=",
+      "value": "json"
+    },
+    "live-data-saving": {
+      "scope": "document",
+      "path": [
+        "starbot",
+        "core",
+        "live",
+        "save-live-data"
+      ],
+      "op": "=",
+      "value": true
+    }
+  },
+  "groups": [
+    {
+      "id": "server",
+      "title": "服务",
+      "description": "监听地址和服务端口设置",
+      "target": "advanced",
+      "fields": [
+        {
+          "key": "server.address",
+          "label": "监听地址",
+          "description": "StarBot 监听的地址，支持 IPv4、IPv6、localhost 或主机名\n默认 0.0.0.0 允许远程访问，如无需远程访问，安全起见建议改为 127.0.0.1 仅限本机访问",
+          "type": "string",
+          "format": "listen-address",
+          "suggestedValue": "0.0.0.0",
+          "suggestedReason": "默认 0.0.0.0 允许远程访问，如无需远程访问，安全起见建议改为 127.0.0.1"
+        },
+        {
+          "key": "server.port",
+          "label": "StarBot 服务端口",
+          "description": "StarBot 监听的端口，默认为 7827（九键输入法输入 Star），填写 0 自动分配",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "suggestedValue": 7827,
+          "suggestedReason": "7827 是 StarBot 默认端口，被占用时可以改为其他值"
+        }
+      ]
+    },
+    {
+      "id": "config-center",
+      "title": "配置中心",
+      "description": "配置中心相关设置",
+      "path": [
+        "config-center"
+      ],
+      "restartRequired": true,
+      "fields": [
+        {
+          "key": "enabled",
+          "label": "启用配置中心",
+          "description": "关闭后当前配置中心不可用，重新开启需要手动编辑 data/config.json\n使用 --config 参数可独立启动配置中心",
+          "type": "boolean"
+        },
+        {
+          "key": "password",
+          "label": "访问密码",
+          "description": "配置中心登录密码，加密保存，无法查看原文\n留空表示保持原密码，恢复默认后每次启动随机生成密码",
+          "type": "string",
+          "visibleWhen": {
+            "path": [
+              "enabled"
+            ],
+            "op": "=",
+            "value": true
+          },
+          "validators": [
+            {
+              "rule": "format",
+              "value": "password",
+              "message": "访问密码只能使用英文字母、数字和半角符号"
+            },
+            {
+              "rule": "minLength",
+              "value": 8,
+              "when": {
+                "scope": "current",
+                "path": [],
+                "op": "!empty"
+              },
+              "message": "访问密码不能少于 8 个字符"
+            },
+            {
+              "rule": "maxLength",
+              "value": 32,
+              "message": "访问密码不能超过 32 个字符"
+            }
+          ],
+          "ui": {
+            "widget": "password"
+          }
+        }
+      ]
+    },
+    {
+      "id": "log",
+      "title": "日志",
+      "description": "日志相关设置",
+      "path": [
+        "log"
+      ],
+      "fields": [
+        {
+          "key": "console",
+          "label": "控制台日志级别",
+          "description": "控制哪些级别的日志显示在控制台中",
+          "type": "string",
+          "springKey": "starbot.core.log.console",
+          "options": [
+            {
+              "label": "ALL",
+              "value": "ALL"
+            },
+            {
+              "label": "TRACE",
+              "value": "TRACE"
+            },
+            {
+              "label": "DEBUG",
+              "value": "DEBUG"
+            },
+            {
+              "label": "INFO",
+              "value": "INFO"
+            },
+            {
+              "label": "WARN",
+              "value": "WARN"
+            },
+            {
+              "label": "ERROR",
+              "value": "ERROR"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "file",
+          "label": "文件日志级别",
+          "description": "控制哪些级别的日志写入 logs 文件夹",
+          "type": "string",
+          "springKey": "starbot.core.log.file",
+          "options": [
+            {
+              "label": "ALL",
+              "value": "ALL"
+            },
+            {
+              "label": "TRACE",
+              "value": "TRACE"
+            },
+            {
+              "label": "DEBUG",
+              "value": "DEBUG"
+            },
+            {
+              "label": "INFO",
+              "value": "INFO"
+            },
+            {
+              "label": "WARN",
+              "value": "WARN"
+            },
+            {
+              "label": "ERROR",
+              "value": "ERROR"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "logging.level",
+          "label": "日志级别覆盖",
+          "description": "为指定包或类设置日志级别，例如将 com.example 设置为 DEBUG",
+          "type": "map",
+          "target": "advanced",
+          "keyMeta": {
+            "type": "string",
+            "label": "包名、类名或 root",
+            "nonBlank": true
+          },
+          "values": {
+            "type": "string",
+            "label": "日志级别",
+            "options": [
+              {
+                "label": "TRACE",
+                "value": "TRACE"
+              },
+              {
+                "label": "DEBUG",
+                "value": "DEBUG"
+              },
+              {
+                "label": "INFO",
+                "value": "INFO"
+              },
+              {
+                "label": "WARN",
+                "value": "WARN"
+              },
+              {
+                "label": "ERROR",
+                "value": "ERROR"
+              },
+              {
+                "label": "OFF",
+                "value": "OFF"
+              }
+            ]
+          },
+          "suggestedValue": null,
+          "suggestedReason": "未设置时沿用当前日志级别，一般无需修改"
+        }
+      ]
+    },
+    {
+      "id": "debug",
+      "title": "调试",
+      "description": "用于排查问题的调试日志相关配置",
+      "path": [
+        "debug"
+      ],
+      "fields": [
+        {
+          "key": "event-debug",
+          "label": "记录事件日志",
+          "description": "将内部事件记录到 debug 目录，如需反馈问题，请打开此开关以便排查问题",
+          "type": "boolean",
+          "springKey": "starbot.core.debug.event-debug"
+        },
+        {
+          "key": "network-debug",
+          "label": "记录网络请求日志",
+          "description": "将网络请求记录到 debug 目录，记录中可能包含请求内容，如需反馈问题，请打开此开关以便排查问题",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "network",
+      "title": "网络",
+      "description": "网络请求相关设置",
+      "path": [
+        "network"
+      ],
+      "restartRequired": true,
+      "fields": [
+        {
+          "key": "connect-timeout",
+          "label": "连接超时",
+          "description": "建立连接的最长等待时间，单位为秒",
+          "type": "integer",
+          "ui": {
+            "unit": "秒"
+          },
+          "minimum": 0,
+          "maximum": 600
+        },
+        {
+          "key": "read-timeout",
+          "label": "读取超时",
+          "description": "等待响应数据的最长时间，单位为秒",
+          "type": "integer",
+          "ui": {
+            "unit": "秒"
+          },
+          "minimum": 0,
+          "maximum": 2592000
+        }
+      ]
+    },
+    {
+      "id": "thread-pool",
+      "title": "线程池",
+      "description": "线程池相关设置",
+      "restartRequired": true,
+      "ui": {
+        "layout": "cards"
+      },
+      "fields": [
+        {
+          "key": "network-thread",
+          "label": "网络线程池",
+          "description": "用于处理网络请求",
+          "type": "object",
+          "fields": [
+            {
+              "key": "core-pool-size",
+              "label": "核心线程数",
+              "description": "通常保留的工作线程数，任务较多时可适当增加",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1024,
+              "validators": [
+                {
+                  "rule": "compare",
+                  "scope": "parent",
+                  "path": [
+                    "max-pool-size"
+                  ],
+                  "op": "<=",
+                  "message": "核心线程数不能超过最大线程数"
+                }
+              ]
+            },
+            {
+              "key": "max-pool-size",
+              "label": "最大线程数",
+              "description": "任务繁忙时最多创建的线程数，不能小于核心线程数",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1024
+            },
+            {
+              "key": "queue-capacity",
+              "label": "任务队列容量",
+              "description": "线程繁忙时最多排队等待的任务数，0 表示不排队，直接创建新线程",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            {
+              "key": "keep-alive-seconds",
+              "label": "非核心线程存活时间",
+              "description": "非核心空闲线程的存活时间",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3600,
+              "ui": {
+                "unit": "秒"
+              }
+            }
+          ]
+        },
+        {
+          "key": "command-thread",
+          "label": "命令线程池",
+          "description": "用于处理命令执行",
+          "type": "object",
+          "fields": [
+            {
+              "key": "core-pool-size",
+              "label": "核心线程数",
+              "description": "通常保留的工作线程数，任务较多时可适当增加",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1024,
+              "validators": [
+                {
+                  "rule": "compare",
+                  "scope": "parent",
+                  "path": [
+                    "max-pool-size"
+                  ],
+                  "op": "<=",
+                  "message": "核心线程数不能超过最大线程数"
+                }
+              ]
+            },
+            {
+              "key": "max-pool-size",
+              "label": "最大线程数",
+              "description": "任务繁忙时最多创建的线程数，不能小于核心线程数",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1024
+            },
+            {
+              "key": "queue-capacity",
+              "label": "任务队列容量",
+              "description": "线程繁忙时最多排队等待的任务数，0 表示不排队，直接创建新线程",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            {
+              "key": "keep-alive-seconds",
+              "label": "非核心线程存活时间",
+              "description": "非核心空闲线程的存活时间",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3600,
+              "ui": {
+                "unit": "秒"
+              }
+            }
+          ]
+        },
+        {
+          "key": "ai-thread",
+          "label": "AI 线程池",
+          "description": "用于处理 AI 请求",
+          "type": "object",
+          "fields": [
+            {
+              "key": "core-pool-size",
+              "label": "核心线程数",
+              "description": "通常保留的工作线程数，任务较多时可适当增加",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1024,
+              "validators": [
+                {
+                  "rule": "compare",
+                  "scope": "parent",
+                  "path": [
+                    "max-pool-size"
+                  ],
+                  "op": "<=",
+                  "message": "核心线程数不能超过最大线程数"
+                }
+              ]
+            },
+            {
+              "key": "max-pool-size",
+              "label": "最大线程数",
+              "description": "任务繁忙时最多创建的线程数，不能小于核心线程数",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1024
+            },
+            {
+              "key": "queue-capacity",
+              "label": "任务队列容量",
+              "description": "线程繁忙时最多排队等待的任务数，0 表示不排队，直接创建新线程",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            {
+              "key": "keep-alive-seconds",
+              "label": "非核心线程存活时间",
+              "description": "非核心空闲线程的存活时间",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3600,
+              "ui": {
+                "unit": "秒"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plugin",
+      "title": "插件",
+      "description": "插件相关设置",
+      "path": [
+        "plugin"
+      ],
+      "restartRequired": true,
+      "fields": [
+        {
+          "key": "auto-download-dependency",
+          "label": "自动下载插件依赖",
+          "description": "启动时自动下载插件缺少的依赖。关闭后需要自行下载插件依赖到 lib 目录\n可使用 --skip-download-dependency 命令行参数临时跳过自动下载插件依赖",
+          "type": "boolean"
+        },
+        {
+          "key": "maven-base-urls",
+          "label": "Maven 仓库地址",
+          "description": "下载插件依赖时使用的 Maven 仓库",
+          "type": "array",
+          "visibleWhen": "plugin-dependency-auto-download",
+          "validateWhen": "plugin-dependency-auto-download",
+          "items": {
+            "type": "string",
+            "label": "Maven 仓库地址",
+            "format": "http-base-url"
+          },
+          "validators": [
+            {
+              "rule": "minItems",
+              "value": 1,
+              "message": "开启自动下载插件依赖时至少填写一个 Maven 仓库地址"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "paint",
+      "title": "绘图",
+      "description": "图片绘制相关设置",
+      "path": [
+        "paint"
+      ],
+      "fields": [
+        {
+          "key": "draw-logo",
+          "label": "绘制 StarBot Logo",
+          "description": "在 StarBot 绘制的图片中显示 Logo",
+          "type": "boolean"
+        },
+        {
+          "key": "auto-expand-height",
+          "label": "画布扩展高度",
+          "description": "图片高度不足时每次扩展的像素数，通常保留默认值即可\n设置过大会导致产生较大的峰值内存占用，设置过小会频繁自动扩展导致效率降低",
+          "type": "integer",
+          "ui": {
+            "unit": "像素"
+          },
+          "minimum": 1,
+          "maximum": 100000
+        },
+        {
+          "key": "fonts",
+          "label": "自定义字体列表",
+          "description": "绘图时优先使用的字体，可填写字体名称或 .ttf 文件路径，同时会自动追加内置字体和部分系统字体作为后备字体使用\nLinux 系统需要手动安装字体：sudo apt install -y  fonts-noto-cjk  fonts-wqy-zenhei  fonts-noto-color-emoji fonts-freefont-ttf",
+          "type": "array",
+          "restartRequired": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "key": "extra-copyrights",
+          "label": "底部额外版权信息",
+          "description": "StarBot 绘制的图片底部的额外版权信息",
+          "type": "array",
+          "ui": {
+            "itemTitlePath": [
+              "text"
+            ]
+          },
+          "items": {
+            "type": "object",
+            "fields": [
+              {
+                "key": "text",
+                "label": "内容",
+                "description": "版权信息内容",
+                "type": "string",
+                "ui": {
+                  "widget": "textarea"
+                },
+                "nullable": true
+              },
+              {
+                "key": "font",
+                "label": "字体",
+                "description": "版权信息文字字体，留空时使用默认字体",
+                "type": "string",
+                "nullable": true
+              },
+              {
+                "key": "size",
+                "label": "字号",
+                "description": "版权信息文字字号，0 表示使用字体默认字号",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "key": "color",
+                "label": "颜色",
+                "description": "版权信息文字颜色，支持颜色名称或十六进制颜色",
+                "type": "string",
+                "format": "color",
+                "ui": {
+                  "widget": "color"
+                },
+                "nullable": true
+              },
+              {
+                "key": "style",
+                "label": "字体风格",
+                "type": "integer",
+                "options": [
+                  {
+                    "label": "常规",
+                    "value": 0
+                  },
+                  {
+                    "label": "粗体",
+                    "value": 1
+                  },
+                  {
+                    "label": "斜体",
+                    "value": 2
+                  },
+                  {
+                    "label": "粗斜体",
+                    "value": 3
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "mail",
+      "title": "邮件",
+      "description": "邮件相关设置",
+      "path": [
+        "mail"
+      ],
+      "actions": [
+        {
+          "id": "test-mail-send",
+          "label": "发送测试邮件",
+          "description": "使用当前页面填写的配置发送测试邮件",
+          "handler": "com.starlwr.bot.core.config.action.SendTestMailAction",
+          "synchronous": false,
+          "parameters": {
+            "mail": {
+              "path": [
+                "starbot",
+                "core",
+                "mail"
+              ]
+            },
+            "smtp": {
+              "keyPrefix": "spring.mail.",
+              "springProperties": true
+            }
+          },
+          "confirmation": "将使用当前页面填写的配置，向默认收件邮箱发送一封测试邮件。是否继续？",
+          "visibleWhen": "mail-enabled"
+        }
+      ],
+      "fields": [
+        {
+          "key": "enabled",
+          "label": "启用邮件",
+          "description": "邮件功能可用于发送提醒、告警等",
+          "type": "boolean",
+          "springKey": "starbot.core.mail.enabled"
+        },
+        {
+          "key": "default-to",
+          "label": "默认收件邮箱",
+          "description": "未指定收件人时使用的默认收件邮箱",
+          "type": "string",
+          "format": "email",
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "nullable": true,
+          "emptyAsNull": true
+        },
+        {
+          "key": "spring.mail.host",
+          "label": "SMTP 主机",
+          "description": "SMTP 发信服务器地址，例如 smtp.qq.com",
+          "type": "string",
+          "target": "advanced",
+          "format": "listen-address",
+          "requiredWhen": "mail-enabled",
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "suggestedValue": null,
+          "suggestedReason": "由邮箱服务商提供，按服务商文档填写"
+        },
+        {
+          "key": "spring.mail.port",
+          "label": "SMTP 端口",
+          "description": "SMTP 服务端口，默认为 25",
+          "type": "integer",
+          "target": "advanced",
+          "minimum": 1,
+          "maximum": 65535,
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "suggestedValue": 25,
+          "suggestedReason": "25 是 SMTP 常用端口，使用 SSL 或 STARTTLS 时按服务商要求调整"
+        },
+        {
+          "key": "spring.mail.username",
+          "label": "邮箱用户名",
+          "description": "SMTP 登录用户名，通常为发件邮箱地址",
+          "type": "string",
+          "target": "advanced",
+          "requiredWhen": "mail-enabled",
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "validators": [
+            {
+              "rule": "format",
+              "value": "email",
+              "when": "mail-address-provided",
+              "message": "邮箱用户名格式不正确"
+            }
+          ],
+          "suggestedValue": null,
+          "suggestedReason": "SMTP 登录用户名，通常为发件邮箱地址"
+        },
+        {
+          "key": "spring.mail.password",
+          "label": "密码或授权码",
+          "description": "SMTP 登录密码或授权码，开启身份认证后必填",
+          "type": "string",
+          "target": "advanced",
+          "requiredWhen": {
+            "all": [
+              {
+                "scope": "document",
+                "path": [
+                  "starbot",
+                  "core",
+                  "mail",
+                  "enabled"
+                ],
+                "op": "=",
+                "value": true
+              },
+              {
+                "scope": "document",
+                "path": [
+                  "advanced",
+                  "spring.mail.properties",
+                  "mail.smtp.auth"
+                ],
+                "op": "=",
+                "value": true
+              }
+            ]
+          },
+          "ui": {
+            "widget": "password"
+          },
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "suggestedValue": null,
+          "suggestedReason": "SMTP 登录密码或授权码，开启身份认证后必填"
+        },
+        {
+          "key": "spring.mail.protocol",
+          "label": "邮件协议",
+          "description": "邮件协议，通常保持 smtp",
+          "type": "string",
+          "target": "advanced",
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "suggestedValue": "smtp",
+          "suggestedReason": "邮件协议，通常保持 smtp",
+          "nonBlank": true
+        },
+        {
+          "key": "spring.mail.default-encoding",
+          "label": "邮件编码",
+          "description": "邮件编码，通常保持 UTF-8",
+          "type": "string",
+          "target": "advanced",
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "suggestedValue": "UTF-8",
+          "suggestedReason": "邮件编码，通常保持 UTF-8",
+          "nonBlank": true
+        },
+        {
+          "key": "spring.mail.properties[mail.smtp.auth]",
+          "label": "SMTP 身份认证",
+          "description": "是否登录 SMTP 账号，多数邮箱服务商需要开启",
+          "type": "boolean",
+          "target": "advanced",
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "suggestedValue": false,
+          "suggestedReason": "是否登录 SMTP 账号，多数邮箱服务商要求身份认证，按服务商要求调整"
+        },
+        {
+          "key": "spring.mail.properties[mail.smtp.starttls.enable]",
+          "label": "启用 STARTTLS",
+          "description": "是否尝试使用 STARTTLS 加密连接",
+          "type": "boolean",
+          "target": "advanced",
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "suggestedValue": false,
+          "suggestedReason": "是否尝试使用 STARTTLS 加密连接，按服务商要求开启"
+        },
+        {
+          "key": "spring.mail.properties[mail.smtp.starttls.required]",
+          "label": "要求 STARTTLS",
+          "description": "是否强制使用 STARTTLS，无法加密时不发送邮件",
+          "type": "boolean",
+          "target": "advanced",
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "suggestedValue": false,
+          "suggestedReason": "是否强制使用 STARTTLS，按服务商要求，需要强制加密时开启"
+        },
+        {
+          "key": "spring.mail.properties[mail.smtp.ssl.enable]",
+          "label": "启用 SSL",
+          "description": "是否使用 SSL 加密连接，端口通常为 465",
+          "type": "boolean",
+          "target": "advanced",
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "suggestedValue": false,
+          "suggestedReason": "是否使用 SSL 加密连接，按服务商要求开启，端口通常为 465"
+        },
+        {
+          "key": "spring.mail.properties",
+          "label": "附加邮件属性",
+          "description": "附加邮件属性，例如 mail.smtp.timeout，没有额外要求时留空",
+          "type": "map",
+          "target": "advanced",
+          "keyMeta": {
+            "label": "附加邮件属性名",
+            "nonBlank": true
+          },
+          "values": {
+            "type": "string"
+          },
+          "visibleWhen": "mail-enabled",
+          "validateWhen": "mail-enabled",
+          "suggestedValue": null,
+          "suggestedReason": "附加邮件属性，没有额外要求时留空"
+        }
+      ]
+    },
+    {
+      "id": "ai",
+      "title": "AI",
+      "description": "AI 相关设置",
+      "path": [
+        "ai"
+      ],
+      "restartRequired": true,
+      "fields": [
+        {
+          "key": "default-model",
+          "label": "默认模型名称",
+          "description": "默认使用的模型，配置多个模型时必须指定",
+          "type": "string",
+          "optionsFrom": {
+            "scope": "parent",
+            "path": [
+              "models"
+            ],
+            "source": "keys"
+          },
+          "requiredWhen": {
+            "scope": "parent",
+            "path": [
+              "models"
+            ],
+            "op": ">",
+            "value": 1,
+            "measure": "size"
+          },
+          "validators": [
+            {
+              "rule": "keyInMap",
+              "scope": "parent",
+              "path": [
+                "models"
+              ],
+              "allowUnset": true,
+              "message": "默认模型必须是模型列表中已配置的模型"
+            }
+          ],
+          "nullable": true
+        },
+        {
+          "key": "models",
+          "label": "模型配置列表",
+          "type": "map",
+          "keyMeta": {
+            "label": "模型配置名称",
+            "nonBlank": true
+          },
+          "values": {
+            "type": "object",
+            "fields": [
+              {
+                "key": "provider",
+                "label": "接口协议",
+                "description": "模型的接口协议，按服务商文档填写",
+                "type": "string",
+                "required": true,
+                "options": [
+                  {
+                    "label": "OpenAI 兼容接口",
+                    "value": "OPENAI"
+                  },
+                  {
+                    "label": "Anthropic 兼容接口",
+                    "value": "ANTHROPIC"
+                  }
+                ]
+              },
+              {
+                "key": "base-url",
+                "label": "接口地址",
+                "description": "模型服务的 API 地址，按服务商文档填写",
+                "type": "string",
+                "required": true,
+                "nonBlank": true,
+                "format": "http-base-url"
+              },
+              {
+                "key": "api-key",
+                "label": "API Key",
+                "description": "模型服务的访问密钥",
+                "type": "string",
+                "required": true,
+                "nonBlank": true,
+                "ui": {
+                  "widget": "password"
+                }
+              },
+              {
+                "key": "model",
+                "label": "服务端模型名称",
+                "description": "服务商的模型标识，例如 deepseek-flash，按服务商文档填写",
+                "type": "string",
+                "required": true,
+                "nonBlank": true
+              },
+              {
+                "key": "temperature",
+                "label": "采样温度",
+                "description": "回答的随机程度，越低越稳定，留空时使用服务商默认值",
+                "type": "number",
+                "nullable": true
+              },
+              {
+                "key": "max-tokens",
+                "label": "最大输出 token 数",
+                "description": "单次回答的最大输出 Token 数",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647,
+                "ui": {
+                  "unit": "K"
+                }
+              },
+              {
+                "key": "timeout",
+                "label": "网络请求超时",
+                "description": "等待模型服务响应的最长时间",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 600,
+                "ui": {
+                  "unit": "秒"
+                }
+              },
+              {
+                "key": "max-retries",
+                "label": "网络请求重试次数",
+                "description": "请求失败后的最大重试次数，0 表示不重试",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1024
+              },
+              {
+                "key": "structured-output-max-repeat-attempts",
+                "label": "结构化输出修复次数",
+                "description": "结构化数据格式错误时的最大修正次数，0 表示不修正",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1024
+              },
+              {
+                "key": "headers",
+                "label": "自定义请求头",
+                "description": "自定义 HTTP 请求头，例如额外认证字段",
+                "type": "map",
+                "keyMeta": {
+                  "label": "请求头名称",
+                  "nonBlank": true
+                },
+                "values": {
+                  "type": "string"
+                }
+              },
+              {
+                "key": "extra-body",
+                "label": "额外请求体参数",
+                "description": "额外请求体参数，仅 OpenAI 协议生效",
+                "type": "map",
+                "keyMeta": {
+                  "label": "参数名",
+                  "nonBlank": true
+                },
+                "values": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "command",
+      "title": "命令",
+      "description": "命令相关设置",
+      "path": [
+        "command"
+      ],
+      "fields": [
+        {
+          "key": "prefix",
+          "label": "全局命令前缀",
+          "description": "留空表示无需前缀",
+          "type": "string"
+        },
+        {
+          "key": "mention",
+          "label": "群聊触发命令必须提及机器人",
+          "description": "@ 机器人或回复机器人的消息均视为提及，私聊不受限制",
+          "type": "boolean"
+        },
+        {
+          "key": "disabled",
+          "label": "全局禁用命令",
+          "description": "填写命令 ID，可在启动日志或帮助菜单中查看",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "label": "命令 ID"
+          }
+        },
+        {
+          "key": "permissions",
+          "label": "命令权限覆盖",
+          "description": "按命令 ID 覆盖指定命令的权限，未配置时使用命令默认权限",
+          "type": "map",
+          "keyMeta": {
+            "label": "命令 ID",
+            "nonBlank": true
+          },
+          "values": {
+            "type": "string",
+            "options": [
+              {
+                "label": "仅主人",
+                "value": "OWNER"
+              },
+              {
+                "label": "主人、群主或管理员",
+                "value": "ADMIN"
+              },
+              {
+                "label": "所有人",
+                "value": "EVERYONE"
+              }
+            ]
+          }
+        },
+        {
+          "key": "owners",
+          "label": "主人账号",
+          "description": "按推送平台分别填写",
+          "type": "map",
+          "keyMeta": {
+            "label": "推送平台名称",
+            "nonBlank": true
+          },
+          "values": {
+            "type": "array",
+            "label": "账号列表",
+            "items": {
+              "label": "账号 ID",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "key": "disabled-command-path",
+          "label": "命令禁用配置文件路径",
+          "type": "string",
+          "restartRequired": true,
+          "nonBlank": true
+        }
+      ]
+    },
+    {
+      "id": "datasource",
+      "title": "数据源",
+      "description": "数据源相关设置",
+      "path": [
+        "datasource"
+      ],
+      "restartRequired": true,
+      "fields": [
+        {
+          "key": "type",
+          "label": "数据源类型",
+          "description": "推送配置的读取来源",
+          "type": "string",
+          "options": [
+            {
+              "label": "JSON 文件",
+              "value": "json"
+            }
+          ],
+          "springKey": "starbot.core.datasource.type"
+        },
+        {
+          "key": "json-path",
+          "label": "JSON 文件路径",
+          "type": "string",
+          "validators": [
+            {
+              "rule": "nonBlank",
+              "message": "使用 JSON 数据源时请填写 JSON 文件路径"
+            }
+          ],
+          "visibleWhen": "json-datasource",
+          "validateWhen": "json-datasource"
+        },
+        {
+          "key": "json-auto-reload",
+          "label": "JSON 文件发生变化时自动重载",
+          "description": "开启后修改数据源文件会自动重载，关闭后需要重启才能生效",
+          "type": "boolean",
+          "visibleWhen": "json-datasource"
+        }
+      ]
+    },
+    {
+      "id": "live",
+      "title": "直播",
+      "description": "直播相关设置",
+      "path": [
+        "live"
+      ],
+      "fields": [
+        {
+          "key": "save-live-data",
+          "label": "保存直播数据",
+          "description": "是否保存直播数据到文件",
+          "type": "boolean",
+          "restartRequired": true
+        },
+        {
+          "key": "live-data-path",
+          "label": "直播数据文件路径",
+          "type": "string",
+          "restartRequired": true,
+          "validators": [
+            {
+              "rule": "nonBlank",
+              "message": "开启直播数据保存时请填写直播数据文件路径"
+            }
+          ],
+          "visibleWhen": "live-data-saving",
+          "validateWhen": "live-data-saving"
+        },
+        {
+          "key": "auto-save-live-data-interval",
+          "label": "自动保存间隔",
+          "description": "开启保存后，每隔多少秒写入文件",
+          "type": "integer",
+          "restartRequired": true,
+          "minimum": 1,
+          "maximum": 86400,
+          "ui": {
+            "unit": "秒"
+          },
+          "visibleWhen": "live-data-saving",
+          "validateWhen": "live-data-saving"
+        },
+        {
+          "key": "reconnect-interval",
+          "label": "断线重连判定间隔",
+          "description": "下播后短时间内重新开播视为断线重连，断线重连不会重置直播数据",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400,
+          "ui": {
+            "unit": "秒"
+          }
+        }
+      ]
+    },
+    {
+      "id": "senders",
+      "title": "自定义推送平台",
+      "description": "外部已存在 HTTP 推送接口时，可将其接入 StarBot 作为自定义推送平台",
+      "restartRequired": true,
+      "fields": [
+        {
+          "key": "sender",
+          "label": "推送平台",
+          "type": "array",
+          "ui": {
+            "itemTitlePath": [
+              "name"
+            ]
+          },
+          "items": {
+            "type": "object",
+            "fields": [
+              {
+                "key": "name",
+                "label": "推送平台名称",
+                "description": "推送平台名称，数据源中的推送平台名称需与此保持对应",
+                "type": "string",
+                "required": true,
+                "nonBlank": true
+              },
+              {
+                "key": "url",
+                "label": "推送接口地址",
+                "description": "接收推送的完整 HTTP 或 HTTPS 地址",
+                "type": "string",
+                "required": true,
+                "format": "http-url"
+              },
+              {
+                "key": "token",
+                "label": "Token",
+                "description": "推送接口的访问密钥，以 Bearer Token 发送，不需要时留空",
+                "type": "string",
+                "ui": {
+                  "widget": "password"
+                }
+              },
+              {
+                "key": "delay",
+                "label": "消息发送间隔",
+                "description": "相邻两条消息的发送间隔，用于防止发送频率过高，0 表示不等待",
+                "type": "integer",
+                "ui": {
+                  "unit": "毫秒"
+                },
+                "minimum": 0,
+                "maximum": 86400000
+              }
+            ]
+          },
+          "validators": [
+            {
+              "rule": "uniqueItemField",
+              "path": [
+                "name"
+              ],
+              "message": "推送平台名称不能重复"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

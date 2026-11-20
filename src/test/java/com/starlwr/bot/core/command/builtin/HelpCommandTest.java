@@ -322,7 +322,6 @@ class HelpCommandTest {
      * 创建真实绘图器并记录实际绘制的文字，验证换行不会丢失内容
      */
     private static StarBotCommonPainterFactory recordingFactory(StarBotCoreProperties properties, List<String> drawnTexts) {
-        ReflectionTestUtils.invokeMethod(properties, "init");
         var font = new FontService(new DefaultResourceLoader(), properties);
         ReflectionTestUtils.invokeMethod(font, "init");
         Properties versions = new Properties();

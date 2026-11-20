@@ -5,11 +5,8 @@ import com.starlwr.bot.core.ai.AiModel;
 import com.starlwr.bot.core.command.CommandPermission;
 import com.starlwr.bot.core.message.Sender;
 import com.starlwr.bot.core.painter.TextWithStyle;
-import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
 
 import java.util.*;
 
@@ -18,9 +15,20 @@ import java.util.*;
  */
 @Getter
 @Setter
-@Configuration
-@ConfigurationProperties(prefix = "starbot.core")
+@StarBotConfiguration(prefix = "starbot.core")
 public class StarBotCoreProperties {
+    @Getter
+    private final ConfigCenter configCenter = new ConfigCenter();
+
+    @Getter
+    private final Log log = new Log();
+
+    @Getter
+    private final Debug debug = new Debug();
+
+    @Getter
+    private final Network network = new Network();
+
     @Getter
     private final NetworkThread networkThread = new NetworkThread();
 
@@ -31,22 +39,7 @@ public class StarBotCoreProperties {
     private final AiThread aiThread = new AiThread();
 
     @Getter
-    private final Log log = new Log();
-
-    @Getter
-    private final Network network = new Network();
-
-    @Getter
-    private final DataSource datasource = new DataSource();
-
-    @Getter
     private final Plugin plugin = new Plugin();
-
-    @Getter
-    private final Command command = new Command();
-
-    @Getter
-    private final Live live = new Live();
 
     @Getter
     private final Paint paint = new Paint();
@@ -57,11 +50,88 @@ public class StarBotCoreProperties {
     @Getter
     private final Ai ai = new Ai();
 
+    @Getter
+    private final Command command = new Command();
+
+    @Getter
+    private final DataSource datasource = new DataSource();
+
+    @Getter
+    private final Live live = new Live();
+
     /**
-     * 非插件实现的推送平台配置
+     * 非插件实现的推送平台配置列表
      */
     @Getter
     private final List<Sender> sender = new ArrayList<>();
+
+    /**
+     * 配置中心相关
+     */
+    @Getter
+    @Setter
+    public static class ConfigCenter {
+        /**
+         * 是否启用配置中心
+         */
+        private boolean enabled = true;
+
+        /**
+         * 访问密码，留空时启动后自动生成随机密码
+         */
+        private String password = "";
+    }
+
+    /**
+     * 日志相关
+     */
+    @Getter
+    @Setter
+    public static class Log {
+        /**
+         * 控制台日志级别
+         */
+        private Level console = Level.INFO;
+
+        /**
+         * 文件日志级别
+         */
+        private Level file = Level.INFO;
+    }
+
+    /**
+     * 调试相关
+     */
+    @Getter
+    @Setter
+    public static class Debug {
+        /**
+         * 是否记录事件日志
+         */
+        private boolean eventDebug = true;
+
+        /**
+         * 是否记录网络请求日志
+         */
+        private boolean networkDebug = true;
+    }
+
+    /**
+     * 网络相关
+     */
+    @Getter
+    @Setter
+    public static class Network {
+        /**
+         * 网络请求连接超时时间，单位：秒
+         */
+        private int connectTimeout = 10;
+
+        /**
+         * 网络请求读取超时时间，单位：秒
+         */
+        private int readTimeout = 60;
+    }
 
     /**
      * 网络线程相关
@@ -104,7 +174,7 @@ public class StarBotCoreProperties {
         /**
          * 线程池最大线程数
          */
-        private int maxPoolSize = 50;
+        private int maxPoolSize = 10;
 
         /**
          * 线程池任务队列容量
@@ -145,47 +215,119 @@ public class StarBotCoreProperties {
     }
 
     /**
-     * 日志相关
+     * 插件相关
      */
     @Getter
     @Setter
-    public static class Log {
+    public static class Plugin {
         /**
-         * 控制台日志级别
+         * 是否自动下载插件依赖，可使用 --skip-download-dependency 命令行参数临时跳过自动下载
          */
-        private Level console;
+        private boolean autoDownloadDependency = true;
 
         /**
-         * 文件日志级别
+         * 下载插件依赖时使用的 Maven 仓库列表
          */
-        private Level file;
-
-        /**
-         * 是否记录事件日志
-         */
-        private boolean eventLog = false;
-
-        /**
-         * 是否记录网络请求日志
-         */
-        private boolean networkLog = false;
+        private List<String> mavenBaseUrls = new ArrayList<>(Arrays.asList("https://maven.aliyun.com/repository/public", "https://repo1.maven.org/maven2"));
     }
 
     /**
-     * 网络相关
+     * 绘图相关
      */
     @Getter
     @Setter
-    public static class Network {
+    public static class Paint {
         /**
-         * 网络请求连接超时时间，单位：秒
+         * 是否绘制 StarBot Logo
          */
-        private int connectTimeout = 10;
+        private boolean drawLogo = true;
 
         /**
-         * 网络请求读取超时时间，单位：秒
+         * 自定义字体列表，支持配置为字体名称或字体文件路径
          */
-        private int readTimeout = 60;
+        private List<String> fonts = new ArrayList<>();
+
+        /**
+         * 绘图器自动扩展高度时扩展像素数，设置过大会导致产生较大的峰值内存占用，设置过小会频繁自动扩展导致效率降低
+         */
+        private int autoExpandHeight = 5000;
+
+        /**
+         * 自定义绘图器底部额外版权信息
+         */
+        private List<TextWithStyle> extraCopyrights = new ArrayList<>();
+
+    }
+
+    /**
+     * 邮件相关
+     */
+    @Getter
+    @Setter
+    public static class Mail {
+        /**
+         * 是否启用邮件
+         */
+        private boolean enabled = false;
+
+        /**
+         * 默认收件邮箱
+         */
+        private String defaultTo;
+    }
+
+    /**
+     * AI 相关
+     */
+    @Getter
+    @Setter
+    public static class Ai {
+        /**
+         * 默认模型名称，配置多个模型时必须指定
+         */
+        private String defaultModel;
+
+        /**
+         * AI 模型配置映射
+         */
+        private Map<String, AiModel> models = new LinkedHashMap<>();
+    }
+
+    /**
+     * 命令相关
+     */
+    @Getter
+    @Setter
+    public static class Command {
+        /**
+         * 全局命令前缀，空字符串表示无需前缀
+         */
+        private String prefix = "";
+
+        /**
+         * 群聊触发命令是否必须提及机器人，@ 机器人或回复机器人的消息均视为提及，私聊不受限制
+         */
+        private boolean mention = false;
+
+        /**
+         * 全局禁用的命令 ID 列表
+         */
+        private List<String> disabled = new ArrayList<>();
+
+        /**
+         * 按命令 ID 覆盖指定命令的权限，未配置时使用命令默认权限
+         */
+        private Map<String, CommandPermission> permissions = new HashMap<>();
+
+        /**
+         * 主人账号，按推送平台名称分别配置
+         */
+        private Map<String, List<String>> owners = new HashMap<>();
+
+        /**
+         * 命令禁用配置文件路径
+         */
+        private String disabledCommandPath = "data/disabled-command.json";
     }
 
     /**
@@ -211,67 +353,13 @@ public class StarBotCoreProperties {
     }
 
     /**
-     * 数据源相关
-     */
-    @Getter
-    @Setter
-    public static class Plugin {
-        /**
-         * 是否自动下载插件依赖，可使用 --skip-download-dependency 命令行参数临时跳过自动下载
-         */
-        private boolean autoDownloadDependency = true;
-
-        /**
-         * 用于自动下载插件依赖的 Maven 地址
-         */
-        private List<String> mavenBaseUrls = new ArrayList<>(Arrays.asList("https://maven.aliyun.com/repository/public", "https://repo1.maven.org/maven2"));
-    }
-
-    /**
-     * 命令相关
-     */
-    @Getter
-    @Setter
-    public static class Command {
-        /**
-         * 全局命令前缀，空字符串表示无需前缀
-         */
-        private String prefix = "";
-
-        /**
-         * 群聊触发命令是否必须提及机器人，@ 机器人或回复机器人的消息均视为提及，私聊不受限制
-         */
-        private boolean mention = false;
-
-        /**
-         * 全局禁用的命令 ID 列表
-         */
-        private List<String> disabled = new ArrayList<>();
-
-        /**
-         * 命令权限覆盖配置，按命令 ID 配置，未配置时使用命令默认权限
-         */
-        private Map<String, CommandPermission> permissions = new HashMap<>();
-
-        /**
-         * 主人账号列表，按推送平台名称分别配置
-         */
-        private Map<String, List<String>> owners = new HashMap<>();
-
-        /**
-         * 命令禁用配置文件路径
-         */
-        private String disabledCommandPath = "data/disabled-command.json";
-    }
-
-    /**
      * 直播相关
      */
     @Getter
     @Setter
     public static class Live {
         /**
-         * 是否持久化直播数据至文件，仅使用默认直播数据服务时生效
+         * 是否保存直播数据至文件，仅使用默认直播数据服务时生效
          */
         private boolean saveLiveData = true;
 
@@ -289,85 +377,5 @@ public class StarBotCoreProperties {
          * 判定主播断线重连（下播后短时间内重新开播）的时间间隔，断线重连不会重置直播数据，单位：秒
          */
         private int reconnectInterval = 300;
-    }
-
-    /**
-     * 绘图相关
-     */
-    @Getter
-    @Setter
-    public static class Paint {
-        /**
-         * 是否绘制 StarBot Logo
-         */
-        private boolean drawLogo = true;
-
-        /**
-         * 绘图器字体列表，支持配置为字体名称或字体文件路径
-         */
-        private List<String> fonts = new ArrayList<>();
-
-        /**
-         * 绘图器自动扩展高度时扩展像素数，设置过大会导致占用较大内存，设置过小会频繁自动扩展导致效率降低
-         */
-        private int autoExpandHeight = 5000;
-
-        /**
-         * 自定义绘图器底部额外版权信息
-         */
-        private List<TextWithStyle> extraCopyrights = new ArrayList<>();
-    }
-
-    /**
-     * 邮件相关
-     */
-    @Getter
-    @Setter
-    public static class Mail {
-        /**
-         * 默认收件邮箱
-         */
-        private String defaultTo;
-    }
-
-    /**
-     * AI 相关
-     */
-    @Getter
-    @Setter
-    public static class Ai {
-        /**
-         * 默认模型名称，配置多个模型时必须指定
-         */
-        private String defaultModel;
-
-        /**
-         * AI 模型配置
-         */
-        private Map<String, AiModel> models = new LinkedHashMap<>();
-    }
-
-    @PostConstruct
-    private void init() {
-        String os = System.getProperty("os.name").toLowerCase();
-        paint.getFonts().add("内置");
-        if (os.contains("win")) {
-            paint.getFonts().addAll(Arrays.asList("微软雅黑", "宋体", "Segoe UI Emoji", "Segoe UI Symbol", "Arial", "SansSerif"));
-        } else if (os.contains("mac")) {
-            paint.getFonts().addAll(Arrays.asList("PingFang SC", "Apple Color Emoji", "SansSerif"));
-        } else {
-            // sudo apt install -y  fonts-noto-cjk  fonts-wqy-zenhei  fonts-noto-color-emoji fonts-freefont-ttf
-            paint.getFonts().addAll(Arrays.asList("Noto Sans CJK SC", "WenQuanYi Zen Hei", "Noto Color Emoji", "DejaVu Sans", "FreeSans", "SansSerif"));
-        }
-
-        for (TextWithStyle extra : paint.getExtraCopyrights()) {
-            if (extra.getFont() != null) {
-                if (extra.getSize() != 0) {
-                    extra.setFont(extra.getFont().deriveFont(extra.getStyle(), extra.getSize()));
-                } else {
-                    extra.setFont(extra.getFont().deriveFont(extra.getStyle()));
-                }
-            }
-        }
     }
 }

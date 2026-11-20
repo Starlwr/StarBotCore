@@ -1,0 +1,1975 @@
+{
+  "fieldParity": {
+    "meta": {
+      "title": "字段校验",
+      "basePath": ["starbot", "field-parity"],
+      "groups": [
+        {
+          "id": "fields",
+          "title": "字段",
+          "fields": [
+            {"key": "optional", "type": ["string", "null"]},
+            {"key": "recipients", "type": "map", "keyMeta": {"label": "收件邮箱", "format": "email"}, "values": {"type": "string"}},
+            {"key": "profiles", "type": "map", "keyMeta": {"label": "配置名", "options": [{"value": "local"}]},
+             "values": {"type": "string"}}
+          ]
+        }
+      ]
+    },
+    "values": {
+      "optional": null,
+      "recipients": {"not-an-email": "note"},
+      "profiles": {"unknown": "note"}
+    },
+    "errorPaths": [
+      ["starbot", "field-parity", "recipients", "not-an-email"],
+      ["starbot", "field-parity", "profiles", "unknown"]
+    ]
+  },
+  "accessPasswords": [
+    {"name":"空字符串可清空密码","value":""},
+    {"name":"7 位新密码","value":"Aa1!xyz","message":"访问密码不能少于 8 个字符"},
+    {"name":"8 位新密码","value":"Aa1!xyza"},
+    {"name":"32 位新密码","value":"Ab3!XXXXXXXXXXXXXXXXXXXXXXXXXXXX"},
+    {"name":"33 位新密码","value":"Ab3!XXXXXXXXXXXXXXXXXXXXXXXXXXXXX","message":"访问密码不能超过 32 个字符"},
+    {"name":"JSON 数字不是密码文本","value":12345678,"message":"访问密码必须为文本"},
+    {"name":"JSON null 不是密码文本","value":null,"message":"访问密码必须为文本"},
+    {"name":"中文密码","value":"Aa1!密码abc","message":"访问密码只能使用英文字母、数字和半角符号"}
+  ],
+  "context": {
+    "parent": {
+      "models": {
+        "main": {},
+        "backup": {}
+      },
+      "limit": 10,
+      "external": [
+        "a",
+        "b"
+      ],
+      "enabled": true,
+      "pending": "${PROXY_ENABLED}"
+    },
+    "current": {},
+    "document": {}
+  },
+  "placeholders": [
+    {"value": "${PORT}", "expected": true},
+    {"value": "${PORT:7827}", "expected": true},
+    {"value": "${PORT:${DEFAULT_PORT:7827}}", "expected": true},
+    {"value": "http://${HOST}:${PORT:7827}", "expected": true},
+    {"value": "${PORT", "expected": false},
+    {"value": "${PORT:${DEFAULT_PORT:7827}", "expected": false},
+    {"value": "${HOST}:${PORT", "expected": false},
+    {"value": "${}", "expected": false},
+    {"value": "${:7827}", "expected": false},
+    {"value": "${ }", "expected": false},
+    {"value": "\\${PORT}", "expected": false},
+    {"value": 7827, "expected": false}
+  ],
+  "rules": [
+    {"name":"very close is not a multiple","value":1.0000000001,"rule":{"rule":"multipleOf","value":1},"expected":false},
+    {"name":"decimal exact multiple","value":0.3,"rule":{"rule":"multipleOf","value":0.1},"expected":true},
+    {"name":"exponent decimal multiple","value":3e-7,"rule":{"rule":"multipleOf","value":1e-7},"expected":true},
+    {"name":"zero is a multiple of a fractional step","value":0,"rule":{"rule":"multipleOf","value":0.001},"expected":true},
+    {"name":"ISO signed time parts","value":"PT1H-30M","rule":{"rule":"durationRange","min":"30m","max":"30m"},"expected":true},
+    {"name":"negative subsecond not positive","value":"PT-0.000000001S","rule":{"rule":"positiveDuration"},"expected":false},
+    {"name":"malformed duration is not positive","value":"P1DT","rule":{"rule":"positiveDuration"},"expected":false},
+    {"name":"nanosecond precision at long limit","value":"PT9223372036854775807.000000001S","rule":{"rule":"durationRange","min":"PT9223372036854775807S","max":"PT9223372036854775807S"},"expected":false},
+    {
+      "name": "required valid",
+      "value": 1,
+      "rule": {
+        "rule": "required"
+      },
+      "expected": true
+    },
+    {
+      "name": "required invalid",
+      "value": null,
+      "rule": {
+        "rule": "required"
+      },
+      "expected": false
+    },
+    {
+      "name": "nonBlank valid",
+      "value": "a",
+      "rule": {
+        "rule": "nonBlank"
+      },
+      "expected": true
+    },
+    {
+      "name": "nonBlank invalid",
+      "value": "  ",
+      "rule": {
+        "rule": "nonBlank"
+      },
+      "expected": false
+    },
+    {
+      "name": "minimum valid",
+      "value": 1,
+      "rule": {
+        "rule": "minimum",
+        "value": 0
+      },
+      "expected": true
+    },
+    {
+      "name": "minimum invalid",
+      "value": -1,
+      "rule": {
+        "rule": "minimum",
+        "value": 0
+      },
+      "expected": false
+    },
+    {
+      "name": "minimum executes when condition is true",
+      "value": 443,
+      "rule": {
+        "rule": "minimum",
+        "value": 1024,
+        "when": {"path": ["enabled"], "op": "=", "value": true}
+      },
+      "expected": false
+    },
+    {
+      "name": "minimum skips when condition is false",
+      "value": 443,
+      "rule": {
+        "rule": "minimum",
+        "value": 1024,
+        "when": {"path": ["enabled"], "op": "=", "value": false}
+      },
+      "expected": true
+    },
+    {
+      "name": "minimum skips while condition is unknown",
+      "value": 443,
+      "rule": {
+        "rule": "minimum",
+        "value": 1024,
+        "when": {"path": ["pending"], "op": "=", "value": true}
+      },
+      "expected": true
+    },
+    {
+      "name": "required skips a missing value when condition is false",
+      "rule": {
+        "rule": "required",
+        "when": {"path": ["enabled"], "op": "=", "value": false}
+      },
+      "expected": true
+    },
+    {
+      "name": "maximum valid",
+      "value": 1,
+      "rule": {
+        "rule": "maximum",
+        "value": 2
+      },
+      "expected": true
+    },
+    {
+      "name": "maximum invalid",
+      "value": 3,
+      "rule": {
+        "rule": "maximum",
+        "value": 2
+      },
+      "expected": false
+    },
+    {
+      "name": "exclusiveMinimum valid",
+      "value": 1,
+      "rule": {
+        "rule": "exclusiveMinimum",
+        "value": 0
+      },
+      "expected": true
+    },
+    {
+      "name": "exclusiveMinimum invalid",
+      "value": 0,
+      "rule": {
+        "rule": "exclusiveMinimum",
+        "value": 0
+      },
+      "expected": false
+    },
+    {
+      "name": "exclusiveMaximum valid",
+      "value": 1,
+      "rule": {
+        "rule": "exclusiveMaximum",
+        "value": 2
+      },
+      "expected": true
+    },
+    {
+      "name": "exclusiveMaximum invalid",
+      "value": 2,
+      "rule": {
+        "rule": "exclusiveMaximum",
+        "value": 2
+      },
+      "expected": false
+    },
+    {
+      "name": "range valid",
+      "value": 1,
+      "rule": {
+        "rule": "range",
+        "min": 0,
+        "max": 2
+      },
+      "expected": true
+    },
+    {
+      "name": "range invalid",
+      "value": 3,
+      "rule": {
+        "rule": "range",
+        "min": 0,
+        "max": 2
+      },
+      "expected": false
+    },
+    {
+      "name": "multipleOf valid",
+      "value": 0.3,
+      "rule": {
+        "rule": "multipleOf",
+        "value": 0.1
+      },
+      "expected": true
+    },
+    {
+      "name": "multipleOf invalid",
+      "value": 0.35,
+      "rule": {
+        "rule": "multipleOf",
+        "value": 0.1
+      },
+      "expected": false
+    },
+    {
+      "name": "integer valid",
+      "value": 1,
+      "rule": {
+        "rule": "integer"
+      },
+      "expected": true
+    },
+    {
+      "name": "integer invalid",
+      "value": 1.2,
+      "rule": {
+        "rule": "integer"
+      },
+      "expected": false
+    },
+    {
+      "name": "finite valid",
+      "value": 1,
+      "rule": {
+        "rule": "finite"
+      },
+      "expected": true
+    },
+    {
+      "name": "finite invalid",
+      "value": "1",
+      "rule": {
+        "rule": "finite"
+      },
+      "expected": false
+    },
+    {
+      "name": "notEmpty valid",
+      "value": "a",
+      "rule": {
+        "rule": "notEmpty"
+      },
+      "expected": true
+    },
+    {
+      "name": "notEmpty invalid",
+      "value": "",
+      "rule": {
+        "rule": "notEmpty"
+      },
+      "expected": false
+    },
+    {
+      "name": "trimmed valid",
+      "value": "a",
+      "rule": {
+        "rule": "trimmed"
+      },
+      "expected": true
+    },
+    {
+      "name": "trimmed invalid",
+      "value": " a ",
+      "rule": {
+        "rule": "trimmed"
+      },
+      "expected": false
+    },
+    {
+      "name": "lowercase valid",
+      "value": "abc",
+      "rule": {
+        "rule": "lowercase"
+      },
+      "expected": true
+    },
+    {
+      "name": "lowercase invalid",
+      "value": "ABC",
+      "rule": {
+        "rule": "lowercase"
+      },
+      "expected": false
+    },
+    {
+      "name": "uppercase valid",
+      "value": "ABC",
+      "rule": {
+        "rule": "uppercase"
+      },
+      "expected": true
+    },
+    {
+      "name": "uppercase invalid",
+      "value": "abc",
+      "rule": {
+        "rule": "uppercase"
+      },
+      "expected": false
+    },
+    {
+      "name": "minLength valid",
+      "value": "ab",
+      "rule": {
+        "rule": "minLength",
+        "value": 1
+      },
+      "expected": true
+    },
+    {
+      "name": "minLength invalid",
+      "value": "",
+      "rule": {
+        "rule": "minLength",
+        "value": 1
+      },
+      "expected": false
+    },
+    {
+      "name": "maxLength valid",
+      "value": "ab",
+      "rule": {
+        "rule": "maxLength",
+        "value": 3
+      },
+      "expected": true
+    },
+    {
+      "name": "maxLength invalid",
+      "value": "abcd",
+      "rule": {
+        "rule": "maxLength",
+        "value": 3
+      },
+      "expected": false
+    },
+    {
+      "name": "length valid",
+      "value": "ab",
+      "rule": {
+        "rule": "length",
+        "value": 2
+      },
+      "expected": true
+    },
+    {
+      "name": "length invalid",
+      "value": "a",
+      "rule": {
+        "rule": "length",
+        "value": 2
+      },
+      "expected": false
+    },
+    {
+      "name": "pattern valid",
+      "value": "abc",
+      "rule": {
+        "rule": "pattern",
+        "value": "^[a-z]+$"
+      },
+      "expected": true
+    },
+    {
+      "name": "pattern invalid",
+      "value": "123",
+      "rule": {
+        "rule": "pattern",
+        "value": "^[a-z]+$"
+      },
+      "expected": false
+    },
+    {
+      "name": "enum valid",
+      "value": "a",
+      "rule": {
+        "rule": "enum",
+        "values": [
+          "a",
+          "b"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "enum invalid",
+      "value": "c",
+      "rule": {
+        "rule": "enum",
+        "values": [
+          "a",
+          "b"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "format valid",
+      "value": "test@example.com",
+      "rule": {
+        "rule": "format",
+        "value": "email"
+      },
+      "expected": true
+    },
+    {
+      "name": "format invalid",
+      "value": "bad",
+      "rule": {
+        "rule": "format",
+        "value": "email"
+      },
+      "expected": false
+    },
+    {
+      "name": "port valid",
+      "value": 7827,
+      "rule": {
+        "rule": "port"
+      },
+      "expected": true
+    },
+    {
+      "name": "port invalid",
+      "value": 70000,
+      "rule": {
+        "rule": "port"
+      },
+      "expected": false
+    },
+    {
+      "name": "contains valid",
+      "value": [
+        1
+      ],
+      "rule": {
+        "rule": "contains",
+        "value": 1
+      },
+      "expected": true
+    },
+    {
+      "name": "contains invalid",
+      "value": [
+        2
+      ],
+      "rule": {
+        "rule": "contains",
+        "value": 1
+      },
+      "expected": false
+    },
+    {
+      "name": "minContains valid",
+      "value": [
+        1,
+        1
+      ],
+      "rule": {
+        "rule": "minContains",
+        "value": 1,
+        "count": 2
+      },
+      "expected": true
+    },
+    {
+      "name": "minContains invalid",
+      "value": [
+        1
+      ],
+      "rule": {
+        "rule": "minContains",
+        "value": 1,
+        "count": 2
+      },
+      "expected": false
+    },
+    {
+      "name": "maxContains valid",
+      "value": [
+        1,
+        2
+      ],
+      "rule": {
+        "rule": "maxContains",
+        "value": 1,
+        "count": 1
+      },
+      "expected": true
+    },
+    {
+      "name": "maxContains invalid",
+      "value": [
+        1,
+        1
+      ],
+      "rule": {
+        "rule": "maxContains",
+        "value": 1,
+        "count": 1
+      },
+      "expected": false
+    },
+    {
+      "name": "minItems valid",
+      "value": [
+        1
+      ],
+      "rule": {
+        "rule": "minItems",
+        "value": 1
+      },
+      "expected": true
+    },
+    {
+      "name": "minItems invalid",
+      "value": [],
+      "rule": {
+        "rule": "minItems",
+        "value": 1
+      },
+      "expected": false
+    },
+    {
+      "name": "maxItems valid",
+      "value": [
+        1
+      ],
+      "rule": {
+        "rule": "maxItems",
+        "value": 2
+      },
+      "expected": true
+    },
+    {
+      "name": "maxItems invalid",
+      "value": [
+        1,
+        2,
+        3
+      ],
+      "rule": {
+        "rule": "maxItems",
+        "value": 2
+      },
+      "expected": false
+    },
+    {
+      "name": "minKeys valid",
+      "value": {
+        "a": 1
+      },
+      "rule": {
+        "rule": "minKeys",
+        "value": 1
+      },
+      "expected": true
+    },
+    {
+      "name": "minKeys invalid",
+      "value": {},
+      "rule": {
+        "rule": "minKeys",
+        "value": 1
+      },
+      "expected": false
+    },
+    {
+      "name": "maxKeys valid",
+      "value": {
+        "a": 1
+      },
+      "rule": {
+        "rule": "maxKeys",
+        "value": 2
+      },
+      "expected": true
+    },
+    {
+      "name": "maxKeys invalid",
+      "value": {
+        "a": 1,
+        "b": 2,
+        "c": 3
+      },
+      "rule": {
+        "rule": "maxKeys",
+        "value": 2
+      },
+      "expected": false
+    },
+    {
+      "name": "uniqueItems valid",
+      "value": [
+        {
+          "a": 1
+        },
+        [
+          1
+        ]
+      ],
+      "rule": {
+        "rule": "uniqueItems"
+      },
+      "expected": true
+    },
+    {
+      "name": "uniqueItems invalid",
+      "value": [
+        {
+          "a": 1
+        },
+        {
+          "a": 1
+        }
+      ],
+      "rule": {
+        "rule": "uniqueItems"
+      },
+      "expected": false
+    },
+    {
+      "name": "uniqueItemField valid",
+      "value": [
+        {
+          "name": "a"
+        },
+        {
+          "name": "b"
+        }
+      ],
+      "rule": {
+        "rule": "uniqueItemField",
+        "path": [
+          "name"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "uniqueItemField invalid",
+      "value": [
+        {
+          "name": "a"
+        },
+        {
+          "name": "a"
+        }
+      ],
+      "rule": {
+        "rule": "uniqueItemField",
+        "path": [
+          "name"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "requiredKeys valid",
+      "value": {
+        "a": 1
+      },
+      "rule": {
+        "rule": "requiredKeys",
+        "keys": [
+          "a"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "requiredKeys invalid",
+      "value": {},
+      "rule": {
+        "rule": "requiredKeys",
+        "keys": [
+          "a"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "allowedKeys valid",
+      "value": {
+        "a": 1
+      },
+      "rule": {
+        "rule": "allowedKeys",
+        "keys": [
+          "a",
+          "b"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "allowedKeys invalid",
+      "value": {
+        "z": 1
+      },
+      "rule": {
+        "rule": "allowedKeys",
+        "keys": [
+          "a",
+          "b"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "keyPattern valid",
+      "value": {
+        "a": 1
+      },
+      "rule": {
+        "rule": "keyPattern",
+        "value": "^[a-z]+$"
+      },
+      "expected": true
+    },
+    {
+      "name": "keyPattern invalid",
+      "value": {
+        "1": 1
+      },
+      "rule": {
+        "rule": "keyPattern",
+        "value": "^[a-z]+$"
+      },
+      "expected": false
+    },
+    {
+      "name": "keyInMap valid",
+      "value": "main",
+      "rule": {
+        "rule": "keyInMap",
+        "scope": "parent",
+        "path": [
+          "models"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "keyInMap invalid",
+      "value": "missing",
+      "rule": {
+        "rule": "keyInMap",
+        "scope": "parent",
+        "path": [
+          "models"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "valueInField valid",
+      "value": "a",
+      "rule": {
+        "rule": "valueInField",
+        "scope": "parent",
+        "path": [
+          "external"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "valueInField invalid",
+      "value": "c",
+      "rule": {
+        "rule": "valueInField",
+        "scope": "parent",
+        "path": [
+          "external"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "uniqueAcross valid",
+      "value": [
+        "c"
+      ],
+      "rule": {
+        "rule": "uniqueAcross",
+        "scope": "parent",
+        "path": [
+          "external"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "uniqueAcross invalid",
+      "value": [
+        "a"
+      ],
+      "rule": {
+        "rule": "uniqueAcross",
+        "scope": "parent",
+        "path": [
+          "external"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "dependentRequired valid",
+      "value": {
+        "a": true,
+        "b": "ok"
+      },
+      "rule": {
+        "rule": "dependentRequired",
+        "dependencies": [
+          {
+            "when": [
+              "a"
+            ],
+            "require": [
+              [
+                "b"
+              ]
+            ]
+          }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "dependentRequired invalid",
+      "value": {
+        "a": true
+      },
+      "rule": {
+        "rule": "dependentRequired",
+        "dependencies": [
+          {
+            "when": [
+              "a"
+            ],
+            "require": [
+              [
+                "b"
+              ]
+            ]
+          }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "equalTo valid",
+      "value": 10,
+      "rule": {
+        "rule": "equalTo",
+        "scope": "parent",
+        "path": [
+          "limit"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "equalTo invalid",
+      "value": 9,
+      "rule": {
+        "rule": "equalTo",
+        "scope": "parent",
+        "path": [
+          "limit"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "notEqualTo valid",
+      "value": 9,
+      "rule": {
+        "rule": "notEqualTo",
+        "scope": "parent",
+        "path": [
+          "limit"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "notEqualTo invalid",
+      "value": 10,
+      "rule": {
+        "rule": "notEqualTo",
+        "scope": "parent",
+        "path": [
+          "limit"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "compare valid",
+      "value": 9,
+      "rule": {
+        "rule": "compare",
+        "op": "<",
+        "scope": "parent",
+        "path": [
+          "limit"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "compare invalid",
+      "value": 11,
+      "rule": {
+        "rule": "compare",
+        "op": "<",
+        "scope": "parent",
+        "path": [
+          "limit"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "positiveDuration valid",
+      "value": "30s",
+      "rule": {
+        "rule": "positiveDuration"
+      },
+      "expected": true
+    },
+    {
+      "name": "positiveDuration invalid",
+      "value": "0s",
+      "rule": {
+        "rule": "positiveDuration"
+      },
+      "expected": false
+    },
+    {
+      "name": "durationRange valid",
+      "value": "30s",
+      "rule": {
+        "rule": "durationRange",
+        "min": "10s",
+        "max": "1m"
+      },
+      "expected": true
+    },
+    {
+      "name": "durationRange invalid",
+      "value": "5s",
+      "rule": {
+        "rule": "durationRange",
+        "min": "10s",
+        "max": "1m"
+      },
+      "expected": false
+    },
+    {
+      "name": "nonEmptyOnlyWhen valid",
+      "value": {
+        "provider": "OPENAI",
+        "extra": {
+          "x": 1
+        }
+      },
+      "rule": {
+        "rule": "nonEmptyOnlyWhen",
+        "path": [
+          "extra"
+        ],
+        "when": {
+          "scope": "current",
+          "path": [
+            "provider"
+          ],
+          "op": "=",
+          "value": "OPENAI"
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "nonEmptyOnlyWhen invalid",
+      "value": {
+        "provider": "ANTHROPIC",
+        "extra": {
+          "x": 1
+        }
+      },
+      "rule": {
+        "rule": "nonEmptyOnlyWhen",
+        "path": [
+          "extra"
+        ],
+        "when": {
+          "scope": "current",
+          "path": [
+            "provider"
+          ],
+          "op": "=",
+          "value": "OPENAI"
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "requiredWhen valid",
+      "value": "yes",
+      "rule": {
+        "rule": "requiredWhen",
+        "when": {
+          "scope": "parent",
+          "path": [
+            "enabled"
+          ],
+          "op": "=",
+          "value": true
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "requiredWhen invalid",
+      "rule": {
+        "rule": "requiredWhen",
+        "when": {
+          "scope": "parent",
+          "path": [
+            "enabled"
+          ],
+          "op": "=",
+          "value": true
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "forbiddenWhen valid",
+      "rule": {
+        "rule": "forbiddenWhen",
+        "when": {
+          "scope": "parent",
+          "path": [
+            "enabled"
+          ],
+          "op": "=",
+          "value": true
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "forbiddenWhen invalid",
+      "value": "yes",
+      "rule": {
+        "rule": "forbiddenWhen",
+        "when": {
+          "scope": "parent",
+          "path": [
+            "enabled"
+          ],
+          "op": "=",
+          "value": true
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "atLeastOne valid",
+      "value": {
+        "a": 0
+      },
+      "rule": {
+        "rule": "atLeastOne",
+        "paths": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ]
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "atLeastOne invalid",
+      "value": {},
+      "rule": {
+        "rule": "atLeastOne",
+        "paths": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ]
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "exactlyOne valid",
+      "value": {
+        "a": false
+      },
+      "rule": {
+        "rule": "exactlyOne",
+        "paths": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ]
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "exactlyOne invalid",
+      "value": {
+        "a": 1,
+        "b": 2
+      },
+      "rule": {
+        "rule": "exactlyOne",
+        "paths": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ]
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "allOrNone valid",
+      "value": {
+        "a": 1,
+        "b": 2
+      },
+      "rule": {
+        "rule": "allOrNone",
+        "paths": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ]
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "allOrNone invalid",
+      "value": {
+        "a": 1
+      },
+      "rule": {
+        "rule": "allOrNone",
+        "paths": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ]
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "mutuallyExclusive valid",
+      "value": {
+        "a": 1
+      },
+      "rule": {
+        "rule": "mutuallyExclusive",
+        "paths": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ]
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "mutuallyExclusive invalid",
+      "value": {
+        "a": 1,
+        "b": 2
+      },
+      "rule": {
+        "rule": "mutuallyExclusive",
+        "paths": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ]
+        ]
+      },
+      "expected": false
+    }
+  ],
+  "operators": [
+    {
+      "left": 1,
+      "op": "=",
+      "right": 1,
+      "expected": true
+    },
+    {
+      "left": 1,
+      "op": "!=",
+      "right": 2,
+      "expected": true
+    },
+    {
+      "left": 2,
+      "op": ">",
+      "right": 1,
+      "expected": true
+    },
+    {
+      "left": 2,
+      "op": ">=",
+      "right": 2,
+      "expected": true
+    },
+    {
+      "left": 1,
+      "op": "<",
+      "right": 2,
+      "expected": true
+    },
+    {
+      "left": 2,
+      "op": "<=",
+      "right": 2,
+      "expected": true
+    },
+    {
+      "left": 1,
+      "op": "in",
+      "right": [
+        1
+      ],
+      "expected": true
+    },
+    {
+      "left": 1,
+      "op": "!in",
+      "right": [
+        2
+      ],
+      "expected": true
+    },
+    {
+      "left": "abc",
+      "op": "contains",
+      "right": "b",
+      "expected": true
+    },
+    {
+      "left": "abc",
+      "op": "!contains",
+      "right": "z",
+      "expected": true
+    },
+    {
+      "left": {
+        "a": 1
+      },
+      "op": "hasKey",
+      "right": "a",
+      "expected": true
+    },
+    {
+      "left": {
+        "a": 1
+      },
+      "op": "!hasKey",
+      "right": "b",
+      "expected": true
+    },
+    {
+      "left": null,
+      "op": "exists",
+      "expected": true
+    },
+    {
+      "op": "!exists",
+      "expected": true
+    },
+    {
+      "left": [],
+      "op": "empty",
+      "expected": true
+    },
+    {
+      "left": [
+        0
+      ],
+      "op": "!empty",
+      "expected": true
+    },
+    {
+      "left": "abc",
+      "op": "startsWith",
+      "right": "a",
+      "expected": true
+    },
+    {
+      "left": "abc",
+      "op": "endsWith",
+      "right": "c",
+      "expected": true
+    },
+    {
+      "left": "abc",
+      "op": "!startsWith",
+      "right": "z",
+      "expected": true
+    },
+    {
+      "left": "abc",
+      "op": "!endsWith",
+      "right": "z",
+      "expected": true
+    },
+    {
+      "left": "abc",
+      "op": "matches",
+      "right": "^a",
+      "expected": true
+    },
+    {
+      "left": "abc",
+      "op": "!matches",
+      "right": "^z",
+      "expected": true
+    },
+    {
+      "left": 2,
+      "op": "between",
+      "right": [
+        1,
+        3
+      ],
+      "expected": true
+    },
+    {
+      "left": 4,
+      "op": "!between",
+      "right": [
+        1,
+        3
+      ],
+      "expected": true
+    },
+    {
+      "left": "1",
+      "op": "=",
+      "right": 1,
+      "expected": false
+    },
+    {
+      "left": {
+        "a": 1,
+        "b": 2
+      },
+      "op": "=",
+      "right": {
+        "b": 2,
+        "a": 1
+      },
+      "expected": true
+    },
+    {
+      "left": {
+        "0": 1
+      },
+      "op": "=",
+      "right": [
+        1
+      ],
+      "expected": false
+    }
+  ],
+  "formats": [
+    {"format":"http-base-url","value":"https://example.org/repo?","expected":false},
+    {"format":"http-base-url","value":"https://example.org/repo#","expected":false},
+    {"format":"http-base-url","value":"https://example.org:70000/repo","expected":false},
+    {"format":"http-base-url","value":"https://example.org:0/repo","expected":false},
+    {"format":"http-base-url","value":"HTTPS://example.org:65535/repo","expected":true},
+    {"format":"http-base-url","value":"https://example.org/repo%3F","expected":true},
+    {"format":"duration","value":"P1DT","expected":false},
+    {"format":"duration","value":"PT1H-30M","expected":true},
+    {"format":"duration","value":"PT-0,000000001S","expected":true},
+    {"format":"duration","value":"PT1.0000000000S","expected":false},
+    {"format":"duration","value":"9223372036854775808ms","expected":false},
+    {"format":"duration","value":"9223372036854775807s","expected":true},
+    {"format":"duration","value":"9223372036854775807d","expected":false},
+    {"format":"duration","value":true,"expected":false},
+    {"format":"duration","value":1000.0,"expected":true},
+    {
+      "format": "duration",
+      "value": "30s",
+      "expected": true
+    },
+    {
+      "format": "duration",
+      "value": "PT30S",
+      "expected": true
+    },
+    {
+      "format": "duration",
+      "value": 30000,
+      "expected": true
+    },
+    {
+      "format": "duration",
+      "value": "PT0.5S",
+      "expected": true
+    },
+    {
+      "format": "duration",
+      "value": "+30s",
+      "expected": true
+    },
+    {
+      "format": "duration",
+      "value": "1.5s",
+      "expected": false
+    },
+    {
+      "format": "duration",
+      "value": 1.5,
+      "expected": false
+    },
+    {
+      "format": "duration",
+      "value": "bad",
+      "expected": false
+    },
+    {
+      "format": "color",
+      "value": "#fff",
+      "expected": true
+    },
+    {
+      "format": "color",
+      "value": "#FFFFFF",
+      "expected": true
+    },
+    {
+      "format": "color",
+      "value": "light_gray",
+      "expected": true
+    },
+    {
+      "format": "color",
+      "value": "256,0,0",
+      "expected": false
+    },
+    {
+      "format": "color",
+      "value": "255,0,0",
+      "expected": true
+    },
+    {
+      "format": "color",
+      "value": "#ffffffff",
+      "expected": false
+    },
+    {
+      "format": "http-base-url",
+      "value": "https://example.com/v1",
+      "expected": true
+    },
+    {
+      "format": "http-base-url",
+      "value": "https://user@example.com",
+      "expected": false
+    },
+    {
+      "format": "http-base-url",
+      "value": "https://example.com?q=1",
+      "expected": false
+    },
+    {
+      "format": "http-base-url",
+      "value": "https://example.com#x",
+      "expected": false
+    },
+    {
+      "format": "http-base-url",
+      "value": "file:/tmp/a",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://example.com/send?channel=alerts&tag=a%20b",
+      "expected": true
+    },
+    {
+      "format": "http-url",
+      "value": "https://example.com?tag[]=one&tag[]=two",
+      "expected": true
+    },
+    {
+      "format": "http-url",
+      "value": "HTTP://localhost:3000/send",
+      "expected": true
+    },
+    {
+      "format": "http-url",
+      "value": "https://example.com:65535/send?",
+      "expected": true
+    },
+    {
+      "format": "http-url",
+      "value": "http://127.0.0.1:8080/send",
+      "expected": true
+    },
+    {
+      "format": "http-url",
+      "value": "http://[::1]:3000/send?q=1",
+      "expected": true
+    },
+    {
+      "format": "http-url",
+      "value": "http://[::ffff:192.0.2.1]/",
+      "expected": true
+    },
+    {
+      "format": "http-url",
+      "value": "https://xn--fiqs8s.example/path?q=%E4%B8%AD",
+      "expected": true
+    },
+    {
+      "format": "http-url",
+      "value": "https:///send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https:example.com/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "/send?channel=alerts",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "ftp://example.com/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://user:pass@example.com/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://example.com/send#fragment",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://example.com:0/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://example.com:65536/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://example.com:/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://example.com/send?q=%zz",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://example.com/send?q=a b",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://example.com/send\n",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://example.com\\send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://example..com/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "https://-example.com/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "http://127.1/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "http://256.0.0.1/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "http://127.00.0.1/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "http://[::1::2]/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "http://[::ffff:192.00.2.1]/send",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": 443,
+      "expected": false
+    },
+    {
+      "format": "password",
+      "value": "Az09!#$_~",
+      "expected": true
+    },
+    {
+      "format": "password",
+      "value": "",
+      "expected": true
+    },
+    {
+      "format": "password",
+      "value": "Aa1!密码",
+      "expected": false
+    },
+    {
+      "format": "password",
+      "value": "Aa1!😀",
+      "expected": false
+    },
+    {
+      "format": "password",
+      "value": "Aa1! password",
+      "expected": false
+    },
+    {
+      "format": "password",
+      "value": "Aa1!\n",
+      "expected": false
+    },
+    {
+      "format": "password",
+      "value": 1234,
+      "expected": false
+    },
+    {
+      "format": "url",
+      "value": "mailto:test@example.com",
+      "expected": true
+    },
+    {
+      "format": "url",
+      "value": "bad url",
+      "expected": false
+    },
+    {
+      "format": "uuid",
+      "value": "123e4567-e89b-12d3-a456-426614174000",
+      "expected": true
+    },
+    {
+      "format": "uuid",
+      "value": "invalid",
+      "expected": false
+    },
+    {
+      "format": "ipv4",
+      "value": "127.0.0.1",
+      "expected": true
+    },
+    {
+      "format": "ipv4",
+      "value": "256.0.0.1",
+      "expected": false
+    },
+    {
+      "format": "hostname",
+      "value": "example.com",
+      "expected": true
+    },
+    {
+      "format": "hostname",
+      "value": "_invalid.com",
+      "expected": false
+    },
+    {
+      "format": "http-url",
+      "value": "http://test:3000/send?channel=alerts",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "0.0.0.0",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "127.0.0.1",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "localhost",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "LOCALHOST.",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "starbot.example.local",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "starbot.example.local.",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "::",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "::1",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "[2001:db8::1]",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "::ffff:192.0.2.1",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "fe80::1%eth0",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "[fe80::1%12]",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "test",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "test.",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": " 127.0.0.1",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "::1\n",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "256.0.0.1",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "127.1",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "localhost:7827",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "127.0.0.1:7827",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "[::1]:7827",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "https://starbot.example.local",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "starbot.example.local/path",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "2001:db8::1::2",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "[::1",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "fe80::1%",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "fe80::1%eth/0",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "fe80::1%eth0\n",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "[::ffff:192.00.2.1]",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "starbot..example.local",
+      "expected": false
+    },
+    {
+      "format": "listen-address",
+      "value": "smtp.example.com",
+      "expected": true
+    },
+    {
+      "format": "listen-address",
+      "value": "mail-relay",
+      "expected": false
+    },
+    {
+      "format": "json",
+      "value": "{\"a\":1}",
+      "expected": true
+    },
+    {
+      "format": "json",
+      "value": "null",
+      "expected": true
+    },
+    {
+      "format": "json",
+      "value": "{bad",
+      "expected": false
+    }
+  ]
+}

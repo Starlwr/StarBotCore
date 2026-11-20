@@ -21,7 +21,7 @@ public class LiveOnEvent extends StarBotLiveStatusChangeEvent {
     /**
      * 是否为断线重连（下播后短时间内重新开播），断线重连不会重置直播数据，由 StarBot 内部判断，无需传入
      */
-    boolean reconnect;
+    private boolean reconnect;
 
     public LiveOnEvent(String platform, LiveStreamerInfo source) {
         super(platform, source);

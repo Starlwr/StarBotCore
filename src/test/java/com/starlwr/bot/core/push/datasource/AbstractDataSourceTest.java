@@ -24,14 +24,15 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -105,43 +106,58 @@ class AbstractDataSourceTest {
     }
 
     /**
-     * 验证重载时分别处理新增、移除和更新，并使用新配置中的用户对象
+     * 验证外部修改数据源文件时分别处理新增、移除和更新，并使用新配置中的用户对象
      */
     @Test
-    void reloadUsesNewConfigurationForExistingUsers(@TempDir Path directory) throws IOException {
-        PushUser original = addUser("bilibili", "1001");
-        PushUser removed = addUser("bilibili", "1002");
+    void reloadUsesNewConfigurationForExistingUsers(@TempDir Path directory) throws Exception {
         Path path = directory.resolve("datasource.json");
         Files.writeString(path, """
-                [{
-                    "uid": "1001",
-                    "platform": "bilibili",
-                    "targets": [{
-                        "platform": "test-bot",
-                        "type": 1,
-                        "num": "2002",
-                        "messages": [{"handler": "test.live"}]
-                    }]
-                }, {
-                    "uid": "1003",
-                    "platform": "bilibili"
-                }]
+                [{"uid": "1001", "platform": "bilibili"}, {"uid": "1002", "platform": "bilibili"}]
                 """);
         properties.getDatasource().setJsonPath(path.toString());
-        clearEvents();
 
-        ReflectionTestUtils.invokeMethod(dataSource, "reload");
+        CountDownLatch reloaded = new CountDownLatch(1);
+        eventListener = event -> {
+            if (event instanceof StarBotDataSourceUpdateEvent) {
+                reloaded.countDown();
+            }
+        };
+        try (var context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(JsonDataSource.class, () -> dataSource);
+            context.refresh();
+            dataSource.load();
+            PushUser original = dataSource.getUser("bilibili", "1001").orElseThrow();
+            PushUser removed = dataSource.getUser("bilibili", "1002").orElseThrow();
+            clearEvents();
 
-        PushUser updated = dataSource.getUser("bilibili", "1001").orElseThrow();
-        assertNotSame(original, updated);
-        assertEquals("2002", updated.getTargets().get(0).getNum());
-        assertEquals(2, dataSource.getAllUsers().size());
-        assertTrue(dataSource.getUser("bilibili", "1002").isEmpty());
-        assertTrue(dataSource.getUser("bilibili", "1003").isPresent());
-        assertEquals(1, eventsOfType(StarBotDataSourceAddEvent.class).size());
-        assertEquals(1, eventsOfType(StarBotDataSourceUpdateEvent.class).size());
-        assertEquals(1, removeEvents.size());
-        assertSame(removed, removeEvents.get(0).getUser());
+            Files.writeString(path, """
+                    [{
+                        "uid": "1001",
+                        "platform": "bilibili",
+                        "targets": [{
+                            "platform": "test-bot",
+                            "type": 1,
+                            "num": "2002",
+                            "messages": [{"handler": "test.live"}]
+                        }]
+                    }, {
+                        "uid": "1003",
+                        "platform": "bilibili"
+                    }]
+                    """);
+            assertTrue(reloaded.await(8, TimeUnit.SECONDS), "数据源文件修改后应当发布更新事件");
+
+            PushUser updated = dataSource.getUser("bilibili", "1001").orElseThrow();
+            assertNotSame(original, updated);
+            assertEquals("2002", updated.getTargets().get(0).getNum());
+            assertEquals(2, dataSource.getAllUsers().size());
+            assertTrue(dataSource.getUser("bilibili", "1002").isEmpty());
+            assertTrue(dataSource.getUser("bilibili", "1003").isPresent());
+            assertEquals(1, eventsOfType(StarBotDataSourceAddEvent.class).size());
+            assertEquals(1, eventsOfType(StarBotDataSourceUpdateEvent.class).size());
+            assertEquals(1, removeEvents.size());
+            assertSame(removed, removeEvents.get(0).getUser());
+        }
     }
 
     /**

@@ -126,7 +126,7 @@ public class HelpCommand implements StarBotCommand {
          * @return 文本高度
          */
         private int getHeight() {
-            return lines.isEmpty() ? 0 : lines.size() * lineHeight + (lines.size() - 1) * LINE_GAP;
+            return CollectionUtils.isEmpty(lines) ? 0 : lines.size() * lineHeight + (lines.size() - 1) * LINE_GAP;
         }
     }
 
@@ -454,7 +454,7 @@ public class HelpCommand implements StarBotCommand {
                 TextWithStyle partText = new TextWithStyle(part, font, size, color, style);
                 int partWidth = painter.getStringWidthAndHeight(partText).getLeft();
                 if (partWidth <= width) {
-                    if (lineWidth + partWidth > width && !line.isEmpty()) {
+                    if (lineWidth + partWidth > width && CollectionUtils.isNotEmpty(line)) {
                         lines.add(List.copyOf(line));
                         line = new ArrayList<>();
                         lineWidth = 0;

@@ -33,7 +33,7 @@ import java.util.function.Consumer;
 public class CommonPainter {
     private final BuildProperties buildProperties;
 
-    private final StarBotCoreProperties properties;
+    private final StarBotCoreProperties.Paint paint;
 
     private final FontService fontService;
 
@@ -72,7 +72,7 @@ public class CommonPainter {
      */
     public CommonPainter(BuildProperties buildProperties, StarBotCoreProperties properties, FontService fontService, int width, int height, boolean autoExpand) {
         this.buildProperties = buildProperties;
-        this.properties = properties;
+        this.paint = properties.getPaint();
         this.fontService = fontService;
 
         this.width = width;
@@ -93,7 +93,7 @@ public class CommonPainter {
      * @param height 所需绘制高度
      */
     public void expandHeightIfNeeded(int height) {
-        expandHeightIfNeeded(height, properties.getPaint().getAutoExpandHeight());
+        expandHeightIfNeeded(height, paint.getAutoExpandHeight());
     }
 
     /**
@@ -896,8 +896,23 @@ public class CommonPainter {
             drawTextRightWithStyle(line, marginRight);
         }
 
-        if (CollectionUtils.isNotEmpty(properties.getPaint().getExtraCopyrights())) {
-            drawTextRightWithStyle(properties.getPaint().getExtraCopyrights(), marginRight);
+        // 绘制额外版权信息
+        List<TextWithStyle> extraCopyrights = paint.getExtraCopyrights();
+        if (CollectionUtils.isNotEmpty(extraCopyrights)) {
+            List<TextWithStyle> styledCopyrights = new ArrayList<>(extraCopyrights.size());
+            for (TextWithStyle text : extraCopyrights) {
+                Font font = text.getFont();
+                if (font == null) {
+                    styledCopyrights.add(text);
+                    continue;
+                }
+
+                int size = text.getSize();
+                int style = text.getStyle();
+                Font styledFont = size == 0 ? font.deriveFont(style) : font.deriveFont(style, size);
+                styledCopyrights.add(new TextWithStyle(text.getText(), styledFont, size, text.getColor(), style));
+            }
+            drawTextRightWithStyle(styledCopyrights, marginRight);
         }
 
         return this;

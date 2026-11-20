@@ -70,7 +70,7 @@ public class StarBotAiService {
         for (Map.Entry<String, AiModel> entry : properties.getAi().getModels().entrySet()) {
             AiModel config = entry.getValue();
             ChatClient client = ChatClient.builder(factory.create(entry.getKey(), config)).build();
-            modelClients.put(entry.getKey(), new ModelClient(client, config.getTimeout(), config.getStructuredOutputMaxRepeatAttempts()));
+            modelClients.put(entry.getKey(), new ModelClient(client, Duration.ofSeconds(config.getTimeout()), config.getStructuredOutputMaxRepeatAttempts()));
         }
 
         String defaultModel = properties.getAi().getDefaultModel();

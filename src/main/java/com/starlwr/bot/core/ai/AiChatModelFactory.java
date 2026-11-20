@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,9 +37,10 @@ public class AiChatModelFactory {
      */
     public ChatModel create(String name, AiModel config) {
         validate(name, config);
+        Duration timeout = Duration.ofSeconds(config.getTimeout());
         return switch (config.getProvider()) {
-            case OPENAI -> createOpenAiModel(config);
-            case ANTHROPIC -> createAnthropicModel(config);
+            case OPENAI -> createOpenAiModel(config, timeout);
+            case ANTHROPIC -> createAnthropicModel(config, timeout);
         };
     }
 
@@ -48,6 +50,8 @@ public class AiChatModelFactory {
      * @param config 模型配置
      */
     private void validate(String name, AiModel config) {
+        int maxTimeoutSeconds = Integer.MAX_VALUE / 1000;
+
         Assert.hasText(name, "AI 模型配置名称不能为空");
         Assert.notNull(config, "AI 模型 " + name + " 的模型配置不能为空");
 
@@ -59,7 +63,8 @@ public class AiChatModelFactory {
         Assert.isTrue(config.getMaxTokens() > 0, prefix + "max-tokens 必须大于 0");
         Assert.isTrue(config.getMaxRetries() >= 0, prefix + "max-retries 不能小于 0");
         Assert.isTrue(config.getStructuredOutputMaxRepeatAttempts() >= 0, prefix + "structured-output-max-repeat-attempts 不能小于 0");
-        Assert.isTrue(config.getTimeout() != null && config.getTimeout().toMillis() > 0, prefix + "timeout 必须大于 0");
+        Assert.isTrue(config.getTimeout() > 0, prefix + "timeout 必须大于 0");
+        Assert.isTrue(config.getTimeout() <= maxTimeoutSeconds, prefix + "timeout 不能超过 " + maxTimeoutSeconds + " 秒");
 
         try {
             URI uri = URI.create(config.getBaseUrl());
@@ -75,17 +80,18 @@ public class AiChatModelFactory {
     /**
      * 创建 OpenAI 兼容模型
      * @param config 模型配置
+     * @param timeout 请求超时时间
      * @return OpenAI 兼容模型
      */
-    private ChatModel createOpenAiModel(AiModel config) {
-        SpringAiOpenAiHttpClient http = SpringAiOpenAiHttpClient.builder().timeout(config.getTimeout()).build();
+    private ChatModel createOpenAiModel(AiModel config, Duration timeout) {
+        SpringAiOpenAiHttpClient http = SpringAiOpenAiHttpClient.builder().timeout(timeout).build();
         closeHandlers.add(http::close);
 
         ClientOptions.Builder clientOptions = ClientOptions.builder()
                 .httpClient(http)
                 .baseUrl(config.getBaseUrl())
                 .apiKey(config.getApiKey())
-                .timeout(config.getTimeout())
+                .timeout(timeout)
                 .maxRetries(config.getMaxRetries());
         if (MapUtils.isNotEmpty(config.getHeaders())) {
             config.getHeaders().forEach(clientOptions::putHeader);
@@ -93,7 +99,7 @@ public class AiChatModelFactory {
 
         OpenAIClient client = new OpenAIClientImpl(clientOptions.build());
         OpenAiChatOptions options = OpenAiChatOptions.builder()
-                .timeout(config.getTimeout())
+                .timeout(timeout)
                 .maxRetries(config.getMaxRetries())
                 .model(config.getModel())
                 .temperature(config.getTemperature())
@@ -107,13 +113,14 @@ public class AiChatModelFactory {
     /**
      * 创建 Anthropic 兼容模型
      * @param config 模型配置
+     * @param timeout 请求超时时间
      * @return Anthropic 兼容模型
      */
-    private ChatModel createAnthropicModel(AiModel config) {
+    private ChatModel createAnthropicModel(AiModel config, Duration timeout) {
         AnthropicChatOptions options = AnthropicChatOptions.builder()
                 .baseUrl(config.getBaseUrl())
                 .apiKey(config.getApiKey())
-                .timeout(config.getTimeout())
+                .timeout(timeout)
                 .maxRetries(config.getMaxRetries())
                 .customHeaders(config.getHeaders() == null ? Map.of() : config.getHeaders())
                 .model(config.getModel())

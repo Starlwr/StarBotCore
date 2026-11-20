@@ -107,7 +107,6 @@ class StatusCommandTest {
     @BeforeEach
     void setup() {
         properties = new StarBotCoreProperties();
-        ReflectionTestUtils.invokeMethod(properties, "init");
         var font = new FontService(new DefaultResourceLoader(), properties);
         ReflectionTestUtils.invokeMethod(font, "init");
         Properties versions = new Properties();

@@ -38,15 +38,33 @@ public class FontService {
         this.properties = properties;
     }
 
+    /**
+     * 加载绘图使用的字体
+     */
     @PostConstruct
     private void init() {
+        // 获取当前系统已安装的字体
         GraphicsEnvironment graphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment();
         systemFonts = Arrays.stream(graphicsEnvironment.getAvailableFontFamilyNames())
                 .map(String::toLowerCase)
                 .collect(Collectors.toSet());
 
-        log.info("已指定使用字体列表: {}, 可使用配置项 starbot.core.paint.fonts 自定义字体列表", properties.getPaint().getFonts());
-        for (String fontDefinition: properties.getPaint().getFonts()) {
+        // 在自定义字体之后补充内置字体和当前系统的候选字体
+        List<String> fontDefinitions = new ArrayList<>(properties.getPaint().getFonts());
+        fontDefinitions.add("内置");
+        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
+        if (os.contains("win")) {
+            fontDefinitions.addAll(List.of("微软雅黑", "宋体", "Segoe UI Emoji", "Segoe UI Symbol", "Arial", "SansSerif"));
+        } else if (os.contains("mac")) {
+            fontDefinitions.addAll(List.of("PingFang SC", "Apple Color Emoji", "SansSerif"));
+        } else {
+            // sudo apt install -y  fonts-noto-cjk  fonts-wqy-zenhei  fonts-noto-color-emoji fonts-freefont-ttf
+            fontDefinitions.addAll(List.of("Noto Sans CJK SC", "WenQuanYi Zen Hei", "Noto Color Emoji", "DejaVu Sans", "FreeSans", "SansSerif"));
+        }
+
+        // 根据候选顺序加载可用字体
+        log.info("已指定使用字体列表: {}, 可使用配置项 starbot.core.paint.fonts 自定义字体列表", fontDefinitions);
+        for (String fontDefinition : fontDefinitions) {
             parseFont(fontDefinition).ifPresent(fonts::add);
         }
     }

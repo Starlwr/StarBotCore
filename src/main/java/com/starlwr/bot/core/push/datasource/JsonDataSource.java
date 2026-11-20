@@ -10,6 +10,8 @@ import com.starlwr.bot.core.push.handler.StarBotEventHandlerService;
 import com.starlwr.bot.core.push.model.PushMessage;
 import com.starlwr.bot.core.push.model.PushTarget;
 import com.starlwr.bot.core.push.model.PushUser;
+import com.starlwr.bot.core.util.FileChangeWatcher;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.SetUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,13 +19,14 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * JSON 数据源
@@ -34,15 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class JsonDataSource extends AbstractDataSource {
     private final StarBotCoreProperties properties;
 
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-
-    private ScheduledFuture<?> pendingTask;
-
-    private final AtomicLong lastTriggeredTime = new AtomicLong(0);
-
-    private final long debounceDelayMillis = 1000L;
+    private FileChangeWatcher fileWatcher;
 
     @Autowired
     public JsonDataSource(ApplicationEventPublisher eventPublisher, DataSourceServiceRegistry dataSourceServiceRegistry, StarBotEventHandlerService handlerService, StarBotCoreProperties properties) {
@@ -66,80 +61,55 @@ public class JsonDataSource extends AbstractDataSource {
         log.info("已选用 JSON 作为数据源");
         log.info("开始从 JSON 中初始化推送配置");
 
-        String path = properties.getDatasource().getJsonPath();
         try {
-            List<PushUser> users = parse(Files.readString(Path.of(path)));
-            add(users);
-        } catch (NoSuchFileException e) {
-            throw new DataSourceException("数据源 JSON 文件不存在, 请检查配置的路径是否正确: " + path);
-        } catch (Exception e) {
-            throw new DataSourceException("读取数据源 JSON 文件异常", e);
-        }
+            String jsonPath = properties.getDatasource().getJsonPath();
+            Path path;
+            try {
+                path = Path.of(jsonPath).toAbsolutePath().normalize();
+                if (properties.getDatasource().isJsonAutoReload()) {
+                    try {
+                        fileWatcher = new FileChangeWatcher("datasource", path);
+                    } catch (IOException | RuntimeException e) {
+                        log.error("监听数据源 JSON 文件更新异常", e);
+                    }
+                }
+                add(parse(Files.readString(path)));
+            } catch (NoSuchFileException e) {
+                throw new DataSourceException("数据源 JSON 文件不存在, 请检查配置的路径是否正确: " + jsonPath);
+            } catch (Exception e) {
+                throw new DataSourceException("读取数据源 JSON 文件异常", e);
+            }
 
-        log.info("成功从 JSON 中导入了 {} 个主播", this.users.size());
-
-        eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(new ArrayList<>(this.users)));
-
-        if (properties.getDatasource().isJsonAutoReload()) {
-            watchFileUpdate();
+            log.info("成功从 JSON 中导入了 {} 个主播", this.users.size());
+            eventPublisher.publishEvent(new StarBotDataSourceLoadCompleteEvent(new ArrayList<>(this.users)));
+            if (fileWatcher != null) {
+                fileWatcher.start(() -> reload(path));
+            }
+        } catch (RuntimeException | Error e) {
+            stopWatching();
+            throw e;
         }
     }
 
     /**
-     * 监听 JSON 文件更新
+     * 关闭数据源 JSON 文件监听
      */
-    private void watchFileUpdate() {
-        try {
-            WatchService watchService = FileSystems.getDefault().newWatchService();
-            Path jsonPath = Paths.get(properties.getDatasource().getJsonPath()).toAbsolutePath();
-            Path parentPath = jsonPath.getParent();
-            parentPath.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE);
-
-            executor.submit(() -> {
-                while (!Thread.currentThread().isInterrupted()) {
-                    try {
-                        WatchKey key = watchService.take();
-                        for (WatchEvent<?> event : key.pollEvents()) {
-                            Path changed = (Path) event.context();
-                            if (changed != null && changed.getFileName().equals(jsonPath.getFileName())) {
-                                if (pendingTask != null && !pendingTask.isDone()) {
-                                    pendingTask.cancel(false);
-                                }
-
-                                pendingTask = scheduler.schedule(() -> {
-                                    Thread.currentThread().setName("json-watcher");
-                                    long now = System.currentTimeMillis();
-                                    long last = lastTriggeredTime.getAndSet(now);
-                                    if (now - last >= debounceDelayMillis) {
-                                        log.info("检测到数据源 JSON 文件已更新, 开始从 JSON 中重载推送配置");
-                                        reload();
-                                    }
-                                }, debounceDelayMillis, TimeUnit.MILLISECONDS);
-                            }
-                        }
-
-                        if (!key.reset()) {
-                            break;
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    } catch (Exception e) {
-                        log.error("监听数据源 JSON 文件更新异常", e);
-                    }
-                }
-            });
-        } catch (Exception e) {
-            log.error("监听数据源 JSON 文件更新异常", e);
+    @PreDestroy
+    private void stopWatching() {
+        if (fileWatcher != null) {
+            fileWatcher.close();
+            fileWatcher = null;
         }
     }
 
     /**
      * 重载数据源
+     * @param path 数据源文件路径
      */
-    private void reload() {
-        String path = properties.getDatasource().getJsonPath();
+    private void reload(Path path) {
+        log.info("检测到数据源 JSON 文件已更新, 开始从 JSON 中重载推送配置");
         try {
-            List<PushUser> users = parse(Files.readString(Path.of(path)));
+            List<PushUser> users = parse(Files.readString(path));
             Set<PushUser> newUsers = new HashSet<>(users);
             if (newUsers.size() != users.size()) {
                 throw new DataSourceException("推送用户列表中存在重复的用户");

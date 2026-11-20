@@ -73,7 +73,7 @@ public class HttpService {
      */
     private <T> ResponseEntity<T> exchange(String url, HttpMethod method, HttpEntity<?> httpEntity, Class<T> responseType) {
         long startTime = System.currentTimeMillis();
-        if (properties.getLog().isNetworkLog()) {
+        if (properties.getDebug().isNetworkDebug()) {
             networkLogger.info("{} -> {}", method.name(), url);
         }
 
@@ -82,13 +82,13 @@ public class HttpService {
             response = restTemplate.exchange(url, method, httpEntity, responseType);
             return response;
         } catch (Exception e) {
-            if (properties.getLog().isNetworkLog()) {
+            if (properties.getDebug().isNetworkDebug()) {
                 long cost = System.currentTimeMillis() - startTime;
                 networkLogger.error("{} <- [{}]({} ms): {}", method.name(), e.getMessage(), cost, url, e);
             }
             throw e;
         } finally {
-            if (properties.getLog().isNetworkLog()) {
+            if (properties.getDebug().isNetworkDebug()) {
                 long cost = System.currentTimeMillis() - startTime;
                 if (response != null) {
                     networkLogger.info("{} <- [{}]({} ms): {}", method.name(), response.getStatusCode().value(), cost, url);

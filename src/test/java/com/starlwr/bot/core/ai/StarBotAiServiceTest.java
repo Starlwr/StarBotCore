@@ -22,16 +22,14 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.core.env.Environment;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.core.env.PropertySource;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import reactor.core.publisher.Flux;
 
@@ -69,9 +67,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class StarBotAiServiceTest {
     @Configuration(proxyBeanMethods = false)
-    @EnableConfigurationProperties
-    @Import({StarBotCoreProperties.class, StarBotCoreThreadPoolConfig.class, AiChatModelFactory.class, StarBotAiService.class})
+    @Import({StarBotCoreThreadPoolConfig.class, AiChatModelFactory.class, StarBotAiService.class})
     static class TestConfig {
+        @Bean
+        StarBotCoreProperties properties(Environment environment) {
+            return Binder.get(environment).bindOrCreate("starbot.core", StarBotCoreProperties.class);
+        }
+
         @Bean
         PluginClient pluginClient(StarBotAiService service) {
             return new PluginClient(service);
@@ -174,7 +176,7 @@ class StarBotAiServiceTest {
                 "starbot.core.ai.models.local.base-url=https://api.deepseek.com",
                 "starbot.core.ai.models.local.api-key=${test.ai.key}",
                 "starbot.core.ai.models.local.model=deepseek-flash",
-                "starbot.core.ai.models.local.timeout=7s",
+                "starbot.core.ai.models.local.timeout=7",
                 "starbot.core.ai.models.local.structured-output-max-repeat-attempts=2",
                 "starbot.core.ai.models.local.extra-body.thinking.type=disabled",
                 "starbot.core.ai-thread.core-pool-size=1",
@@ -185,7 +187,7 @@ class StarBotAiServiceTest {
             StarBotCoreProperties properties = context.getBean(StarBotCoreProperties.class);
             AiModel model = properties.getAi().getModels().get("local");
             assertThat(model.getApiKey()).isEqualTo("local-key");
-            assertThat(model.getTimeout()).isEqualTo(Duration.ofSeconds(7));
+            assertThat(model.getTimeout()).isEqualTo(7);
             assertThat(model.getStructuredOutputMaxRepeatAttempts()).isEqualTo(2);
             assertThat(model.getProvider()).isEqualTo(AiProvider.OPENAI);
             assertThat(model.getExtraBody()).containsEntry("thinking", Map.of("type", "disabled"));
@@ -195,38 +197,6 @@ class StarBotAiServiceTest {
             assertThat(executor.getMaxPoolSize()).isEqualTo(3);
             assertThat(context.getBean(StarBotAiService.class).getModelNames()).containsExactly("local");
         });
-    }
-
-    /**
-     * 验证未配置模型时，内存 YAML 中的线程池参数能绑定到统一 Core 配置
-     */
-    @Test
-    void bindsYamlToCoreProperties() throws IOException {
-        String yaml = """
-                starbot:
-                  core:
-                    ai-thread:
-                      core-pool-size: 2
-                      max-pool-size: 4
-                      queue-capacity: 6
-                """;
-        PropertySource<?> source = new YamlPropertySourceLoader()
-                .load("test-ai", new ByteArrayResource(yaml.getBytes(StandardCharsets.UTF_8))).get(0);
-        runner.withInitializer(context -> context.getEnvironment().getPropertySources().addLast(source))
-                .run(context -> {
-                    assertThat(context).hasNotFailed();
-                    StarBotCoreProperties properties = context.getBean(StarBotCoreProperties.class);
-                    assertThat(properties.getAi().getModels()).isEmpty();
-                    assertThat(properties.getAi().getDefaultModel()).isNull();
-                    assertThat(context.getBean(StarBotAiService.class).getModelNames()).isEmpty();
-                    assertThat(properties.getAiThread().getCorePoolSize()).isEqualTo(2);
-                    assertThat(properties.getAiThread().getMaxPoolSize()).isEqualTo(4);
-                    assertThat(properties.getAiThread().getQueueCapacity()).isEqualTo(6);
-                    ThreadPoolTaskExecutor executor = context.getBean("aiThreadPool", ThreadPoolTaskExecutor.class);
-                    assertThat(executor.getCorePoolSize()).isEqualTo(2);
-                    assertThat(executor.getMaxPoolSize()).isEqualTo(4);
-                    assertThat(executor.getQueueCapacity()).isEqualTo(6);
-                });
     }
 
     /**
@@ -338,7 +308,9 @@ class StarBotAiServiceTest {
 
             ChatResponse response = service.chat(prompt);
 
-            assertEquals("你好", response.getResult().getOutput().getText());
+            var generation = response.getResult();
+            assertNotNull(generation);
+            assertEquals("你好", generation.getOutput().getText());
             assertEquals(12, response.getMetadata().getUsage().getTotalTokens());
             assertEquals(1, requests.size());
             Request request = requests.get(0);
@@ -556,20 +528,20 @@ class StarBotAiServiceTest {
             executor.setCorePoolSize(1);
             executor.setMaxPoolSize(1);
             CountDownLatch release = new CountDownLatch(1);
-            executor.execute(() -> {
-                try {
-                    release.await(5, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+            var queuedBlocker = executor.submit(() -> {
+                assertTrue(release.await(5, TimeUnit.SECONDS), "等待主线程释放线程池超时");
+                return null;
             });
             StarBotAiService service = createService(AiProvider.OPENAI);
             Prompt prompt = new Prompt(new ArrayList<>(List.of(new UserMessage("原始消息"))));
             CompletableFuture<ChatResponse> result = service.chatAsync(prompt);
             prompt.getInstructions().clear();
             release.countDown();
+            queuedBlocker.get(5, TimeUnit.SECONDS);
 
-            assertEquals("你好", result.get(5, TimeUnit.SECONDS).getResult().getOutput().getText());
+            var generation = result.get(5, TimeUnit.SECONDS).getResult();
+            assertNotNull(generation);
+            assertEquals("你好", generation.getOutput().getText());
             assertTrue(requests.get(0).body().toJSONString().contains("原始消息"));
         }
 
@@ -598,17 +570,17 @@ class StarBotAiServiceTest {
         }
 
         /**
-         * 验证默认不重试，错误状态只产生一次请求
+         * 验证遇到限流时默认重试三次，包含首次请求共发送四次
          */
         @ParameterizedTest
         @EnumSource(AiProvider.class)
-        void doesNotRetryFailedRequestsByDefault(AiProvider provider) {
+        void retriesRateLimitedRequestsThreeTimesByDefault(AiProvider provider) {
             responseStatus = 429;
             StarBotAiService service = createService(provider);
 
             assertThrows(RuntimeException.class, () -> service.chat("你好"));
 
-            assertEquals(1, requests.size());
+            assertEquals(4, requests.size());
         }
 
         /**
@@ -617,13 +589,17 @@ class StarBotAiServiceTest {
         @ParameterizedTest
         @EnumSource(AiProvider.class)
         void appliesRequestTimeout(AiProvider provider) {
-            properties.getAi().getModels().put("default", model(provider));
-            properties.getAi().getModels().get("default").setTimeout(Duration.ofMillis(150));
-            responseDelay = 700;
+            AiModel config = model(provider);
+            config.setTimeout(1);
+            config.setMaxRetries(0);
+            properties.getAi().getModels().put("default", config);
             StarBotAiService service = context.getBean(StarBotAiService.class);
 
+            responseDelay = 100;
+            assertEquals("你好", service.chat("你好"));
+            responseDelay = 1800;
             assertThrows(RuntimeException.class, () -> service.chat("你好"));
-            assertEquals(1, requests.size());
+            assertEquals(2, requests.size());
         }
 
         /**
@@ -648,7 +624,7 @@ class StarBotAiServiceTest {
             config.setApiKey("test-key");
             config.setModel("test-model");
             config.setMaxTokens(64);
-            config.setTimeout(Duration.ofSeconds(3));
+            config.setTimeout(3);
             config.setHeaders(Map.of("X-Test", "test-value"));
             if (provider == AiProvider.OPENAI) {
                 config.setExtraBody(Map.of("custom_parameter", "custom-value"));

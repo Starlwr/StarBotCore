@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StarBot 配置中心</title>
+  <link rel="icon" type="image/png" href="assets/icon.png">
+  <link rel="stylesheet" href="assets/style.css">
+  <script defer src="assets/engine.js"></script>
+  <script defer src="assets/controls.js"></script>
+  <script defer src="assets/app.js"></script>
+</head>
+<body spellcheck="false">
+  <div id="starbot-config-center" aria-label="StarBot 配置中心" hidden>
+    <header class="starbot-top">
+      <div class="starbot-brand"><img class="starbot-logo" src="assets/logo.png" alt="StarBot"><span class="starbot-brand-label">配置中心</span></div>
+      <div class="starbot-actions">
+        <button type="button" class="starbot-button" data-action="reload">重新读取</button>
+        <button type="button" class="starbot-button" data-action="raw-mode" aria-pressed="false">编辑 JSON</button>
+        <button type="button" class="starbot-button starbot-primary" data-action="save">保存配置<span id="starbot-error-total"></span></button>
+      </div>
+    </header>
+    <div class="starbot-navigation">
+      <nav id="starbot-tabs" class="starbot-tabs" role="tablist" aria-label="配置模块"></nav>
+      <p id="starbot-tab-description" class="starbot-tab-description" hidden></p>
+    </div>
+    <div id="starbot-diagnostics" class="starbot-diagnostics"></div>
+    <div class="starbot-layout">
+      <aside id="starbot-sidebar" class="starbot-sidebar" aria-label="配置分组"></aside>
+      <main>
+        <div id="starbot-editor" class="starbot-editor" role="tabpanel"></div>
+      </main>
+    </div>
+    <div id="starbot-toast" class="starbot-toast" role="status" hidden></div>
+  </div>
+  <div id="starbot-login" class="starbot-login">
+    <div class="starbot-login-orbit" aria-hidden="true"></div>
+    <form id="starbot-login-form" class="starbot-login-card" autocomplete="off">
+      <img class="starbot-login-logo" src="assets/logo.png" alt="StarBot">
+      <h1>配置中心</h1>
+      <label for="starbot-token">访问密码</label>
+      <input id="starbot-token" name="config-access-code" type="text" class="starbot-secret-masked" data-secret required autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="请输入访问密码">
+      <button type="submit">进入配置中心</button>
+      <p id="starbot-login-error" role="alert"></p>
+      <p id="starbot-password-notice" hidden class="starbot-login-help starbot-password-notice" role="status">{{password-notice}}</p>
+    </form>
+  </div>
+</body>
+</html>

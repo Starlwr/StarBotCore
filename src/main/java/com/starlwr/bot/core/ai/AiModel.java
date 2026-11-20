@@ -3,7 +3,6 @@ package com.starlwr.bot.core.ai;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -39,19 +38,19 @@ public class AiModel {
     private Double temperature;
 
     /**
-     * 最大输出 token 数
+     * 最大输出 token 数，单位：K
      */
     private int maxTokens = 128;
 
     /**
-     * 网络请求超时时间
+     * 网络请求超时时间，单位：秒
      */
-    private Duration timeout = Duration.ofSeconds(30);
+    private int timeout = 30;
 
     /**
      * 网络请求最大重试次数，不包含首次请求
      */
-    private int maxRetries = 0;
+    private int maxRetries = 3;
 
     /**
      * 结构化校验失败时最大自动修复次数，不包含首次请求
@@ -64,7 +63,7 @@ public class AiModel {
     private Map<String, String> headers = new LinkedHashMap<>();
 
     /**
-     * 额外请求体参数，仅 OPENAI 协议生效，可用于第三方模型的专有参数
+     * 额外请求体参数，仅 OpenAI 协议生效，可用于第三方模型的专有参数
      */
     private Map<String, Object> extraBody = new LinkedHashMap<>();
 }
