@@ -411,6 +411,11 @@
         function button(text, action, p, extra = '') {
             return '<button type="button" class="starbot-button starbot-small cursor-interaction" data-action="' + action + '" data-path="' + pa(p) + '" ' + extra + '>' + text + '</button>';
         }
+        function arrayMoveButtons(p, length) {
+            const index = p.at(-1), item = '第 ' + (index + 1) + ' 项';
+            return button('↑', 'move-up', p, 'title="上移" aria-label="上移' + item + '"' + (index === 0 ? ' disabled' : ''))
+                + button('↓', 'move-down', p, 'title="下移" aria-label="下移' + item + '"' + (index === length - 1 ? ' disabled' : ''));
+        }
         function input(v, p, extra = '') {
             return '<input class="starbot-input ' + (extra.includes('data-rename') ? 'starbot-key-input' : '') + '" type="text" value="' + esc(v ?? '') + '" data-edit="' + pa(p) + '" ' + extra + '>';
         }
@@ -620,13 +625,14 @@
                 }
                 v.forEach((x, i) => {
                     const ep = p.concat(i), complexItem = ['object', 'map', 'array', 'any'].includes(n.items.type);
+                    const actions = arrayMoveButtons(ep, v.length) + button('删除', 'delete', ep);
                     if (complexItem) {
                         const titlePath = n.ui?.itemTitlePath, fallback = '第 ' + (i + 1) + ' 项';
                         const titleData = titlePath ? ' data-item-title="' + pa(ep.concat(titlePath)) + '" data-item-fallback="' + fallback + '"' : '';
-                        content += '<details class="starbot-entry" data-open="' + pa(ep) + '" ' + (opened.has(pid(ep)) ? 'open' : '') + '><summary><span class="starbot-entry-name"' + titleData + '>' + esc(itemTitle(titlePath ? get(x, titlePath) : null, fallback)) + '</span>' + button('↑', 'move-up', ep, 'aria-label="上移第 ' + (i + 1) + ' 项"') + button('↓', 'move-down', ep, 'aria-label="下移第 ' + (i + 1) + ' 项"') + button('删除', 'delete', ep) + '</summary><div class="starbot-entry-body">' + (n.items.type === 'object' ? objectErrors(ep) + fields(n.items.fields, ep) : renderNode({ ...n.items, label: '内容' }, ep)) + '</div></details>';
+                        content += '<details class="starbot-entry" data-open="' + pa(ep) + '" ' + (opened.has(pid(ep)) ? 'open' : '') + '><summary><span class="starbot-entry-name"' + titleData + '>' + esc(itemTitle(titlePath ? get(x, titlePath) : null, fallback)) + '</span>' + actions + '</summary><div class="starbot-entry-body">' + (n.items.type === 'object' ? objectErrors(ep) + fields(n.items.fields, ep) : renderNode({ ...n.items, label: '内容' }, ep)) + '</div></details>';
                     }
                     else {
-                        content += '<div class="starbot-list-row"><div class="starbot-list-field" data-field="' + pa(ep) + '">' + leaf(n.items, ep, n.items.label) + '<div class="starbot-error"></div></div>' + button('删除', 'delete', ep) + '</div>';
+                        content += '<div class="starbot-list-row"><div class="starbot-list-field" data-field="' + pa(ep) + '">' + leaf(n.items, ep, n.items.label) + '<div class="starbot-error"></div></div><div class="starbot-list-actions">' + actions + '</div></div>';
                     }
                 });
                 content += '</div>';
@@ -647,7 +653,7 @@
             return nodeTypes.get(pid(p)) || (v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v === 'object' ? 'object' : typeof v === 'number' ? (Number.isInteger(v) ? 'integer' : 'number') : typeof v === 'boolean' ? 'boolean' : 'string');
         }
         function tree(v, p, settings = {}) {
-            const t = treeType(v, p), parent = actual(p.slice(0, -1)), isIndex = Array.isArray(parent);
+            const t = treeType(v, p), isIndex = settings.arraySize !== undefined;
             const numeric = !settings.root && (t === 'integer' || t === 'number');
             let html = '<div class="starbot-tree-row"' + (numeric ? ' data-field="' + pa(p) + '"' : '') + '><div class="starbot-tree-heading">';
             if (!settings.root) {
@@ -661,6 +667,9 @@
             }
             html += '<select class="starbot-select" data-tree-type="' + pa(p) + '" aria-label="' + esc(p.join('.') + ' 的值类型') + '">' + [['string', '文本'], ['integer', '整数'], ['number', '小数'], ['boolean', '开关'], ['null', '空值'], ['object', '对象'], ['array', '列表']].map(([k, l]) => '<option value="' + k + '" ' + (t === k ? 'selected' : '') + '>' + l + '</option>').join('') + '</select>';
             if (!settings.root) {
+                if (isIndex) {
+                    html += arrayMoveButtons(p, settings.arraySize);
+                }
                 html += button('删除', 'delete', p);
             }
             if (t === 'object' || t === 'array') {
@@ -671,7 +680,7 @@
                 html += Object.entries(v || {}).map(([k, x]) => tree(x, p.concat(k), {restore:false})).join('');
             }
             else if (t === 'array') {
-                html += (v || []).map((x, i) => tree(x, p.concat(i), {restore:false})).join('');
+                html += (v || []).map((x, i) => tree(x, p.concat(i), {restore:false, arraySize:v.length})).join('');
             }
             else if (t === 'null') {
                 html += '<span class="starbot-tree-null">null</span>';
@@ -1521,14 +1530,39 @@
                 restoreCollectionDefault(parentPath, fieldMeta, true);
             }
             if (a === 'move-up' || a === 'move-down') {
-                const parentPath = p.slice(0, -1), field = fieldMetaAt(parentPath), list = clone(value(field, parentPath)), i = Number(p.at(-1)), j = i + (a === 'move-up' ? -1 : 1);
-                if (j >= 0 && j < list.length) {
-                    pendingMoves = pendingMoves.filter(move => !prefix(parentPath, move.from));
-                    [list[i], list[j]] = [list[j], list[i]];
-                    set(parentPath, list);
-                    restoreCollectionDefault(parentPath, field);
-                    opened.add(pid(p.slice(0, -1).concat(j)));
+                const parentPath = p.slice(0, -1), field = fieldMetaAt(parentPath), current = value(field, parentPath);
+                const index = p.at(-1), target = index + (a === 'move-up' ? -1 : 1);
+                if (!Array.isArray(current) || !own(current, index) || !own(current, target)) {
+                    return;
                 }
+                const list = clone(current);
+                [list[index], list[target]] = [list[target], list[index]];
+                pendingMoves = pendingMoves.filter(move => !prefix(parentPath, move.from));
+
+                function movedPath(path) {
+                    const position = path[parentPath.length];
+                    return prefix(parentPath, path) && (position === index || position === target)
+                        ? parentPath.concat(position === index ? target : index, path.slice(parentPath.length + 1)) : path;
+                }
+                const expanded = [...opened].map(key => pid(movedPath(JSON.parse(key))));
+                const types = [...nodeTypes].map(([key, type]) => [pid(movedPath(JSON.parse(key))), type]);
+                const issues = [...numericErrors.values()].filter(issue => prefix(parentPath, issue.path));
+                set(parentPath, list);
+                restoreCollectionDefault(parentPath, field);
+                opened.clear();
+                expanded.forEach(key => opened.add(key));
+                nodeTypes.clear();
+                types.forEach(([key, type]) => nodeTypes.set(key, type));
+                for (const issue of issues) {
+                    const path = movedPath(issue.path);
+                    numericErrors.set(pid(path), {...issue, path});
+                }
+                render();
+                const key = CSS.escape(pid(parentPath.concat(target)));
+                const next = editor.querySelector('[data-action="' + a + '"][data-path="' + key + '"]:enabled')
+                    || editor.querySelector('[data-action^="move-"][data-path="' + key + '"]:enabled');
+                next?.focus({preventScroll:true});
+                return;
             }
             if (a === 'add-array') {
                 const n = fieldMetaAt(p), list = clone(value(n, p) || []);

@@ -58,7 +58,7 @@
     {
       "id": "server",
       "title": "服务",
-      "description": "监听地址和服务端口设置",
+      "description": "配置 StarBot 服务的监听地址和访问端口",
       "target": "advanced",
       "fields": [
         {
@@ -85,7 +85,7 @@
     {
       "id": "config-center",
       "title": "配置中心",
-      "description": "配置中心相关设置",
+      "description": "管理配置中心的启用状态和访问密码",
       "path": [
         "config-center"
       ],
@@ -143,7 +143,7 @@
     {
       "id": "log",
       "title": "日志",
-      "description": "日志相关设置",
+      "description": "配置控制台和文件日志的输出级别",
       "path": [
         "log"
       ],
@@ -271,7 +271,7 @@
     {
       "id": "debug",
       "title": "调试",
-      "description": "用于排查问题的调试日志相关配置",
+      "description": "记录事件和网络请求的调试日志",
       "path": [
         "debug"
       ],
@@ -286,7 +286,7 @@
         {
           "key": "network-debug",
           "label": "记录网络请求日志",
-          "description": "将网络请求记录到 debug 目录，记录中可能包含请求内容，如需反馈问题，请打开此开关以便排查问题",
+          "description": "将网络请求记录到 debug 目录，如需反馈问题，请打开此开关以便排查问题",
           "type": "boolean"
         }
       ]
@@ -294,7 +294,7 @@
     {
       "id": "network",
       "title": "网络",
-      "description": "网络请求相关设置",
+      "description": "配置网络请求的连接和读取超时",
       "path": [
         "network"
       ],
@@ -303,7 +303,7 @@
         {
           "key": "connect-timeout",
           "label": "连接超时",
-          "description": "建立连接的最长等待时间，单位为秒",
+          "description": "建立连接的最长等待时间",
           "type": "integer",
           "ui": {
             "unit": "秒"
@@ -314,7 +314,7 @@
         {
           "key": "read-timeout",
           "label": "读取超时",
-          "description": "等待响应数据的最长时间，单位为秒",
+          "description": "等待响应数据的最长时间",
           "type": "integer",
           "ui": {
             "unit": "秒"
@@ -327,7 +327,7 @@
     {
       "id": "thread-pool",
       "title": "线程池",
-      "description": "线程池相关设置",
+      "description": "调整线程池参数",
       "restartRequired": true,
       "ui": {
         "layout": "cards"
@@ -500,7 +500,7 @@
     {
       "id": "plugin",
       "title": "插件",
-      "description": "插件相关设置",
+      "description": "管理插件依赖的自动下载和仓库地址",
       "path": [
         "plugin"
       ],
@@ -540,7 +540,7 @@
     {
       "id": "paint",
       "title": "绘图",
-      "description": "图片绘制相关设置",
+      "description": "调整图片绘制相关设置",
       "path": [
         "paint"
       ],
@@ -652,7 +652,7 @@
     {
       "id": "mail",
       "title": "邮件",
-      "description": "邮件相关设置",
+      "description": "配置邮件的收件人和发信参数",
       "path": [
         "mail"
       ],
@@ -875,7 +875,7 @@
     {
       "id": "ai",
       "title": "AI",
-      "description": "AI 相关设置",
+      "description": "配置 AI 模型的接口和调用参数",
       "path": [
         "ai"
       ],
@@ -1050,7 +1050,7 @@
     {
       "id": "command",
       "title": "命令",
-      "description": "命令相关设置",
+      "description": "管理命令的前缀、触发方式和执行权限",
       "path": [
         "command"
       ],
@@ -1134,7 +1134,7 @@
     {
       "id": "datasource",
       "title": "数据源",
-      "description": "数据源相关设置",
+      "description": "配置推送数据源",
       "path": [
         "datasource"
       ],
@@ -1181,7 +1181,7 @@
     {
       "id": "live",
       "title": "直播",
-      "description": "直播相关设置",
+      "description": "管理直播数据的保存和断线重连判定",
       "path": [
         "live"
       ],
@@ -1237,7 +1237,7 @@
     {
       "id": "senders",
       "title": "自定义推送平台",
-      "description": "外部已存在 HTTP 推送接口时，可将其接入 StarBot 作为自定义推送平台",
+      "description": "接入外部 HTTP 推送接口作为推送平台",
       "restartRequired": true,
       "fields": [
         {
