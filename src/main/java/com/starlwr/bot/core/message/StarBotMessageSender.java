@@ -1,11 +1,13 @@
 package com.starlwr.bot.core.message;
 
-import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.starlwr.bot.core.support.http.HttpService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -39,6 +41,15 @@ public class StarBotMessageSender {
     }
 
     /**
+     * 停止平台发送线程
+     */
+    @Order(0)
+    @EventListener(ContextClosedEvent.class)
+    public void close() {
+        executor.shutdownNow();
+    }
+
+    /**
      * 将消息加入至消息队列
      * @param message 消息
      */
@@ -59,7 +70,6 @@ public class StarBotMessageSender {
             queue.put(message);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.error("添加消息: {} 到队列时被中断", JSON.toJSONString(message), e);
         }
     }
 
@@ -80,7 +90,6 @@ public class StarBotMessageSender {
                     Thread.sleep(delay);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    log.error("{} 平台发送线程中断", sender.getName(), e);
                 } catch (Exception e) {
                     log.error("{} 平台消息发送异常", sender.getName(), e);
                 }
