@@ -1,6 +1,6 @@
 'use strict';
 (() => {
-    const { own, clone, normalizeString, normalizeEmptyString, defaultValue, numberInputValue, selectActionConfiguration, customConfigPath, customConfigConflict, groupPath, fieldPath, pendingAt, pendingLocations, get, valueAt, equal, size, isSpringPlaceholder, dynamicOptionValues, displayDuration, condition, formatCheck, checkRule, mergeIssues, isDuplicateSpringIssue, currentServerIssues, groupSuggestions, groupConflicts, conflictSelection, sharedIssues, withDefaults } = window.ConfigEngine;
+    const { own, clone, normalizeString, normalizeEmptyString, defaultValue, numberInputValue, selectActionConfiguration, customConfigPath, customConfigConflict, groupPath, fieldPath, pendingAt, pendingLocations, get, valueAt, equal, size, isSpringPlaceholder, dynamicOptionValues, duration, durationParts, durationInputUnits, durationInputValue, condition, formatCheck, checkRule, mergeIssues, isDuplicateSpringIssue, currentServerIssues, groupSuggestions, groupConflicts, conflictSelection, sharedIssues, withDefaults } = window.ConfigEngine;
     let accessToken = '';
     async function request(path, body) {
         const response = await fetch(new URL(path.replace(/^\/+/, ''), document.baseURI), { method: body ? 'POST' : 'GET', headers: { Authorization: 'Bearer ' + accessToken, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
@@ -90,7 +90,7 @@
         const tabs = root.querySelector('#starbot-tabs'), side = root.querySelector('#starbot-sidebar'), editor = root.querySelector('#starbot-editor');
         let errors = [], displayErrors = [], toastTimer;
         const icons = { core: 'settings', custom: 'sliders', conflicts: 'alert' };
-        const typeLabels = {string:'文本', integer:'整数', number:'数字', boolean:'开关', object:'对象', map:'键值表', array:'列表', any:'任意值', null:'空值'};
+        const typeLabels = {string:'文本', integer:'整数', number:'数字', duration:'时长', boolean:'开关', object:'对象', map:'键值表', array:'列表', any:'任意值', null:'空值'};
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const iconPaths = {
             settings: '<path d="M9.67 4.14a2.34 2.34 0 0 1 4.66 0 2.34 2.34 0 0 0 3.32 1.92 2.34 2.34 0 0 1 2.33 4.04 2.34 2.34 0 0 0 0 3.8 2.34 2.34 0 0 1-2.33 4.04 2.34 2.34 0 0 0-3.32 1.92 2.34 2.34 0 0 1-4.66 0 2.34 2.34 0 0 0-3.32-1.92 2.34 2.34 0 0 1-2.33-4.04 2.34 2.34 0 0 0 0-3.8 2.34 2.34 0 0 1 2.33-4.04 2.34 2.34 0 0 0 3.32-1.92"/><circle cx="12" cy="12" r="3"/>',
@@ -113,7 +113,6 @@
         const actual = p => get(data, p);
         const value = (n, p) => valueAt(contextData, n, p, fieldMetaAt);
         const activeValue = (n, p) => valueAt(snapshot.activeData || {}, n, p, fieldMetaAt);
-        const displayFieldValue = (n, v) => n.format === 'duration' ? displayDuration(v) : v;
         const itemTitle = (v, fallback) => String(v ?? '').trim() || fallback;
         const mapExtras = (n, v) => n.mapEntries
             ? Object.fromEntries(Object.entries(v && typeof v === 'object' && !Array.isArray(v) ? v : {}).filter(([key]) => !own(n.mapEntries, key)))
@@ -332,7 +331,7 @@
                     }
                     return;
                 }
-                const checks = { string: typeof v === 'string', integer: typeof v === 'number' && Number.isInteger(v), number: typeof v === 'number' && Number.isFinite(v), boolean: typeof v === 'boolean', object: !!v && typeof v === 'object' && !Array.isArray(v), map: !!v && typeof v === 'object' && !Array.isArray(v), array: Array.isArray(v), any: true };
+                const checks = { string: typeof v === 'string', integer: typeof v === 'number' && Number.isInteger(v), number: typeof v === 'number' && Number.isFinite(v), duration: ts.includes('duration') && duration(v) !== null, boolean: typeof v === 'boolean', object: !!v && typeof v === 'object' && !Array.isArray(v), map: !!v && typeof v === 'object' && !Array.isArray(v), array: Array.isArray(v), any: true };
                 if (!ts.some(t => checks[t])) {
                     push(label + '的数据类型不正确');
                     return;
@@ -440,19 +439,27 @@
                 const prompt = v != null && v !== '' && !selected ? '当前值: ' + v : placeholder ? '请选择' + placeholder : '请选择';
                 return '<select class="starbot-select" aria-label="' + esc(n.label || '配置值') + '" data-edit="' + pa(p) + '" data-options="' + esc(JSON.stringify(opts)) + '"><option value="" disabled' + (selected ? '' : ' selected') + '>' + esc(prompt) + '</option>' + opts.map((o, i) => '<option value="' + i + '" ' + (equal(o.value, v) ? 'selected' : '') + '>' + esc(o.label) + '</option>').join('') + '</select>';
             }
+            if (n.type === 'duration' || [].concat(n.type).includes('duration')
+                    && (v == null || duration(v) !== null || n.type.every(t => t === 'duration' || t === 'null'))) {
+                const {amount, unit} = durationParts(v);
+                const label = n.label || '时长';
+                return '<div class="starbot-input-wrap starbot-duration">'
+                    + input(amount, p, 'data-duration="amount" inputmode="decimal" maxlength="40" placeholder="未设置" aria-label="' + esc(label) + '"')
+                    + '<select class="starbot-select" data-edit="' + pa(p) + '" data-duration="unit" aria-label="' + esc(label + '单位') + '">'
+                    + Object.entries(durationInputUnits).map(([key, name]) => '<option value="' + key + '"' + (key === unit ? ' selected' : '') + '>' + name + '</option>').join('')
+                    + '</select></div>';
+            }
             if (n.ui?.widget === 'slider') {
                 return '<div class="starbot-range-row"><input type="range" min="' + n.minimum + '" max="' + n.maximum + '" value="' + esc(v ?? n.minimum) + '" data-edit="' + pa(p) + '" aria-label="' + esc(n.label) + '"><output class="starbot-range-value">' + esc(v) + '</output></div>';
             }
-            const displayValue = displayFieldValue(n, v);
             const hint = placeholder ? 'placeholder="' + esc(placeholder) + '" ' : '';
             if (n.ui?.widget === 'textarea') {
-                return '<textarea class="starbot-textarea" ' + hint + 'aria-label="' + esc(n.label || '配置值') + '" data-edit="' + pa(p) + '">' + esc(displayValue ?? '') + '</textarea>';
+                return '<textarea class="starbot-textarea" ' + hint + 'aria-label="' + esc(n.label || '配置值') + '" data-edit="' + pa(p) + '">' + esc(v ?? '') + '</textarea>';
             }
             const password = n.ui?.widget === 'password';
             const storedPassword = password && isStoredAccessPassword(p, v);
-            const numeric = !(n.format === 'duration' && Array.isArray(n.type) && n.type.includes('string'))
-                && (type === 'integer' || type === 'number');
-            let control = input(storedPassword ? '' : displayValue, p, (storedPassword ? 'placeholder="已设置密码, 输入新密码可修改" ' : hint) + (password ? 'data-secret autocomplete="off" spellcheck="false" ' : '') + (numeric ? 'data-number="' + type + '" inputmode="decimal" ' : '') + 'aria-label="' + esc(n.label || '值') + '"');
+            const numeric = type === 'integer' || type === 'number';
+            let control = input(storedPassword ? '' : v, p, (storedPassword ? 'placeholder="已设置密码, 输入新密码可修改" ' : hint) + (password ? 'data-secret autocomplete="off" spellcheck="false" ' : '') + (numeric ? 'data-number="' + type + '" inputmode="decimal" ' : '') + 'aria-label="' + esc(n.label || '值') + '"');
             if (password) {
                 control += '<button type="button" class="starbot-secret-button cursor-interaction" data-action="reveal" aria-label="显示' + esc(n.label) + '" aria-pressed="false" title="显示' + esc(n.label) + '">' + icon('eye') + '</button>';
             }
@@ -566,11 +573,11 @@
                     + '<div class="starbot-error">' + es.map(issue => esc(issue.message)).join('<br>') + '</div></' + tag + '>';
             }
             const placeholder = isSpringPlaceholder(v, p, springPaths);
-            if (placeholder) {
+            if (placeholder || v === null && declaredTypes.includes('duration')) {
                 content = leaf(n, p);
             }
             else if (v === null && !ts.some(type => ['string', 'integer', 'number'].includes(type))) {
-                content = '<div class="starbot-tree-null">未设置 - ' + button('填写', 'literal', p) + '</div>';
+                content = '<div class="starbot-tree-null">未设置 ' + button('填写', 'literal', p) + '</div>';
             }
             else if (ts.includes('any')) {
                 content = n.ui?.widget === 'password' ? v && typeof v === 'object'
@@ -1158,7 +1165,7 @@
                 render();
                 return;
             }
-            let v;
+            let v, durationError;
             if (el.type === 'checkbox') {
                 v = el.checked;
             }
@@ -1168,6 +1175,28 @@
                 }
                 const opts = JSON.parse(el.dataset.options);
                 v = opts[Number(el.value)].value;
+            }
+            else if (el.dataset.duration) {
+                const wrap = el.closest('.starbot-duration');
+                const amount = wrap.querySelector('[data-duration="amount"]').value;
+                const unit = wrap.querySelector('[data-duration="unit"]').value;
+                if (el.dataset.duration === 'unit' && !amount.trim()) {
+                    return;
+                }
+                if (amount.trim()) {
+                    v = isSpringPlaceholder(amount, p, springPaths) ? amount : durationInputValue(amount, unit);
+                    if (v === null) {
+                        v = amount;
+                        durationError = '请输入有效时长';
+                    }
+                }
+                else {
+                    const parent = fieldMetaAt(p.slice(0, -1));
+                    if (typeof p.at(-1) === 'number' || parent.type === 'map' && !own(parent.mapEntries, p.at(-1))) {
+                        v = '';
+                        durationError = '请填写时长，或删除此条目';
+                    }
+                }
             }
             else if (el.dataset.number || el.type === 'range') {
                 v = numberInputValue(el.value, el.dataset.number);
@@ -1191,6 +1220,9 @@
             set(p, normalizeEmptyString(v, fieldMetaAt(p)));
             const parentPath = p.slice(0, -1);
             restoreCollectionDefault(parentPath, fieldMetaAt(parentPath));
+            if (durationError) {
+                numericErrors.set(pid(p), { path: p, message: durationError, tab: active, group: section });
+            }
             if ((el.dataset.number || el.type === 'range') && typeof v === 'string' && !isSpringPlaceholder(v, p, springPaths)) {
                 const integer = el.dataset.number === 'integer';
                 let message;
@@ -1297,7 +1329,7 @@
                 return;
             }
             if (el.dataset.edit) {
-                edit(el, !!el.dataset.rename || el.tagName === 'SELECT' || el.type === 'checkbox');
+                edit(el, !!el.dataset.rename || el.tagName === 'SELECT' && !el.dataset.duration || el.type === 'checkbox');
             }
         });
         root.addEventListener('focusout', e => {
@@ -1306,7 +1338,7 @@
                 edit(el, true);
                 return;
             }
-            if (!el.dataset.edit || !el.matches('input[type="text"], textarea') || el.hasAttribute('data-secret')
+            if (!el.dataset.edit || !el.matches('input[type="text"], textarea') || el.hasAttribute('data-secret') || el.dataset.duration
                     || (el.dataset.number ? el.value.trim() !== '' : el.value !== '')) {
                 return;
             }
@@ -1314,10 +1346,9 @@
             if ((el.dataset.number || n.ui?.emptyAsDefault) && !numericErrors.has(pid(p))) {
                 const effective = value(n, p);
                 if (typeof effective === 'string' || typeof effective === 'number') {
-                    const displayValue = displayFieldValue(n, effective);
-                    el.value = String(displayValue);
+                    el.value = String(effective);
                     if (el.dataset.number) {
-                        toast((n.label || '数值') + ' 格式不正确，已恢复默认值 ' + displayValue);
+                        toast((n.label || '数值') + ' 格式不正确，已恢复默认值 ' + effective);
                     }
                 }
             }

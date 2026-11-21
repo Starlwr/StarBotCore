@@ -6,8 +6,11 @@ import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.JSONWriter;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.springframework.boot.convert.DurationStyle;
 
 import java.math.BigDecimal;
+import java.time.DateTimeException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -167,6 +170,22 @@ public final class ConfigValueUtil {
             return value;
         }
         return value.toString();
+    }
+
+    /**
+     * 将时长文本或毫秒数转换为 Duration
+     * @param value 时长文本或毫秒数
+     * @return 时长，格式或范围无效时返回 null
+     */
+    public static Duration parseDuration(Object value) {
+        try {
+            if (value instanceof Number number) {
+                return Duration.ofMillis(toDecimal(number).longValueExact());
+            }
+            return value instanceof String text ? DurationStyle.detectAndParse(text) : null;
+        } catch (ArithmeticException | DateTimeException | IllegalArgumentException e) {
+            return null;
+        }
     }
 
     /**

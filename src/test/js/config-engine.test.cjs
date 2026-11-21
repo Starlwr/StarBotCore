@@ -133,15 +133,27 @@ test('空字符串只在声明转换的字段中成为 null，空格和原草稿
     assert.equal(engine.valueAt(draft,{...field,emptyAsNull:false},path,() => ({})),'');
 });
 
-test('时长输入框简写 ISO 时长并保持精度，毫秒数和已有简写保持原样', () => {
-    for (const [value, expected] of [
-        ['PT30S', '30s'], ['PT2M', '2m'], ['PT1M30S', '90s'], ['PT1.5S', '1500ms'],
-        ['PT0.000001S', '1us'], ['PT0.000000001S', '1ns'], ['PT24H', '1d'], ['PT0S', '0s'],
-        ['-PT2M', '-2m'], [30000, 30000], ['30000', '30000'], ['30s', '30s'], ['P1DT', 'P1DT'],
-        ['PT9007199254740997S', 'PT9007199254740997S'], [null, null]
+test('拆分时长的数值和单位，并在表单往返时保留纳秒精度', () => {
+    for (const [value, amount, unit] of [
+        ['PT30S', '30', 's'], ['PT2M', '2', 'm'], ['PT1M30S', '90', 's'], ['PT1.5S', '1500', 'ms'],
+        ['PT0.000001S', '0.000001', 's'], ['1ns', '0.000000001', 's'], ['2000us', '2', 'ms'],
+        ['PT24H', '1', 'd'], ['PT0S', '0', 's'],
+        ['-PT2M', '-2', 'm'], [30000, '30000', 'ms'], ['30000', '30000', 'ms'], ['60s', '60', 's'],
+        ['PT9007199254740997S', '9007199254740997', 's'],
+        ['PT9223372036854775807.000000001S', '9223372036854775807.000000001', 's']
     ]) {
-        assert.equal(engine.displayDuration(value), expected);
+        assert.deepEqual({...engine.durationParts(value)}, {amount, unit});
+        assert.equal(engine.duration(engine.durationInputValue(amount, unit)), engine.duration(value));
     }
+    assert.equal(engine.durationInputValue('1.5', 'm'), 'PT90S');
+    assert.equal(engine.durationInputValue('-0.0005', 'ms'), 'PT-0.0000005S');
+    assert.equal(engine.durationInputValue('1', 'us'), null);
+    assert.equal(engine.durationInputValue('1', 'ns'), null);
+    assert.equal(engine.durationInputValue('0.0000001', 'ms'), null);
+    assert.equal(engine.durationInputValue('9223372036854775808', 's'), null);
+    assert.equal(engine.durationInputValue('1s', 's'), null);
+    assert.deepEqual({...engine.durationParts(null)}, {amount:'', unit:'s'});
+    assert.deepEqual({...engine.durationParts('PT0S')}, {amount:'0', unit:'s'});
 });
 
 test('待重启标记匹配实际分段路径，同时标记父容器与其子项', () => {

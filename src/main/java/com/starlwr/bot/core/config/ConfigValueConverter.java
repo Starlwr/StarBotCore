@@ -6,9 +6,9 @@ import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import com.alibaba.fastjson2.reader.ObjectReaderProvider;
 import com.alibaba.fastjson2.writer.ObjectWriterProvider;
+import com.starlwr.bot.core.config.validation.ConfigValueUtil;
 import com.starlwr.bot.core.painter.converter.ColorConverter;
 import com.starlwr.bot.core.painter.converter.FontConverter;
-import org.springframework.boot.convert.DurationStyle;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -47,8 +47,12 @@ public class ConfigValueConverter {
             return level;
         });
         READERS.register(Duration.class, (reader, type, name, features) -> {
-            String value = reader.readString();
-            return value == null ? null : DurationStyle.detectAndParse(value);
+            Object value = reader.readAny();
+            Duration duration = ConfigValueUtil.parseDuration(value);
+            if (value != null && duration == null) {
+                throw new IllegalArgumentException("无效的时长");
+            }
+            return duration;
         });
         READERS.register(Color.class, (reader, type, name, features) -> {
             Object value = reader.readAny();
@@ -66,7 +70,8 @@ public class ConfigValueConverter {
             READERS.register(type, READERS.getObjectReader(type), true);
         }
         WRITERS.register(Level.class, (writer, value, name, type, features) -> writer.writeString(value.toString()));
-        WRITERS.register(Duration.class, (writer, value, name, type, features) -> writer.writeString(value.toString()));
+        WRITERS.register(Duration.class, (writer, value, name, type, features) ->
+                writer.writeString(value == null ? null : value.toString()));
         WRITERS.register(Color.class, (writer, value, name, type, features) -> writer.writeInt32(((Color) value).getRGB()));
         WRITERS.register(Font.class, (writer, value, name, type, features) -> {
             Font font = (Font) value;

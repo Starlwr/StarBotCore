@@ -86,3 +86,4 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-vi
 .starbot-restart-card>.starbot-field-grid .starbot-restart-required{display:none}
 .starbot-group-cards>.starbot-surface>.starbot-config-action:first-child{margin-top:0;padding-top:0;border-top:0}
 @media(max-width:720px){.starbot-object-card>.starbot-field-grid{grid-template-columns:minmax(0,1fr)}}
+.starbot-duration>.starbot-input{flex:1;min-width:0}.starbot-duration>.starbot-dropdown{flex:0 0 auto;width:100px;max-width:50%}

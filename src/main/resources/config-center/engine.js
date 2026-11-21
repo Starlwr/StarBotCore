@@ -201,6 +201,8 @@ function dynamicOptionValues(ref, context) {
     return source && typeof source === 'object' ? (ref.source === 'values' ? Object.values(source) : Object.keys(source)) : [];
 }
 const durationUnits = {d:86400000000000n, h:3600000000000n, m:60000000000n, s:1000000000n, ms:1000000n, us:1000n, ns:1n};
+const durationInputUnits = {d:'天', h:'小时', m:'分钟', s:'秒', ms:'毫秒'};
+const simpleDurationPattern = /^([+-]?\d+)(ns|us|ms|s|m|h|d)?$/i;
 const maxLong = (1n << 63n) - 1n;
 const minLong = -maxLong - 1n;
 const fitsLong = value => value >= minLong && value <= maxLong;
@@ -212,7 +214,7 @@ function duration(value) {
     if (typeof value !== 'string') {
         return null;
     }
-    const simple = /^([+-]?\d+)(ns|us|ms|s|m|h|d)?$/i.exec(value);
+    const simple = simpleDurationPattern.exec(value);
     if (simple?.[0] === value) {
         const amount = BigInt(simple[1]), nanos = amount * durationUnits[simple[2]?.toLowerCase() || 'ms'];
         return fitsLong(amount) && fitsDuration(nanos) ? nanos : null;
@@ -233,21 +235,49 @@ function duration(value) {
     const result = iso[1] === '-' ? -nanos : nanos;
     return fitsDuration(nanos) && fitsDuration(result) ? result : null;
 }
-function displayDuration(value) {
-    const nanos = typeof value === 'string' && value.length <= 100 && /^[+-]?p/i.test(value) ? duration(value) : null;
-    if (nanos === null) {
-        return value;
-    }
-    if (nanos === 0n) {
-        return '0s';
-    }
-    for (const [unit, size] of Object.entries(durationUnits)) {
-        if (nanos % size === 0n) {
-            const amount = nanos / size;
-            return amount >= BigInt(Number.MIN_SAFE_INTEGER) && amount <= BigInt(Number.MAX_SAFE_INTEGER) ? amount + unit : value;
+function durationSeconds(nanos) {
+    const absolute = nanos < 0n ? -nanos : nanos;
+    const seconds = absolute / durationUnits.s;
+    const fraction = String(absolute % durationUnits.s).padStart(9, '0').replace(/0+$/, '');
+    return (nanos < 0n ? '-' : '') + seconds + (fraction ? '.' + fraction : '');
+}
+function durationParts(value) {
+    const simple = typeof value === 'string' ? simpleDurationPattern.exec(value) : null;
+    if (simple && simple[0] === value) {
+        const unit = simple[2]?.toLowerCase() || 'ms';
+        if (own(durationInputUnits, unit)) {
+            return { amount: simple[1], unit };
         }
     }
-    return value;
+    if (typeof value === 'number') {
+        return { amount: String(value), unit: 'ms' };
+    }
+    const nanos = duration(value);
+    if (nanos === null || nanos === 0n) {
+        return { amount: nanos === 0n ? '0' : String(value ?? ''), unit: 's' };
+    }
+    for (const unit of Object.keys(durationInputUnits)) {
+        const size = durationUnits[unit];
+        if (nanos % size === 0n && fitsLong(nanos / size)) {
+            return { amount: String(nanos / size), unit };
+        }
+    }
+    return { amount: durationSeconds(nanos), unit: 's' };
+}
+function durationInputValue(text, unit) {
+    const trimmed = text.trim();
+    const parts = /^([+-]?)(\d*)(?:\.(\d*))?$/.exec(trimmed);
+    if (!parts || !(parts[2] || parts[3]) || !own(durationInputUnits, unit) || trimmed.length > 40) {
+        return null;
+    }
+    const fraction = parts[3] || '';
+    const divisor = 10n ** BigInt(fraction.length);
+    const amount = BigInt(parts[1] + (parts[2] || '0') + fraction);
+    const nanos = amount * durationUnits[unit];
+    if (nanos % divisor !== 0n || !fitsDuration(nanos / divisor)) {
+        return null;
+    }
+    return fraction || !fitsLong(amount) ? 'PT' + durationSeconds(nanos / divisor) + 'S' : amount + unit;
 }
 const regexResults = new Map();
 const regexQueue = [];
@@ -414,7 +444,6 @@ function isHostAddress(host) {
 
 function formatCheck(v, format) {
     switch (format) {
-        case 'duration': return duration(v) !== null;
         case 'color': return typeof v === 'string' && (/^#?[\da-f]{6}$/i.test(v) || /^#[\da-f]+$/i.test(v) && Number.parseInt(v.slice(1), 16) <= 2147483647 || /^\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}$/.test(v) && v.split(/\s*,\s*/).every(part => Number(part) <= 255) || /^(?:white|black|red|green|blue|yellow|orange|pink|gray|light_gray|dark_gray|cyan|magenta)$/i.test(v));
         case 'http-base-url':
         case 'http-url': try {
@@ -655,4 +684,4 @@ function sharedIssues(issues, locations) {
     }
     return Array.from(result.values());
 }
-window.ConfigEngine = { own, clone, normalizeString, normalizeEmptyString, defaultValue, numberInputValue, selectActionConfiguration, customConfigPath, customConfigConflict, groupPath, fieldPath, pendingAt, pendingLocations, get, valueAt, empty, equal, size, containsPlaceholder, isSpringPlaceholder, dynamicOptionValues, duration, displayDuration, compare, condition, formatCheck, checkRule, jsonWrite, mergeIssues, isDuplicateSpringIssue, currentServerIssues, groupSuggestions, groupConflicts, conflictSelection, sharedIssues, withDefaults };
+window.ConfigEngine = { own, clone, normalizeString, normalizeEmptyString, defaultValue, numberInputValue, selectActionConfiguration, customConfigPath, customConfigConflict, groupPath, fieldPath, pendingAt, pendingLocations, get, valueAt, empty, equal, size, containsPlaceholder, isSpringPlaceholder, dynamicOptionValues, duration, durationParts, durationInputUnits, durationInputValue, compare, condition, formatCheck, checkRule, jsonWrite, mergeIssues, isDuplicateSpringIssue, currentServerIssues, groupSuggestions, groupConflicts, conflictSelection, sharedIssues, withDefaults };

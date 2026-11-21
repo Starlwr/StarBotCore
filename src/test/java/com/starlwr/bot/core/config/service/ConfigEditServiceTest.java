@@ -7,6 +7,7 @@ import com.alibaba.fastjson2.JSONWriter;
 import com.starlwr.bot.core.config.ConfigService;
 import com.starlwr.bot.core.config.SpringPropertyBridge;
 import com.starlwr.bot.core.config.ConfigException;
+import com.starlwr.bot.core.config.StarBotConfiguration;
 import com.starlwr.bot.core.config.security.ConfigPasswordUtil;
 import com.starlwr.bot.core.event.config.StarBotConfigChangedEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.jar.JarEntry;
@@ -45,6 +47,65 @@ class ConfigEditServiceTest {
     void setUp() throws IOException {
         registry = new ConfigMetaRegistry(directory.resolve("plugins"));
         springPropertyBridge = new SpringPropertyBridge(registry);
+    }
+
+    /**
+     * 验证时长配置可预览、保存并按 Java 时长读取
+     */
+    @Test
+    void savesDurationFieldsAndAppliesDurationRules() throws Exception {
+        Path plugins = Files.createDirectories(registry.getPlugins());
+        try (JarOutputStream jar = new JarOutputStream(Files.newOutputStream(plugins.resolve("duration.jar")))) {
+            entry(jar, "plugin.json", "{\"groupId\":\"test\",\"artifactId\":\"duration\"}");
+            entry(jar, "config/config.json", """
+                    {"title":"Duration","basePath":["starbot","duration"],"configurationClass":"%s",
+                     "groups":[{"id":"timing","title":"Timing","fields":[
+                      {"key":"timeout","type":"duration","validators":[{"rule":"positiveDuration"},
+                       {"rule":"durationRange","min":"1ns","max":"2m"}]},
+                      {"key":"delay","type":"duration"},
+                      {"key":"optional-delay","type":"duration","nullable":true}
+                    ]}]}
+                    """.formatted(DurationDefaults.class.getName()));
+        }
+        ConfigMetaRegistry pluginRegistry = new ConfigMetaRegistry(plugins);
+        SpringPropertyBridge bridge = new SpringPropertyBridge(pluginRegistry);
+        Path path = directory.resolve("config.json");
+        Files.writeString(path, """
+                {"starbot":{"duration":{"timeout":1000.0,"delay":"PT-0.000000001S"}}}
+                """);
+        ConfigService config = new ConfigService(path, pluginRegistry, bridge, false);
+        try {
+            ConfigEditService editService = new ConfigEditService(config, bridge);
+            assertThat(pluginRegistry.getDiagnostics()).isEmpty();
+            assertThat(editService.read().getJSONArray("errors")).isEmpty();
+            assertThat(config.get("starbot.duration", JSONObject.class)).containsEntry("optional-delay", null);
+            assertThat(config.get("starbot.duration.timeout", Duration.class)).isEqualTo(Duration.ofSeconds(1));
+            assertThat(config.get("starbot.duration.delay", Duration.class)).isEqualTo(Duration.ofNanos(-1));
+
+            List<String> fieldPath = List.of("starbot", "duration", "timeout");
+            for (Object invalid : List.of("0s", "121s", "P1DT", 0.5)) {
+                JSONObject request = JSONObject.of("changes", List.of(JSONObject.of("op", "set", "path", fieldPath, "value", invalid)));
+                assertThat(editService.preview(request).getJSONArray("errors")).isNotEmpty();
+            }
+            JSONObject request = JSONObject.of("changes", List.of(JSONObject.of("op", "set", "path", fieldPath, "value", "PT2M")));
+            assertThat(editService.preview(request).getJSONArray("errors")).isEmpty();
+            assertThat(editService.save(request).getJSONArray("errors")).isEmpty();
+            assertThat(config.get("starbot.duration.timeout", Duration.class)).isEqualTo(Duration.ofMinutes(2));
+        } finally {
+            config.destroy();
+        }
+    }
+
+    /**
+     * 时长测试配置
+     */
+    @StarBotConfiguration(prefix = "starbot.duration")
+    @lombok.Getter
+    public static class DurationDefaults {
+        /**
+         * 附加延迟
+         */
+        private final Duration optionalDelay = null;
     }
 
     /**

@@ -7,10 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.boot.convert.DurationStyle;
 
 import java.net.URI;
-import java.time.DateTimeException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,7 +46,7 @@ public final class ConfigRules {
     /**
      * 配置值格式名称集合
      */
-    public static final Set<String> FORMATS = Set.of("duration", "color", "http-base-url", "http-url", "listen-address", "email", "password",
+    public static final Set<String> FORMATS = Set.of("color", "http-base-url", "http-url", "listen-address", "email", "password",
             "url", "uuid", "ipv4", "hostname", "json");
 
     /**
@@ -412,8 +410,7 @@ public final class ConfigRules {
         try {
             String text = String.valueOf(value);
             return switch (format) {
-                // 校验时长和颜色格式
-                case "duration" -> parseDuration(value) != null;
+                // 校验颜色格式
                 case "color" -> value instanceof String && (text.matches("#?[0-9a-fA-F]{6}")
                         || text.matches("#[0-9a-fA-F]+") && Long.parseLong(text.substring(1), 16) <= Integer.MAX_VALUE
                         || text.matches("(?i)white|black|red|green|blue|yellow|orange|pink|gray|light_gray|dark_gray|cyan|magenta")
@@ -559,22 +556,6 @@ public final class ConfigRules {
             }
         }
         return true;
-    }
-
-    /**
-     * 将时长文本或毫秒数转换为 Duration
-     * @param value 时长文本或毫秒数
-     * @return 时长，格式或范围无效时返回 null
-     */
-    private static Duration parseDuration(Object value) {
-        try {
-            if (value instanceof Number number) {
-                return Duration.ofMillis(toDecimal(number).longValueExact());
-            }
-            return value instanceof String text ? DurationStyle.detectAndParse(text) : null;
-        } catch (ArithmeticException | DateTimeException | IllegalArgumentException e) {
-            return null;
-        }
     }
 
     /**

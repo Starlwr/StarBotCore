@@ -206,6 +206,7 @@ public class ConfigValidationService {
             case "string" -> value instanceof String;
             case "integer" -> value instanceof Number && toDecimal(value).stripTrailingZeros().scale() <= 0;
             case "number" -> value instanceof Number;
+            case "duration" -> parseDuration(value) != null;
             case "boolean" -> value instanceof Boolean;
             case "object", "map" -> value instanceof Map<?, ?>;
             case "array" -> value instanceof List<?>;

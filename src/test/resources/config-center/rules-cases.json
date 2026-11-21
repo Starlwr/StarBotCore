@@ -1462,55 +1462,6 @@
     {"format":"http-base-url","value":"https://example.org:0/repo","expected":false},
     {"format":"http-base-url","value":"HTTPS://example.org:65535/repo","expected":true},
     {"format":"http-base-url","value":"https://example.org/repo%3F","expected":true},
-    {"format":"duration","value":"P1DT","expected":false},
-    {"format":"duration","value":"PT1H-30M","expected":true},
-    {"format":"duration","value":"PT-0,000000001S","expected":true},
-    {"format":"duration","value":"PT1.0000000000S","expected":false},
-    {"format":"duration","value":"9223372036854775808ms","expected":false},
-    {"format":"duration","value":"9223372036854775807s","expected":true},
-    {"format":"duration","value":"9223372036854775807d","expected":false},
-    {"format":"duration","value":true,"expected":false},
-    {"format":"duration","value":1000.0,"expected":true},
-    {
-      "format": "duration",
-      "value": "30s",
-      "expected": true
-    },
-    {
-      "format": "duration",
-      "value": "PT30S",
-      "expected": true
-    },
-    {
-      "format": "duration",
-      "value": 30000,
-      "expected": true
-    },
-    {
-      "format": "duration",
-      "value": "PT0.5S",
-      "expected": true
-    },
-    {
-      "format": "duration",
-      "value": "+30s",
-      "expected": true
-    },
-    {
-      "format": "duration",
-      "value": "1.5s",
-      "expected": false
-    },
-    {
-      "format": "duration",
-      "value": 1.5,
-      "expected": false
-    },
-    {
-      "format": "duration",
-      "value": "bad",
-      "expected": false
-    },
     {
       "format": "color",
       "value": "#fff",

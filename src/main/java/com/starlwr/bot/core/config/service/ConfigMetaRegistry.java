@@ -19,6 +19,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.jar.JarEntry;
@@ -40,7 +41,7 @@ public class ConfigMetaRegistry {
     /**
      * 配置字段类型集合
      */
-    private static final Set<String> TYPES = Set.of("string", "integer", "number", "boolean", "object", "map", "array", "any", "null");
+    private static final Set<String> TYPES = Set.of("string", "integer", "number", "duration", "boolean", "object", "map", "array", "any", "null");
 
     /**
      * 插件 JAR 所在目录
@@ -1339,7 +1340,9 @@ public class ConfigMetaRegistry {
             require(rule.get("when") instanceof JSONObject, name + " 需要 when 条件");
         }
         if ("durationRange".equals(name)) {
-            require(ConfigRules.isValidFormat(rule.get("min"), "duration") && ConfigRules.isValidFormat(rule.get("max"), "duration"), "durationRange 需要合法 min 和 max");
+            Duration minimum = parseDuration(rule.get("min"));
+            Duration maximum = parseDuration(rule.get("max"));
+            require(minimum != null && maximum != null && minimum.compareTo(maximum) <= 0, "durationRange 需要合法的 min 和 max，且 min 不得大于 max");
         }
 
         // 检查哪些字段会触发校验，以及触发后哪些字段必填
