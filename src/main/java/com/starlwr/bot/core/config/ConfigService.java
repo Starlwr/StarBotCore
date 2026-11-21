@@ -88,7 +88,7 @@ public class ConfigService implements ApplicationEventPublisherAware {
     /**
      * 配置前缀与配置类映射
      */
-    private final Map<String, Class<?>> types = new LinkedHashMap<>();
+    private final Map<List<String>, Class<?>> types = new HashMap<>();
 
     /**
      * Spring 启动配置值映射
@@ -243,13 +243,14 @@ public class ConfigService implements ApplicationEventPublisherAware {
         if (registry.hasConfigurationClassConflict(key)) {
             return;
         }
+        List<String> prefix = List.of(key.split("\\."));
         synchronized (lock) {
-            if (types.containsKey(key)) {
-                types.put(key, value.getClass());
+            if (types.containsKey(prefix)) {
+                types.put(prefix, value.getClass());
                 return;
             }
             put(defaults, parsePath(key, defaults), ConfigValueConverter.toTree(value));
-            types.put(key, value.getClass());
+            types.put(prefix, value.getClass());
             values = resolve(activeDocument);
         }
     }
@@ -612,35 +613,50 @@ public class ConfigService implements ApplicationEventPublisherAware {
             if (CollectionUtils.isEmpty(path) || !"starbot".equals(path.get(0))) {
                 continue;
             }
-            for (Map.Entry<String, Class<?>> entry : types.entrySet()) {
-                List<String> prefix = Arrays.asList(entry.getKey().split("\\."));
-                if (path.size() <= prefix.size() || !path.subList(0, prefix.size()).equals(prefix)) {
-                    continue;
-                }
 
-                // 沿路径找到字段类型和初始值
-                ResolvableType type = ResolvableType.forClass(entry.getValue());
-                Object value = createDefaultInstance(entry.getValue());
-                for (String part : path.subList(prefix.size(), path.size())) {
-                    String name = java.util.regex.Pattern.compile("-([a-z])").matcher(part)
-                            .replaceAll(match -> match.group(1).toUpperCase(Locale.ROOT));
-                    Field field = ReflectionUtils.findField(type.resolve(Object.class), name);
-                    if (field == null) {
-                        type = ResolvableType.NONE;
-                        break;
-                    }
-                    ReflectionUtils.makeAccessible(field);
-                    value = value == null || value == ABSENT ? ABSENT : ReflectionUtils.getField(field, value);
-                    type = ResolvableType.forField(field, type);
-                }
+            List<String> prefix = findConfigurationPrefix(path);
+            if (prefix == null) {
+                continue;
+            }
 
-                // 将 DTO 字段的初值补到字段元数据中
-                if (type != ResolvableType.NONE) {
-                    populateMetaDefaults(declaration.getField(), type, value, 0);
+            // 沿路径找到字段类型和初始值
+            Class<?> configurationClass = types.get(prefix);
+            ResolvableType type = ResolvableType.forClass(configurationClass);
+            Object value = createDefaultInstance(configurationClass);
+            for (String part : path.subList(prefix.size(), path.size())) {
+                String name = java.util.regex.Pattern.compile("-([a-z])").matcher(part)
+                        .replaceAll(match -> match.group(1).toUpperCase(Locale.ROOT));
+                Field field = ReflectionUtils.findField(type.resolve(Object.class), name);
+                if (field == null) {
+                    type = ResolvableType.NONE;
+                    break;
                 }
-                break;
+                ReflectionUtils.makeAccessible(field);
+                value = value == null || value == ABSENT ? ABSENT : ReflectionUtils.getField(field, value);
+                type = ResolvableType.forField(field, type);
+            }
+
+            // 将 DTO 字段的初值补到字段元数据中
+            if (type != ResolvableType.NONE) {
+                populateMetaDefaults(declaration.getField(), type, value, 0);
             }
         }
+    }
+
+    /**
+     * 查找字段路径匹配的最长配置前缀
+     * @param path 字段路径
+     * @return 配置前缀，未匹配时返回 null
+     */
+    private List<String> findConfigurationPrefix(List<String> path) {
+        for (int length = path.size() - 1; length > 0; length--) {
+            List<String> prefix = path.subList(0, length);
+            if (types.containsKey(prefix)) {
+                return prefix;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -824,46 +840,46 @@ public class ConfigService implements ApplicationEventPublisherAware {
         }
 
         // 未找到默认值时，读取对应配置类的条目初值
-        for (Map.Entry<String, Class<?>> entry : types.entrySet()) {
-            List<String> prefix = Arrays.asList(entry.getKey().split("\\."));
-            if (path.size() <= prefix.size() || !path.subList(0, prefix.size()).equals(prefix)) {
-                continue;
-            }
-            ResolvableType type = ResolvableType.forClass(entry.getValue());
-            Object bean = createDefaultInstance(entry.getValue());
-            for (int index = prefix.size(); index < path.size(); index++) {
-                // 遇到 Map 键时查看条目类型，其余路径逐段查找 Java 字段
-                if (Map.class.isAssignableFrom(type.resolve(Object.class))) {
-                    type = type.getGeneric(1);
-                    Class<?> target = type.resolve(Object.class);
-                    if (index == path.size() - 1 || target == Object.class || target.isEnum() || target.isPrimitive() || target.getName().startsWith("java.")
-                            || target.isInterface() || Modifier.isAbstract(target.getModifiers()) || target.isArray()) {
-                        return ABSENT;
-                    }
-                    bean = createDefaultInstance(target);
-                } else {
-                    StringBuilder name = new StringBuilder();
-                    boolean upper = false;
-                    for (char character : path.get(index).toCharArray()) {
-                        if (character == '-') {
-                            upper = true;
-                        } else {
-                            name.append(upper ? Character.toUpperCase(character) : character);
-                            upper = false;
-                        }
-                    }
-                    Field field = ReflectionUtils.findField(type.resolve(Object.class), name.toString());
-                    if (field == null || bean == null) {
-                        return ABSENT;
-                    }
-                    ReflectionUtils.makeAccessible(field);
-                    bean = ReflectionUtils.getField(field, bean);
-                    type = ResolvableType.forField(field, type);
-                }
-            }
-            return ConfigValueConverter.toTree(bean);
+        List<String> prefix = findConfigurationPrefix(path);
+        if (prefix == null) {
+            return ABSENT;
         }
-        return ABSENT;
+
+        Class<?> configurationClass = types.get(prefix);
+        ResolvableType type = ResolvableType.forClass(configurationClass);
+        Object bean = createDefaultInstance(configurationClass);
+        for (int index = prefix.size(); index < path.size(); index++) {
+            // 遇到 Map 键时查看条目类型，其余路径逐段查找 Java 字段
+            if (Map.class.isAssignableFrom(type.resolve(Object.class))) {
+                type = type.getGeneric(1);
+                Class<?> target = type.resolve(Object.class);
+                if (index == path.size() - 1 || target == Object.class || target.isEnum() || target.isPrimitive() || target.getName().startsWith("java.")
+                        || target.isInterface() || Modifier.isAbstract(target.getModifiers()) || target.isArray()) {
+                    return ABSENT;
+                }
+                bean = createDefaultInstance(target);
+            } else {
+                StringBuilder name = new StringBuilder();
+                boolean upper = false;
+                for (char character : path.get(index).toCharArray()) {
+                    if (character == '-') {
+                        upper = true;
+                    } else {
+                        name.append(upper ? Character.toUpperCase(character) : character);
+                        upper = false;
+                    }
+                }
+                Field field = ReflectionUtils.findField(type.resolve(Object.class), name.toString());
+                if (field == null || bean == null) {
+                    return ABSENT;
+                }
+                ReflectionUtils.makeAccessible(field);
+                bean = ReflectionUtils.getField(field, bean);
+                type = ResolvableType.forField(field, type);
+            }
+        }
+
+        return ConfigValueConverter.toTree(bean);
     }
 
     /**
