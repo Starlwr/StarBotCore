@@ -95,7 +95,10 @@
           "key": "enabled",
           "label": "启用配置中心",
           "description": "关闭后当前配置中心不可用，重新开启需要手动编辑 data/config.json\n使用 --config 参数可独立启动配置中心",
-          "type": "boolean"
+          "type": "boolean",
+          "ui": {
+            "confirmOnDisable": "保存并重启后，配置中心将不可用，恢复需手动编辑 data/config.json，确认关闭吗？"
+          }
         },
         {
           "key": "password",
@@ -507,7 +510,10 @@
           "key": "auto-download-dependency",
           "label": "自动下载插件依赖",
           "description": "启动时自动下载插件缺少的依赖。关闭后需要自行下载插件依赖到 lib 目录\n可使用 --skip-download-dependency 命令行参数临时跳过自动下载插件依赖",
-          "type": "boolean"
+          "type": "boolean",
+          "ui": {
+            "confirmOnDisable": "保存并重启后，缺失的插件依赖需要手动下载到 lib 目录，确认关闭吗？"
+          }
         },
         {
           "key": "maven-base-urls",
@@ -1165,7 +1171,10 @@
           "label": "JSON 文件发生变化时自动重载",
           "description": "开启后修改数据源文件会自动重载，关闭后需要重启才能生效",
           "type": "boolean",
-          "visibleWhen": "json-datasource"
+          "visibleWhen": "json-datasource",
+          "ui": {
+            "confirmOnDisable": "保存并重启后，JSON 数据源文件的后续修改需要重启 StarBot 才会生效，确认关闭吗？"
+          }
         }
       ]
     },

@@ -44,6 +44,12 @@ public class ConfigMetaRegistry {
     private static final Set<String> TYPES = Set.of("string", "integer", "number", "duration", "boolean", "object", "map", "array", "any", "null");
 
     /**
+     * 系统生成的字段元数据属性集合
+     */
+    private static final Set<String> GENERATED_FIELD_KEYS = Set.of("configPath", "default", "effectiveDefault", "suggestions",
+            "suggestionConflict", "typeConflict", "conflicted", "springBindingConflict", "declarationIssue", "mapEntries");
+
+    /**
      * 插件 JAR 所在目录
      */
     @Getter
@@ -724,6 +730,7 @@ public class ConfigMetaRegistry {
     private static void validateMeta(JSONObject moduleMeta) {
         // 检查模块名称、业务前缀和配置类声明
         require(moduleMeta != null, "配置元数据必须是 JSON 对象");
+        moduleMeta.keySet().removeAll(Set.of("id", "source", "sourceFile"));
         requireText(moduleMeta, "title");
         validatePath(moduleMeta.get("basePath"));
         if (moduleMeta.containsKey("configurationClass")) {
@@ -754,6 +761,7 @@ public class ConfigMetaRegistry {
         Map<String, Integer> groupIndexes = new HashMap<>();
         for (int index = 0; index < groups.size(); index++) {
             JSONObject group = requireObject(groups.get(index));
+            group.remove("configPath");
             requireText(group, "id");
             requireText(group, "title");
             String id = group.getString("id");
@@ -797,7 +805,6 @@ public class ConfigMetaRegistry {
      */
     private void register(JSONObject field, List<Object> parent, JSONArray siblings, String tab, String group, String source, boolean shared, boolean validate) {
         // 确定字段路径，将交给 Spring 的配置标为重启生效
-        field.remove("mapEntries");
         List<Object> path = shared && parent.size() == 1 ? advancedPath(field) : List.copyOf(appendPath(parent, field.getString("key")));
         field.put("configPath", new JSONArray(path));
         if (field.containsKey("springKey") || shared) {
@@ -1042,7 +1049,7 @@ public class ConfigMetaRegistry {
     }
 
     /**
-     * 确定字段修改后是否需要重启
+     * 清理系统生成的属性并确定字段修改后是否需要重启
      * @param field 字段元数据
      * @param inherited 分组或父字段的重启要求
      * @param forced 父对象或框架桥接是否强制重启
@@ -1050,6 +1057,7 @@ public class ConfigMetaRegistry {
      */
     private static void prepareField(JSONObject field, boolean inherited, boolean forced, int depth) {
         require(depth <= 32, "配置元数据嵌套超过 32 层");
+        field.keySet().removeAll(GENERATED_FIELD_KEYS);
         require(!field.containsKey("restartRequired") || field.get("restartRequired") instanceof Boolean, "restartRequired 必须是布尔值");
         boolean restart = forced || field.containsKey("springKey") || (field.containsKey("restartRequired") ? field.getBooleanValue("restartRequired") : inherited);
         field.put("restartRequired", restart);
@@ -1214,6 +1222,14 @@ public class ConfigMetaRegistry {
         // 校验字段类型，并递归检查对象和集合的子结构
         List<?> types = field.get("type") instanceof List<?> list ? list : Collections.singletonList(field.get("type"));
         require(CollectionUtils.isNotEmpty(types) && types.stream().allMatch(type -> type instanceof String name && TYPES.contains(name)), "未知字段类型");
+        if (field.get("ui") instanceof JSONObject ui) {
+            for (String key : List.of("confirmOnEnable", "confirmOnDisable")) {
+                if (ui.containsKey(key)) {
+                    require("boolean".equals(field.get("type")), key + " 只支持 boolean 字段");
+                    requireText(ui, key);
+                }
+            }
+        }
         if (field.containsKey("emptyAsNull")) {
             require(field.get("emptyAsNull") instanceof Boolean, "emptyAsNull 必须是布尔值");
             if (field.getBooleanValue("emptyAsNull")) {

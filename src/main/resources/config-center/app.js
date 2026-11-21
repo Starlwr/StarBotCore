@@ -1318,7 +1318,7 @@
                 edit(e.target);
             }
         });
-        root.addEventListener('change', e => {
+        root.addEventListener('change', async e => {
             const el = e.target;
             if (el.dataset.treeType) {
                 const p = JSON.parse(el.dataset.treeType), t = el.value;
@@ -1328,9 +1328,23 @@
                 render();
                 return;
             }
-            if (el.dataset.edit) {
-                edit(el, !!el.dataset.rename || el.tagName === 'SELECT' && !el.dataset.duration || el.type === 'checkbox');
+            if (!el.dataset.edit) {
+                return;
             }
+            if (el.matches('.starbot-switch')) {
+                const checked = el.checked;
+                const ui = fieldMetaAt(JSON.parse(el.dataset.edit)).ui;
+                const confirmation = checked ? ui?.confirmOnEnable : ui?.confirmOnDisable;
+                if (confirmation) {
+                    el.checked = !checked;
+                    const confirmed = await confirmAction(confirmation, checked ? '确认开启' : '确认关闭', checked ? '开启' : '关闭');
+                    if (!confirmed || !el.isConnected) {
+                        return;
+                    }
+                    el.checked = checked;
+                }
+            }
+            edit(el, !!el.dataset.rename || el.tagName === 'SELECT' && !el.dataset.duration || el.type === 'checkbox');
         });
         root.addEventListener('focusout', e => {
             const el = e.target;

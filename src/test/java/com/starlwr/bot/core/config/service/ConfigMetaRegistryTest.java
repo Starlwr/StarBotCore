@@ -1,5 +1,6 @@
 package com.starlwr.bot.core.config.service;
 
+import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.starlwr.bot.core.config.ConfigService;
@@ -164,6 +165,75 @@ class ConfigMetaRegistryTest {
                 .noneMatch(module -> "test:missing".equals(module.getString("id")));
         assertThat(registry.getAdvancedDefaults()).doesNotContainKey("example.host");
         assertThat(registry.hasUnresolvedConflicts(new JSONObject())).isFalse();
+    }
+
+    /**
+     * 系统生成的元数据属性不影响校验、建议值及同名业务配置
+     */
+    @Test
+    void ignoresGeneratedMetadataPropertiesAndPreservesBusinessValues() throws Exception {
+        String generated = """
+                "configPath":["unrelated"],"default":false,"effectiveDefault":false,
+                "suggestions":{"when":"unknown-condition"},"suggestionConflict":true,"typeConflict":true,
+                "conflicted":true,"springBindingConflict":true,"declarationIssue":"handwritten","mapEntries":{"extra":{}}
+                """;
+        plugin("generated-metadata", """
+                {"id":"wrong","source":"wrong","sourceFile":"wrong","title":"Metadata","basePath":["starbot","metadata"],
+                 "groups":[{"id":"main","title":"Settings","configPath":{"when":"unknown-condition"},"fields":[
+                   {"key":"settings","type":"object",%1$s,"fields":[{"key":"conflicted","type":"boolean","required":true,%1$s}]},
+                   {"key":"samples","type":"array","items":{"type":"integer",%1$s}},
+                   {"key":"labels","type":"map","values":{"type":"string",%1$s},"keyMeta":{"type":"string",%1$s}},
+                   {"key":"payload","type":"any"},
+                   {"key":"example.flags","target":"advanced","type":"map","values":{"type":"boolean"},
+                    "suggestedValue":{"typeConflict":true},%1$s}
+                 ],"actions":[{"id":"inspect","label":"Inspect","handler":"example.Inspect"}]}]}
+                """.formatted(generated));
+
+        ConfigMetaRegistry registry = new ConfigMetaRegistry(directory.resolve("plugins"));
+        assertThat(registry.getDiagnostics()).isEmpty();
+        assertThat(registry.getConflicts(new JSONObject())).isEmpty();
+        assertThat(registry.getAdvancedDefaults()).containsEntry("example.flags", JSONObject.of("typeConflict", true));
+        JSONObject module = registry.getMeta().stream().filter(item -> "test:generated-metadata".equals(item.getString("id")))
+                .findFirst().orElseThrow();
+        assertThat(module).containsEntry("source", "generated-metadata").containsEntry("sourceFile", "generated-metadata.jar");
+        JSONObject group = module.getJSONArray("groups").getJSONObject(0);
+        assertThat(group.getString("id")).isEqualTo("main");
+        assertThat(group.getJSONArray("configPath")).containsExactly("starbot", "metadata");
+        assertThat(group.getJSONArray("actions").getJSONObject(0).getString("id")).isEqualTo("inspect");
+
+        JSONArray fields = group.getJSONArray("fields");
+        JSONObject settings = fields.getJSONObject(0);
+        JSONObject child = settings.getJSONArray("fields").getJSONObject(0);
+        assertThat(child.getJSONArray("configPath")).containsExactly("starbot", "metadata", "settings", "conflicted");
+        JSONObject labels = fields.getJSONObject(2);
+        String[] generatedKeys = {"default", "effectiveDefault", "suggestions", "suggestionConflict", "typeConflict", "conflicted",
+                "springBindingConflict", "declarationIssue", "mapEntries"};
+        for (JSONObject field : List.of(settings, child, fields.getJSONObject(1).getJSONObject("items"),
+                labels.getJSONObject("values"), labels.getJSONObject("keyMeta"))) {
+            assertThat(field).doesNotContainKeys(generatedKeys);
+        }
+        assertThat(fields.getJSONObject(1).getJSONObject("items")).doesNotContainKey("configPath");
+        assertThat(labels.getJSONObject("values")).doesNotContainKey("configPath");
+        assertThat(labels.getJSONObject("keyMeta")).doesNotContainKey("configPath");
+
+        Path file = directory.resolve("config.json");
+        SpringPropertyBridge bridge = new SpringPropertyBridge(registry);
+        ConfigService config = new ConfigService(file, registry, bridge, false);
+        try {
+            ConfigEditService editor = new ConfigEditService(config, bridge);
+            JSONObject preview = editor.preview(JSONObject.of("raw", """
+                    {"starbot":{"metadata":{"settings":{}}}}
+                    """));
+            assertThat(preview.getJSONArray("errors")).anySatisfy(item -> assertThat(((JSONObject) item).getJSONArray("path"))
+                    .containsExactly("starbot", "metadata", "settings", "conflicted"));
+
+            JSONObject payload = JSON.parseObject("{" + generated + "}");
+            JSONObject data = JSONObject.of("settings", JSONObject.of("conflicted", false), "payload", payload);
+            editor.save(JSONObject.of("raw", JSONObject.of("starbot", JSONObject.of("metadata", data)).toJSONString()));
+            assertThat(JSON.parseObject(Files.readString(file)).getJSONObject("starbot").getJSONObject("metadata")).isEqualTo(data);
+        } finally {
+            config.destroy();
+        }
     }
 
     /**
