@@ -1,5 +1,6 @@
 package com.starlwr.bot.core;
 
+import com.alibaba.fastjson2.JSONObject;
 import com.starlwr.bot.core.config.ConfigGetterPostProcessor;
 import com.starlwr.bot.core.config.ConfigService;
 import com.starlwr.bot.core.config.SpringPropertyBridge;
@@ -102,9 +103,12 @@ public class StarBotCoreApplication {
      */
     private static void start(String[] args, boolean editing, ConfigService configService, SpringPropertyBridge springPropertyBridge) {
         ConfigMetaRegistry registry = configService.getRegistry();
-        Boolean configuredCenter = configService.get("starbot.core.config-center.enabled", Boolean.class);
-        boolean configEnabled = Boolean.TRUE.equals(configuredCenter)
-                || configuredCenter == null && registry.hasConfigurationClassConflict("starbot.core");
+        boolean configEnabled = !Boolean.FALSE.equals(configService.get("starbot.core.config-center.enabled"));
+        String formatError = configService.getStartupFormatError();
+        boolean invalidDocument = !editing && formatError != null;
+        List<JSONObject> errors = editing || invalidDocument ? List.of() : configService.getStartupValidationErrors().stream()
+                .filter(error -> !"duplicateSpringProperty".equals(error.getString("code"))).toList();
+        boolean invalid = invalidDocument || CollectionUtils.isNotEmpty(errors);
         boolean conflicts = configService.hasUnresolvedConflicts();
         boolean classConflicts = registry.hasConfigurationClassConflicts();
         List<SpringPropertyBridge.Duplicate> duplicates = configService.getStartupDuplicates();
@@ -113,8 +117,11 @@ public class StarBotCoreApplication {
             duplicates.forEach(duplicate -> log.warn(duplicate.message()));
         }
 
-        if (conflicts || hasDuplicates || classConflicts) {
+        if (invalid || conflicts || hasDuplicates || classConflicts) {
             List<String> reasons = new ArrayList<>();
+            if (invalid) {
+                reasons.add(invalidDocument ? "配置文件格式错误（" + formatError + "）" : "配置项校验错误");
+            }
             if (conflicts) {
                 reasons.add("未解决的配置冲突");
             }
@@ -129,7 +136,7 @@ public class StarBotCoreApplication {
             if (!configEnabled) {
                 configService.destroy();
                 String files = classConflicts
-                        ? conflicts || hasDuplicates ? "插件配置元数据和 data/config.json" : "插件配置元数据"
+                        ? invalid || conflicts || hasDuplicates ? "插件配置元数据和 data/config.json" : "插件配置元数据"
                         : "data/config.json";
                 log.error("{}, 且配置中心已关闭, 请修正 {} 后重启 StarBot", reason, files);
                 System.exit(1);
@@ -166,7 +173,7 @@ public class StarBotCoreApplication {
 
         // 独立模式只启动配置 HTTP 服务和文件监听
         if (editing) {
-            startConfigServer(args, properties, configService, endpoint);
+            startConfigServer(args, properties, configService, endpoint, invalidDocument, errors);
             return;
         }
 
@@ -193,19 +200,30 @@ public class StarBotCoreApplication {
      * @param properties 启动属性映射
      * @param configService 配置管理服务
      * @param endpoint 配置中心请求处理器
+     * @param invalidDocument 是否因配置文件格式错误自动切换
+     * @param errors 自动切换至独立配置中心时发现的校验错误
      */
-    private static void startConfigServer(String[] args, Map<String, Object> properties, ConfigService configService, ConfigWebEndpoint endpoint) {
+    private static void startConfigServer(String[] args, Map<String, Object> properties, ConfigService configService,
+                                          ConfigWebEndpoint endpoint, boolean invalidDocument, List<JSONObject> errors) {
         String message;
         try {
             // 加载启动属性，检查仍未解决的监听地址和端口冲突
+            boolean invalidAddress = invalidDocument || hasInvalidListenerProperty(errors, "server.address");
+            boolean invalidPort = invalidDocument || hasInvalidListenerProperty(errors, "server.port");
+            if (invalidAddress) {
+                properties.remove("server.address");
+            }
+            if (invalidPort) {
+                properties.remove("server.port");
+            }
             StandardEnvironment environment = new StandardEnvironment();
             environment.getPropertySources().addFirst(new SimpleCommandLinePropertySource(args));
             environment.getPropertySources().addLast(new MapPropertySource("configJson", properties));
             ConfigMetaRegistry registry = configService.getRegistry();
             String host = environment.getProperty("server.address");
-            if (host == null && registry.hasSelectionConflict(List.of("advanced", "server.address"))) {
+            if (host == null && !invalidAddress && registry.hasSelectionConflict(List.of("advanced", "server.address"))) {
                 message = "监听地址存在配置冲突, 请在 data/config.json 中设置 server.address 或使用 --server.address 指定";
-            } else if (!environment.containsProperty("server.port") && registry.hasSelectionConflict(List.of("advanced", "server.port"))) {
+            } else if (!environment.containsProperty("server.port") && !invalidPort && registry.hasSelectionConflict(List.of("advanced", "server.port"))) {
                 message = "监听端口存在配置冲突, 请在 data/config.json 中设置 server.port 或使用 --server.port 指定";
             } else {
                 // 非整数和超出范围的端口使用同一提示
@@ -219,8 +237,10 @@ public class StarBotCoreApplication {
                     message = "监听端口必须是 0 到 65535 之间的整数, 请检查 server.port";
                 } else {
                     // 初始化生效配置，绑定端口并登记退出时要关闭的服务
-                    configService.initializeSpring(environment);
-                    String address = host == null ? "0.0.0.0" : host;
+                    if (!invalidDocument && errors.isEmpty()) {
+                        configService.initializeSpring(environment);
+                    }
+                    String address = host != null ? host : invalidAddress ? "127.0.0.1" : "0.0.0.0";
                     ConfigServer server = new ConfigServer(address, port, endpoint);
                     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                         try {
@@ -252,6 +272,20 @@ public class StarBotCoreApplication {
             log.error(message);
         }
         System.exit(1);
+    }
+
+    /**
+     * 判断监听属性或其上级节点是否存在校验错误
+     * @param errors 配置校验错误
+     * @param property Spring 监听属性名
+     * @return 监听属性是否无效
+     */
+    private static boolean hasInvalidListenerProperty(List<JSONObject> errors, String property) {
+        List<String> path = List.of("advanced", property);
+        return errors.stream().anyMatch(error -> {
+            List<?> invalidPath = error.getJSONArray("path");
+            return invalidPath.size() <= path.size() && path.subList(0, invalidPath.size()).equals(invalidPath);
+        });
     }
 
     /**

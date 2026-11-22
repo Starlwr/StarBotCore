@@ -224,11 +224,15 @@ public class ConfigEditService {
      * @return 配置页面的基础响应
      */
     private JSONObject createDocumentResponse(String raw, boolean exists) {
-        return JSONObject.of("file", configService.getPath().toString(), "exists", exists,
+        JSONObject response = JSONObject.of("file", configService.getPath().toString(), "exists", exists,
                 "raw", raw, "index", 0, "count", 1, "data", new JSONObject(), "inherited", new JSONObject(),
                 "errors", new JSONArray(), "warnings", new JSONArray(), "pendingPaths", configService.getPendingPaths(),
                 "activeData", configService.getActiveValues(),
                 "metaErrors", registry.hasMetaErrors());
+        if (configService.getStartupFormatError() != null) {
+            response.put("rawRecovery", true);
+        }
+        return response;
     }
 
     /**
@@ -359,14 +363,13 @@ public class ConfigEditService {
         if (raw == null || raw.getBytes(StandardCharsets.UTF_8).length > MAX_BYTES) {
             throw new ConfigException(422, "配置文件不能为空或超过 16 MiB");
         }
-        Object value;
+        JSONObject object;
         try {
-            value = JSON.parse(raw);
+            object = ConfigValueUtil.parseDocument(raw);
+        } catch (IllegalArgumentException e) {
+            throw new ConfigException(422, e.getMessage());
         } catch (RuntimeException e) {
             throw new ConfigException(422, "JSON 格式错误, 请在原文中修正");
-        }
-        if (!(value instanceof JSONObject object)) {
-            throw new ConfigException(422, "配置文件根节点必须是 JSON 对象");
         }
         for (String key : List.of("starbot", "advanced")) {
             if (object.containsKey(key) && !(object.get(key) instanceof Map<?, ?>)) {

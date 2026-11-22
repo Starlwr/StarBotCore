@@ -9,6 +9,7 @@ import com.starlwr.bot.core.config.SpringPropertyBridge;
 import com.starlwr.bot.core.config.ConfigException;
 import com.starlwr.bot.core.config.StarBotConfiguration;
 import com.starlwr.bot.core.config.security.ConfigPasswordUtil;
+import com.starlwr.bot.core.config.validation.ConfigValueUtil;
 import com.starlwr.bot.core.event.config.StarBotConfigChangedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -668,6 +669,46 @@ class ConfigEditServiceTest {
             assertThat(data.getJSONObject("starbot").getJSONObject("unknown").getJSONArray("empty")).isEmpty();
         } finally {
             config.destroy();
+        }
+    }
+
+    /**
+     * 原文修复模式保存已有配置和密码摘要，重启后恢复普通编辑模式
+     */
+    @Test
+    void preservesConfigurationWhenSavingRawRecoveryDocument() throws Exception {
+        Path path = directory.resolve("config.json");
+        String encoded = ConfigPasswordUtil.encode("A7!RecoveryPassword");
+        String repaired = """
+                {"advanced":{"server.port":9000,"example.recovery":{"value":false}},
+                 "starbot":{"core":{"network":{"connect-timeout":60},"config-center":{"password":"%s"}}}}
+                """.formatted(encoded);
+        Files.writeString(path, repaired.replace("}}}}", "}，}}}"));
+        ConfigService config = new ConfigService(path, registry, springPropertyBridge, false);
+        try {
+            ConfigEditService editService = new ConfigEditService(config, springPropertyBridge);
+            assertThat(editService.read()).containsKey("error").containsEntry("rawRecovery", true);
+            JSONObject invalid = JSONObject.of("raw", repaired.replace("9000", "65536"));
+            assertThatThrownBy(() -> editService.save(invalid)).isInstanceOfSatisfying(ConfigException.class, error ->
+                    assertThat(error.getStatus()).isEqualTo(422));
+            assertThat(Files.readString(path)).contains("，");
+
+            JSONObject saved = editService.save(JSONObject.of("raw", repaired)).getJSONObject("document");
+            assertThat(saved).containsEntry("rawRecovery", true).doesNotContainKey("error");
+            assertThat(ConfigValueUtil.getValue(saved.get("data"), ConfigPasswordUtil.PASSWORD_PATH)).isEqualTo(encoded);
+            assertThat(JSON.parseObject(Files.readString(path))).isEqualTo(JSON.parseObject(repaired));
+            assertThat(config.get("advanced.server.port")).isEqualTo(7827);
+            assertThat(config.get("starbot.core.config-center.password")).isEqualTo("");
+        } finally {
+            config.destroy();
+        }
+        ConfigService restarted = new ConfigService(path, registry, springPropertyBridge, false);
+        try {
+            assertThat(new ConfigEditService(restarted, springPropertyBridge).read()).doesNotContainKey("rawRecovery");
+            assertThat(restarted.get("advanced.server.port")).isEqualTo(9000);
+            assertThat(restarted.get("starbot.core.config-center.password")).isEqualTo(encoded);
+        } finally {
+            restarted.destroy();
         }
     }
 

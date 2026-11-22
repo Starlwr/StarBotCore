@@ -40,7 +40,7 @@
             login.inert = true;
             window.ConfigControls.leave(login, 'fade', () => {
                 login.hidden = true;
-                document.querySelector('#starbot-tabs [aria-selected="true"]')?.focus();
+                (document.querySelector('#starbot-tabs [aria-selected="true"]') || document.getElementById('starbot-raw'))?.focus();
             });
             token.value = '';
         }
@@ -51,9 +51,129 @@
             submit.disabled = false;
         }
     });
+    function createToast(root) {
+        const el = root.querySelector('#starbot-toast');
+        let timer;
+        return (text, kind = 'info') => {
+            el.dataset.kind = kind;
+            el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+            el.textContent = text;
+            el.hidden = false;
+            window.ConfigControls.enter(el, 'toast');
+            clearTimeout(timer);
+            timer = setTimeout(() => window.ConfigControls.leave(el, 'toast', () => el.hidden = true), kind === 'error' ? 6500 : 4500);
+        };
+    }
+    function parseRawDocument(raw) {
+        let draft;
+        try {
+            draft = JSON.parse(raw.replace(/^\uFEFF/, ''));
+        }
+        catch {
+            throw new Error('JSON 格式错误, 请检查引号, 逗号和括号');
+        }
+        if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {
+            throw new Error('配置文件根节点必须是 JSON 对象');
+        }
+        for (const area of ['starbot', 'advanced']) {
+            if (own(draft, area) && (!draft[area] || typeof draft[area] !== 'object' || Array.isArray(draft[area]))) {
+                throw new Error(area + ' 必须是对象');
+            }
+        }
+        return draft;
+    }
+    function mountRawRecovery(root, snapshot) {
+        const editor = root.querySelector('#starbot-editor');
+        const save = root.querySelector('[data-action="save"]');
+        const reload = root.querySelector('[data-action="reload"]');
+        root.querySelector('[data-action="raw-mode"]').hidden = true;
+        root.querySelector('.starbot-navigation').hidden = true;
+        root.querySelector('#starbot-sidebar').hidden = true;
+        root.querySelector('.starbot-layout').classList.add('starbot-recovery-layout');
+        editor.removeAttribute('role');
+        editor.innerHTML = '<textarea id="starbot-raw" class="starbot-textarea starbot-raw" aria-label="JSON 原文"></textarea>';
+
+        const raw = editor.querySelector('#starbot-raw');
+        const status = document.createElement('div');
+        status.className = 'starbot-diagnostic starbot-recovery-status';
+        root.querySelector('#starbot-diagnostics').appendChild(status);
+        const toast = createToast(root);
+        const saveReminder = 'JSON 格式已修复，请保存配置并重启 StarBot';
+        const restartReminder = '配置已保存，请重启 StarBot';
+        let savedRaw, formatIssue;
+        const dirty = () => raw.value !== savedRaw;
+        const updateSave = () => save.disabled = raw.readOnly || !!formatIssue || !dirty();
+        const issueText = errors => (errors || []).map(error => error.path.join('.') + '：' + error.message).join('\n');
+        function showStatus(message, invalid = false) {
+            status.textContent = message;
+            status.classList.toggle('starbot-blocking', invalid);
+            status.setAttribute('role', invalid ? 'alert' : 'status');
+        }
+        function load(doc) {
+            raw.value = doc.raw;
+            savedRaw = raw.value;
+            formatIssue = doc.error || '';
+            const issue = formatIssue || issueText(doc.errors);
+            showStatus(issue || restartReminder, !!issue);
+            updateSave();
+        }
+        async function run(operation) {
+            raw.readOnly = true;
+            reload.disabled = true;
+            updateSave();
+            try {
+                await operation();
+            }
+            catch (error) {
+                showStatus(issueText(error.details?.errors) || error.message, true);
+                toast(error.message, 'error');
+            }
+            finally {
+                raw.readOnly = false;
+                reload.disabled = false;
+                updateSave();
+            }
+        }
+        raw.addEventListener('input', () => {
+            const wasInvalid = !!formatIssue;
+            try {
+                parseRawDocument(raw.value);
+                formatIssue = '';
+            }
+            catch (error) {
+                formatIssue = error.message;
+            }
+            showStatus(formatIssue || (dirty() ? saveReminder : restartReminder), !!formatIssue);
+            updateSave();
+            if (wasInvalid && !formatIssue && dirty()) {
+                toast(saveReminder, 'success');
+            }
+        });
+        save.addEventListener('click', () => run(async () => {
+            const result = await request('api/save', {raw: raw.value});
+            load(result.document);
+            toast(restartReminder, 'success');
+        }));
+        reload.addEventListener('click', () => {
+            if (!dirty() || window.confirm('重新读取会放弃当前未保存的修改')) {
+                run(async () => load(await request('api/document')));
+            }
+        });
+        window.addEventListener('beforeunload', event => {
+            if (dirty()) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        });
+        load(snapshot);
+    }
     function mount(source) {
         const root = document.getElementById('starbot-config-center');
         if (!root) {
+            return;
+        }
+        if (source.document.rawRecovery) {
+            mountRawRecovery(root, source.document);
             return;
         }
         let snapshot = source.document, rawMode = !!snapshot.error || !!snapshot.readOnly || snapshot.count > 1, rawDraft = snapshot.raw, busy = false, serverErrors = snapshot.errors || [];
@@ -88,7 +208,8 @@
         const customConflicts = new Set();
         const opened = new Set(), nodeTypes = new Map();
         const tabs = root.querySelector('#starbot-tabs'), side = root.querySelector('#starbot-sidebar'), editor = root.querySelector('#starbot-editor');
-        let errors = [], displayErrors = [], toastTimer;
+        let errors = [], displayErrors = [];
+        const toast = createToast(root);
         const icons = { core: 'settings', custom: 'sliders', conflicts: 'alert' };
         const typeLabels = {string:'文本', integer:'整数', number:'数字', duration:'时长', boolean:'开关', object:'对象', map:'键值表', array:'列表', any:'任意值', null:'空值'};
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -263,21 +384,11 @@
             let draft = data;
             if (rawMode) {
                 try {
-                    draft = JSON.parse(rawDraft);
+                    draft = parseRawDocument(rawDraft);
                 }
-                catch {
-                    rawIssue = 'JSON 格式错误, 请检查引号, 逗号和括号';
+                catch (error) {
+                    rawIssue = error.message;
                     return errors;
-                }
-                if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {
-                    rawIssue = '配置文件根节点必须是 JSON 对象';
-                    return errors;
-                }
-                for (const area of ['starbot', 'advanced']) {
-                    if (own(draft, area) && (!draft[area] || typeof draft[area] !== 'object' || Array.isArray(draft[area]))) {
-                        rawIssue = area + ' 必须是对象';
-                        return errors;
-                    }
                 }
                 rawIssue = '';
             }
@@ -1057,16 +1168,6 @@
                 }
             }
         });
-        function toast(text, kind = 'info') {
-            const el = root.querySelector('#starbot-toast');
-            el.dataset.kind = kind;
-            el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
-            el.textContent = text;
-            el.hidden = false;
-            window.ConfigControls.enter(el, 'toast');
-            clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => window.ConfigControls.leave(el, 'toast', () => el.hidden = true), kind === 'error' ? 6500 : 4500);
-        }
         function fieldMetaAt(p) {
             const conflict = conflictDefinitions.find(item => item.typeConflict && prefix(item.path, p));
             if (conflict) {

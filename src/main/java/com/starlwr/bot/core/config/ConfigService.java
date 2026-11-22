@@ -6,6 +6,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.JSONWriter;
 import com.starlwr.bot.core.config.security.ConfigPasswordUtil;
 import com.starlwr.bot.core.config.service.ConfigMetaRegistry;
+import com.starlwr.bot.core.config.validation.ConfigValidationService;
 import com.starlwr.bot.core.config.validation.ConfigValueUtil;
 import com.starlwr.bot.core.event.config.StarBotConfigChangedEvent;
 import com.starlwr.bot.core.util.FileChangeWatcher;
@@ -131,6 +132,12 @@ public class ConfigService implements ApplicationEventPublisherAware {
     private FileChangeWatcher fileWatcher;
 
     /**
+     * 启动时发现的配置文件格式错误
+     */
+    @Getter
+    private final String startupFormatError;
+
+    /**
      * 启动时发现的重复 Spring 属性列表
      */
     @Getter
@@ -141,6 +148,15 @@ public class ConfigService implements ApplicationEventPublisherAware {
      */
     @Getter
     private volatile boolean passwordReset;
+
+    /**
+     * 配置文件格式错误
+     */
+    private static class InvalidDocumentException extends IOException {
+        InvalidDocumentException(RuntimeException cause) {
+            super(cause.getMessage(), cause);
+        }
+    }
 
     public ConfigService(Path path, ConfigMetaRegistry registry, SpringPropertyBridge springPropertyBridge, boolean editing) {
         // 准备配置路径和插件配置类加载器
@@ -167,14 +183,19 @@ public class ConfigService implements ApplicationEventPublisherAware {
             // 在首次读取前注册监听，独立模式可以打开损坏的原文
             Files.createDirectories(this.path.getParent());
             fileWatcher = new FileChangeWatcher("config", this.path);
+            String formatError = null;
             try {
                 document = Files.exists(this.path) ? readDocument(false) : new LinkedHashMap<>();
+            } catch (InvalidDocumentException e) {
+                document = new LinkedHashMap<>();
+                formatError = e.getMessage();
             } catch (IOException e) {
                 if (!editing) {
                     throw new UncheckedIOException("无法读取配置文件 " + this.path + ": " + e.getMessage(), e);
                 }
                 document = new LinkedHashMap<>();
             }
+            startupFormatError = formatError;
 
             // 保留文件中的重复配置供页面修正，只将没有重复的属性用于启动
             startupDuplicates = List.copyOf(springPropertyBridge.duplicates(document.get("advanced")));
@@ -279,6 +300,17 @@ public class ConfigService implements ApplicationEventPublisherAware {
     }
 
     /**
+     * 校验启动时读取的配置文件
+     * @return 配置字段的校验错误
+     */
+    public List<JSONObject> getStartupValidationErrors() {
+        synchronized (lock) {
+            return new ConfigValidationService(registry, springPropertyBridge).validate(document)
+                    .getJSONArray("errors").toJavaList(JSONObject.class);
+        }
+    }
+
+    /**
      * 根据配置键读取当前生效值，返回独立副本
      * @param key 完整配置键
      * @return 当前配置值，未设置时返回 null
@@ -372,7 +404,7 @@ public class ConfigService implements ApplicationEventPublisherAware {
         checkKey(key);
         Object copied = ConfigValueConverter.toTree(value);
         update(raw -> {
-            Map<String, Object> updated = parseDocument(raw);
+            Map<String, Object> updated = ConfigValueUtil.parseDocument(raw);
             springPropertyBridge.normalizeAdvanced(updated);
             List<String> parts = parsePath(key, updated);
             for (List<String> mapPath : mapPaths) {
@@ -398,12 +430,12 @@ public class ConfigService implements ApplicationEventPublisherAware {
             try {
                 String original = Files.exists(path) ? Files.readString(path, StandardCharsets.UTF_8) : "{}";
                 String formatted = normalize(edit.apply(original));
-                Map<String, Object> normalized = parseDocument(formatted);
+                Map<String, Object> normalized = ConfigValueUtil.parseDocument(formatted);
 
                 // 对比编辑前后的内容，有变化时才写入文件
                 Map<String, Object> previous;
                 try {
-                    previous = JSON.parseObject(original);
+                    previous = ConfigValueUtil.parseDocument(original);
                 } catch (RuntimeException e) {
                     previous = null;
                 }
@@ -428,7 +460,7 @@ public class ConfigService implements ApplicationEventPublisherAware {
      * @return 规范化后的配置原文
      */
     public String normalize(String raw) {
-        return normalize(parseDocument(raw), false);
+        return normalize(ConfigValueUtil.parseDocument(raw), false);
     }
 
     /**
@@ -566,9 +598,9 @@ public class ConfigService implements ApplicationEventPublisherAware {
         String raw = Files.readString(path, StandardCharsets.UTF_8);
         Map<String, Object> loaded;
         try {
-            loaded = parseDocument(raw);
+            loaded = ConfigValueUtil.parseDocument(raw);
         } catch (JSONException | IllegalArgumentException e) {
-            throw new IOException(e.getMessage(), e);
+            throw new InvalidDocumentException(e);
         }
         if (requireUnique) {
             springPropertyBridge.requireUnique(loaded.get("advanced"));
@@ -580,7 +612,7 @@ public class ConfigService implements ApplicationEventPublisherAware {
         Object password = ConfigValueUtil.getValue(loaded, ConfigPasswordUtil.PASSWORD_PATH);
         if (password != ConfigValueUtil.UNSET && password != null
                     && (!(password instanceof String text) || StringUtils.isNotBlank(text) && !ConfigPasswordUtil.isEncoded(text))) {
-            Map<String, Object> original = parseDocument(raw);
+            Map<String, Object> original = ConfigValueUtil.parseDocument(raw);
             put(original, ConfigPasswordUtil.PASSWORD_PATH, "");
             try {
                 Files.writeString(path, JSON.toJSONString(original, JSONWriter.Feature.PrettyFormat, JSONWriter.Feature.WriteNulls), StandardCharsets.UTF_8);
@@ -1080,25 +1112,6 @@ public class ConfigService implements ApplicationEventPublisherAware {
         } else {
             current.put(path.get(path.size() - 1), value);
         }
-    }
-
-    /**
-     * 解析配置原文并取得根对象
-     * @param raw 配置原文
-     * @return 配置对象
-     */
-    private static Map<String, Object> parseDocument(String raw) {
-        Object parsed;
-        try {
-            parsed = JSON.parse(raw);
-        } catch (JSONException | IllegalArgumentException e) {
-            // 解析异常可能包含配置原文，仅保留固定的格式提示
-            throw new JSONException("JSON 格式无效");
-        }
-        if (!(parsed instanceof Map<?, ?>)) {
-            throw new IllegalArgumentException("配置文件根节点必须是 JSON 对象");
-        }
-        return cast(parsed);
     }
 
     /**

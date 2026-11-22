@@ -2,11 +2,17 @@ package com.starlwr.bot.core.config.validation;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONException;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.JSONWriter;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.Strings;
 import org.springframework.boot.convert.DurationStyle;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.ObjectReadContext;
+import tools.jackson.core.json.JsonFactory;
 
 import java.math.BigDecimal;
 import java.time.DateTimeException;
@@ -27,7 +33,36 @@ public final class ConfigValueUtil {
      */
     public static final Object UNSET = new Object();
 
+    /**
+     * 配置原文的 JSON 解析器工厂
+     */
+    private static final JsonFactory JSON_FACTORY = new JsonFactory();
+
     private ConfigValueUtil() {
+    }
+
+    /**
+     * 检查配置原文的 JSON 语法并读取根对象
+     * @param raw 配置原文
+     * @return 配置根对象
+     */
+    public static JSONObject parseDocument(String raw) {
+        String content = Strings.CS.removeStart(Objects.toString(raw, ""), "\uFEFF");
+        Object parsed;
+        try (JsonParser parser = JSON_FACTORY.createParser(ObjectReadContext.empty(), content)) {
+            parser.nextToken();
+            parser.skipChildren();
+            if (parser.nextToken() != null) {
+                throw new JSONException("JSON 格式无效");
+            }
+            parsed = JSON.parse(content);
+        } catch (JacksonException | JSONException | IllegalArgumentException e) {
+            throw new JSONException("JSON 格式无效");
+        }
+        if (!(parsed instanceof JSONObject object)) {
+            throw new IllegalArgumentException("配置文件根节点必须是 JSON 对象");
+        }
+        return object;
     }
 
     /**

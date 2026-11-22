@@ -23,6 +23,7 @@ import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
@@ -176,30 +177,24 @@ class StarBotCoreApplicationTest {
     }
 
     /**
-     * 配置 JSON 或监听端口无效时提示具体原因，配置原文中的密码不进入输出
-     * @param editing 是否以独立配置模式启动
+     * 独立配置中心的启动属性无效时提示具体原因，配置原文中的密码不进入输出
      * @param raw 配置文件原文
      * @param message 应输出的错误提示
      */
     @ParameterizedTest
     @CsvSource(delimiter = '|', textBlock = """
-            false | {"password":"DoNotLogThisPassword","broken": | JSON 格式无效
-            false | [] | 配置文件根节点必须是 JSON 对象
-            true | {"advanced":{"server.port":"DoNotLogThisPassword"}} | 监听端口必须是 0 到 65535 之间的整数
-            true | {"advanced":{"server.port":65536}} | 监听端口必须是 0 到 65535 之间的整数
-            true | {"advanced":{"server.port":7827.5}} | 监听端口必须是 0 到 65535 之间的整数
-            true | {"advanced":{"server.port":"${DoNotLogThisPassword}"}} | 配置中心启动属性存在无法解析的占位符
-            true | {"advanced":{"starbot.core.mail.enabled":"DoNotLogThisPassword"}} | 配置中心启动属性的值无法转换
+            {"advanced":{"server.port":"DoNotLogThisPassword"}} | 监听端口必须是 0 到 65535 之间的整数
+            {"advanced":{"server.port":65536}} | 监听端口必须是 0 到 65535 之间的整数
+            {"advanced":{"server.port":7827.5}} | 监听端口必须是 0 到 65535 之间的整数
+            {"advanced":{"server.port":"${DoNotLogThisPassword}"}} | 配置中心启动属性存在无法解析的占位符
+            {"advanced":{"starbot.core.mail.enabled":"DoNotLogThisPassword"}} | 配置中心启动属性的值无法转换
             """)
-    void reportsInvalidStartupConfigurationWithoutLoggingValues(boolean editing, String raw, String message) throws Exception {
+    void reportsInvalidStartupConfigurationWithoutLoggingValues(String raw, String message) throws Exception {
         Path data = Files.createDirectories(directory.resolve("data"));
         Files.writeString(data.resolve("config.json"), raw);
-        List<String> lines = runFailedStartup(editing);
+        List<String> lines = runFailedStartup(true);
         assertThat(lines).anyMatch(line -> line.contains("ERROR") && line.contains(message))
                 .noneMatch(line -> line.contains("DoNotLogThisPassword") || line.stripLeading().startsWith("at "));
-        if (!editing) {
-            assertThat(lines).anyMatch(line -> line.contains("无法读取配置文件") && line.contains("config.json") && line.contains(message));
-        }
     }
 
     /**
@@ -302,6 +297,132 @@ class StarBotCoreApplicationTest {
     }
 
     /**
+     * 配置文件格式错误时自动进入独立配置中心的原文修复模式
+     * @param raw 配置文件原文
+     * @param message 应输出的格式错误提示
+     * @param editorMessage 原文编辑器中的错误提示
+     */
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            {"password":"DoNotLogThisPassword","broken": | JSON 格式无效 | JSON 格式错误
+            {"advanced":{"server.port":0,}} | JSON 格式无效 | JSON 格式错误
+            [] | 配置文件根节点必须是 JSON 对象 | 配置文件根节点必须是 JSON 对象
+            """)
+    void opensIndependentEditorForInvalidJson(String raw, String message, String editorMessage) throws Exception {
+        Path config = Files.createDirectories(directory.resolve("data")).resolve("config.json");
+        Files.writeString(config, raw);
+        String classpath = System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
+        String java = ProcessHandle.current().info().command().orElseThrow();
+        Process process = new ProcessBuilder(java, "-Dfile.encoding=UTF-8", "-cp", classpath, ConfigProcess.class.getName(), "--server.port=0")
+                .directory(directory.toFile()).redirectErrorStream(true).start();
+        try (BufferedReader output = process.inputReader(StandardCharsets.UTF_8)) {
+            try {
+                // 从控制台获取恢复入口和本次启动的随机密码
+                List<String> startupMessages = new ArrayList<>();
+                String address = awaitEditorAddress(output, startupMessages);
+                String password = awaitStartupValue(output, startupMessages, Pattern.compile("配置中心访问密码: ([A-Za-z0-9]{32})"));
+                assertThat(startupMessages).anyMatch(line -> line.contains("WARN") && line.contains("配置文件格式错误")
+                                && line.contains(message) && line.contains("已切换至独立配置中心"))
+                        .noneMatch(line -> line.contains("DoNotLogThisPassword") || line.contains("Started StarBotCoreApplication")
+                                || line.stripLeading().startsWith("at "));
+
+                // 读取损坏的原文，再通过配置中心保存修正后的配置
+                HttpClient client = HttpClient.newHttpClient();
+                HttpResponse<String> document = client.send(HttpRequest.newBuilder(URI.create(address + "/api/document"))
+                        .timeout(Duration.ofSeconds(5)).header("Authorization", "Bearer " + password).build(), HttpResponse.BodyHandlers.ofString());
+                assertThat(document.statusCode()).isEqualTo(200);
+                JSONObject body = JSON.parseObject(document.body());
+                assertThat(body.getBooleanValue("rawRecovery")).isTrue();
+                assertThat(body.getString("raw")).isEqualTo(raw);
+                assertThat(body.getString("error")).contains(editorMessage);
+                assertThat(Files.readString(config)).isEqualTo(raw);
+
+                String corrected = "{\"advanced\":{\"server.port\":0}}";
+                HttpResponse<String> saved = client.send(HttpRequest.newBuilder(URI.create(address + "/api/save")).timeout(Duration.ofSeconds(5))
+                        .header("Authorization", "Bearer " + password).header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(JSONObject.of("raw", corrected).toJSONString())).build(),
+                        HttpResponse.BodyHandlers.ofString());
+                assertThat(saved.statusCode()).isEqualTo(200);
+                assertThat(JSON.parseObject(saved.body()).getJSONObject("document").getBooleanValue("rawRecovery")).isTrue();
+                assertThat(JSON.parseObject(Files.readString(config))).isEqualTo(JSON.parseObject(corrected));
+            } finally {
+                process.getOutputStream().close();
+                if (!process.waitFor(10, TimeUnit.SECONDS)) {
+                    process.destroyForcibly();
+                    process.waitFor(10, TimeUnit.SECONDS);
+                }
+            }
+        }
+        assertThat(process.exitValue()).isZero();
+    }
+
+    /**
+     * 配置校验失败时自动启动独立配置中心，页面可以读取原文及错误字段的路径
+     * @param core Core 配置片段
+     * @param advanced 高级配置片段
+     * @param path 预期的错误字段路径
+     */
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            "network":{"connect-timeout":601} | "server.address":"127.0.0.1" | ["starbot","core","network","connect-timeout"]
+            "network":[] | "server.address":"127.0.0.1" | ["starbot","core","network"]
+            "network-thread":{"core-pool-size":8,"max-pool-size":1} | "server.address":"127.0.0.1" | ["starbot","core","network-thread","core-pool-size"]
+            "config-center":{"enabled":"invalid"} | "server.address":"127.0.0.1" | ["starbot","core","config-center","enabled"]
+            "network":{} | "server.address":"invalid/address","server.port":65536 | ["advanced","server.address"]
+            "network":{} | "server":{"address":"127.0.0.1","port":65536} | ["advanced","server.port"]
+            """)
+    void opensIndependentEditorForInvalidConfiguration(String core, String advanced, String path) throws Exception {
+        Path config = Files.createDirectories(directory.resolve("data")).resolve("config.json");
+        String password = "TestConfigPage-2026!";
+        JSONObject fields = JSON.parseObject("{" + core + "}");
+        fields.computeIfAbsent("config-center", key -> new JSONObject());
+        fields.getJSONObject("config-center").put("password", ConfigPasswordUtil.encode(password));
+        String raw = """
+                {"starbot":{"core":%s},"advanced":{%s}}
+                """.formatted(fields, advanced);
+        Files.writeString(config, raw);
+        String classpath = System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
+        String java = ProcessHandle.current().info().command().orElseThrow();
+        Process process = new ProcessBuilder(java, "-Dfile.encoding=UTF-8", "-cp", classpath, ConfigProcess.class.getName(), "--server.port=0")
+                .directory(directory.toFile()).redirectErrorStream(true).start();
+        try (BufferedReader output = process.inputReader(StandardCharsets.UTF_8)) {
+            try {
+                List<String> startupMessages = new ArrayList<>();
+                String address = awaitEditorAddress(output, startupMessages);
+                assertThat(startupMessages).anyMatch(line -> line.contains("配置项校验错误") && line.contains("已切换至独立配置中心"));
+                HttpResponse<String> document = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(address + "/api/document"))
+                        .timeout(Duration.ofSeconds(5)).header("Authorization", "Bearer " + password).build(), HttpResponse.BodyHandlers.ofString());
+                assertThat(document.statusCode()).isEqualTo(200);
+                JSONObject body = JSON.parseObject(document.body());
+                assertThat(body.getString("raw")).isEqualTo(raw);
+                assertThat(body.getJSONArray("errors").toJSONString()).contains(path);
+                assertThat(body).doesNotContainKey("rawRecovery");
+                assertThat(Files.readString(config)).isEqualTo(raw);
+            } finally {
+                process.getOutputStream().close();
+                if (!process.waitFor(10, TimeUnit.SECONDS)) {
+                    process.destroyForcibly();
+                    process.waitFor(10, TimeUnit.SECONDS);
+                }
+            }
+        }
+        assertThat(process.exitValue()).isZero();
+    }
+
+    /**
+     * 配置校验失败且配置中心已关闭时，启动进程报错退出
+     */
+    @Test
+    void exitsForInvalidConfigurationWhenEditorIsDisabled() throws Exception {
+        Path config = Files.createDirectories(directory.resolve("data")).resolve("config.json");
+        Files.writeString(config, """
+                {"starbot":{"core":{"config-center":{"enabled":false},"network":{"connect-timeout":601}}}}
+                """);
+        assertThat(runFailedStartup(false)).anyMatch(line -> line.contains("配置项校验错误") && line.contains("配置中心已关闭"))
+                .noneMatch(line -> line.contains("配置中心: http"));
+    }
+
+    /**
      * 重复属性可在独立配置中心修正，保存时仍检查两处重复位置
      */
     @ParameterizedTest
@@ -328,23 +449,7 @@ class StarBotCoreApplicationTest {
         try (var output = process.inputReader(StandardCharsets.UTF_8)) {
             try {
                 // 根据启动输出访问独立配置中心，确认原文和重复位置均可读取
-                Pattern editorUrl = Pattern.compile("配置中心: (http://127\\.0\\.0\\.1:\\d+/config)");
-                String address = CompletableFuture.supplyAsync(() -> {
-                    StringBuilder messages = new StringBuilder();
-                    try {
-                        String line;
-                        while ((line = output.readLine()) != null) {
-                            Matcher matcher = editorUrl.matcher(line);
-                            if (matcher.find()) {
-                                return matcher.group(1);
-                            }
-                            messages.append(line).append(System.lineSeparator());
-                        }
-                    } catch (IOException e) {
-                        throw new UncheckedIOException(e);
-                    }
-                    throw new AssertionError(messages.toString());
-                }).get(20, TimeUnit.SECONDS);
+                String address = awaitEditorAddress(output, new ArrayList<>());
                 assertThat(URI.create(address).getPort()).isPositive().isNotEqualTo(7827);
                 HttpClient client = HttpClient.newHttpClient();
                 HttpResponse<String> document = client.send(HttpRequest.newBuilder(URI.create(address + "/api/document"))
@@ -382,6 +487,41 @@ class StarBotCoreApplicationTest {
             }
         }
         assertThat(process.exitValue()).isZero();
+    }
+
+    /**
+     * 等待配置中心输出访问地址，记录此前的启动日志
+     * @param output 启动进程的输出
+     * @param messages 接收访问地址之前的日志
+     * @return 配置中心访问地址
+     */
+    private String awaitEditorAddress(BufferedReader output, List<String> messages) throws Exception {
+        return awaitStartupValue(output, messages, Pattern.compile("配置中心: (http://127\\.0\\.0\\.1:\\d+/config)"));
+    }
+
+    /**
+     * 等待启动日志中的指定值
+     * @param output 启动进程的输出
+     * @param messages 接收匹配前的日志
+     * @param pattern 用第一个捕获组提取启动信息的表达式
+     * @return 匹配到的值
+     */
+    private String awaitStartupValue(BufferedReader output, List<String> messages, Pattern pattern) throws Exception {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String line;
+                while ((line = output.readLine()) != null) {
+                    Matcher matcher = pattern.matcher(line);
+                    if (matcher.find()) {
+                        return matcher.group(1);
+                    }
+                    messages.add(line);
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            throw new AssertionError(String.join(System.lineSeparator(), messages));
+        }).get(20, TimeUnit.SECONDS);
     }
 
     /**

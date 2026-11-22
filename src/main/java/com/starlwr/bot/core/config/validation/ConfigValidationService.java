@@ -152,8 +152,9 @@ public class ConfigValidationService {
             if (ancestor == UNSET) {
                 break;
             }
-            if (!(ancestor instanceof Map<?, ?>) && !(ancestor instanceof List<?>)) {
-                addIssue(errors, declaration, ancestorPath, "字段所属节点不是对象或列表");
+            boolean indexed = path.get(i) instanceof Integer;
+            if (indexed ? !(ancestor instanceof List<?>) : !(ancestor instanceof Map<?, ?>)) {
+                addIssue(errors, declaration, ancestorPath, indexed ? "字段所属节点必须是列表" : "字段所属节点必须是对象");
                 return;
             }
         }
