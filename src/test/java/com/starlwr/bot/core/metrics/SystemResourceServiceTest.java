@@ -1,6 +1,6 @@
-package com.starlwr.bot.core.support.system;
+package com.starlwr.bot.core.metrics;
 
-import com.starlwr.bot.core.support.system.SystemResourceSnapshot.Usage;
+import com.starlwr.bot.core.metrics.SystemResourceSnapshot.Usage;
 import com.sun.jna.Native;
 import com.sun.management.OperatingSystemMXBean;
 import org.junit.jupiter.api.BeforeEach;

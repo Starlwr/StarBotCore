@@ -1,4 +1,4 @@
-package com.starlwr.bot.core.support.http;
+package com.starlwr.bot.core.http;
 
 import com.starlwr.bot.core.config.StarBotCoreProperties;
 import org.springframework.beans.factory.annotation.Autowired;

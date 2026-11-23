@@ -1,4 +1,4 @@
-package com.starlwr.bot.core.config;
+package com.starlwr.bot.core.mail;
 
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

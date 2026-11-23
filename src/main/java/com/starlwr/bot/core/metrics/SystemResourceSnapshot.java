@@ -1,4 +1,4 @@
-package com.starlwr.bot.core.support.system;
+package com.starlwr.bot.core.metrics;
 
 import lombok.Builder;
 import lombok.Getter;

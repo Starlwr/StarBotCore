@@ -1,4 +1,4 @@
-package com.starlwr.bot.core.support.mail;
+package com.starlwr.bot.core.mail;
 
 import com.starlwr.bot.core.config.StarBotCoreProperties;
 import jakarta.mail.internet.MimeMessage;

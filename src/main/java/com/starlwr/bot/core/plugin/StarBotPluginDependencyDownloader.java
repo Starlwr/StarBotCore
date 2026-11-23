@@ -1,7 +1,7 @@
 package com.starlwr.bot.core.plugin;
 
 import com.starlwr.bot.core.config.StarBotCoreProperties;
-import com.starlwr.bot.core.support.http.HttpService;
+import com.starlwr.bot.core.http.HttpService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;

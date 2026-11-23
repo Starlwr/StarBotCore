@@ -1,7 +1,7 @@
-package com.starlwr.bot.core.support.system;
+package com.starlwr.bot.core.metrics;
 
 import com.starlwr.bot.core.StarBotCoreApplication;
-import com.starlwr.bot.core.support.system.SystemResourceSnapshot.Usage;
+import com.starlwr.bot.core.metrics.SystemResourceSnapshot.Usage;
 import com.sun.jna.Native;
 import com.sun.jna.Structure;
 import com.sun.jna.platform.win32.BaseTSD.SIZE_T;

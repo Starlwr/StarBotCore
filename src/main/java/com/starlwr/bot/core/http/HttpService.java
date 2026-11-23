@@ -1,4 +1,4 @@
-package com.starlwr.bot.core.support.http;
+package com.starlwr.bot.core.http;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;

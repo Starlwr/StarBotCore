@@ -1,7 +1,7 @@
 package com.starlwr.bot.core.message;
 
 import com.alibaba.fastjson2.JSONObject;
-import com.starlwr.bot.core.support.http.HttpService;
+import com.starlwr.bot.core.http.HttpService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
