@@ -876,7 +876,10 @@
                 + (action.description ? '<p class="starbot-muted starbot-action-description">' + esc(action.description) + '</p>' : '')
                 + '<p class="starbot-action-result" role="status" aria-live="polite"></p></div>').join('');
         }
-        function actionBlockReason() {
+        function actionBlockReason(action) {
+            if (action.handlerBean && !source.beanActionsAvailable) {
+                return '此操作仅在 StarBot 正常运行时可用';
+            }
             if (errors.length || rawIssue) {
                 return '请先修正页面中的配置错误, 再执行此操作';
             }
@@ -886,11 +889,11 @@
             return '';
         }
         function refreshActions() {
-            const blocked = actionBlockReason();
             for (const wrapper of editor.querySelectorAll('[data-config-action]')) {
                 const key = wrapper.dataset.configAction, [module, groupId, actionId] = JSON.parse(key);
                 const moduleMeta = meta.find(item => item.id === module), group = moduleMeta.groups.find(item => item.id === groupId);
                 const action = group.actions.find(item => item.id === actionId);
+                const blocked = actionBlockReason(action);
                 const path = groupPath(moduleMeta, group), parent = get(contextData, path);
                 wrapper.hidden = !!action.visibleWhen && condition(action.visibleWhen, {parent, current:parent, document:contextData,
                     defaults:defaults(group.fields), parentPath:path, currentPath:path, springPaths}) !== true;
@@ -953,15 +956,15 @@
             if (actionStates.get(key)?.state === 'running') {
                 return;
             }
+            const moduleMeta = meta.find(item => item.id === path[0]), group = moduleMeta.groups.find(item => item.id === path[1]);
+            const action = group.actions.find(item => item.id === path[2]);
             validate();
-            const blocked = actionBlockReason();
+            const blocked = actionBlockReason(action);
             if (blocked) {
                 refresh();
                 toast(blocked, 'error');
                 return;
             }
-            const moduleMeta = meta.find(item => item.id === path[0]), group = moduleMeta.groups.find(item => item.id === path[1]);
-            const action = group.actions.find(item => item.id === path[2]);
             if (action.confirmation && !await confirmAction(action.confirmation)) {
                 return;
             }

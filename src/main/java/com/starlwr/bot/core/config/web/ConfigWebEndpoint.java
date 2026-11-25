@@ -234,7 +234,7 @@ public class ConfigWebEndpoint implements DisposableBean {
                     result = path.startsWith("/config/api/action-status/") ? actions.getStatus(path.substring("/config/api/action-status/".length())) : switch (path) {
                         case "/config/api/bootstrap" -> JSONObject.of("meta", registry.getMeta(), "diagnostics", registry.getDiagnostics(),
                                 "springPaths", registry.getSpringBindings().values(), "accessPasswordPath", ConfigPasswordUtil.PASSWORD_PATH,
-                                "document", editService.read());
+                                "beanActionsAvailable", actions.supportsBeanActions(), "document", editService.read());
                         case "/config/api/document" -> editService.read();
                         default -> throw new ConfigException(404, "接口不存在");
                     };

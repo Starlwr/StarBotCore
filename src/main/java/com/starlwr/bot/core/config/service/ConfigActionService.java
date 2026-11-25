@@ -13,6 +13,7 @@ import com.starlwr.bot.core.config.validation.ConfigValueUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.BeanFactory;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -50,6 +51,11 @@ public class ConfigActionService implements AutoCloseable {
      * Spring 属性桥接器
      */
     private final SpringPropertyBridge springPropertyBridge;
+
+    /**
+     * Bean 工厂
+     */
+    private final BeanFactory beanFactory;
 
     /**
      * 动作执行线程池
@@ -100,9 +106,14 @@ public class ConfigActionService implements AutoCloseable {
     }
 
     public ConfigActionService(ConfigMetaRegistry registry, SpringPropertyBridge springPropertyBridge) {
+        this(registry, springPropertyBridge, null);
+    }
+
+    public ConfigActionService(ConfigMetaRegistry registry, SpringPropertyBridge springPropertyBridge, BeanFactory beanFactory) {
         this.registry = registry;
         validation = new ConfigValidationService(registry, springPropertyBridge);
         this.springPropertyBridge = springPropertyBridge;
+        this.beanFactory = beanFactory;
     }
 
     @Override
@@ -134,6 +145,11 @@ public class ConfigActionService implements AutoCloseable {
                 .filter(item -> item.getString("id").equals(actionId)).findFirst().orElse(null);
         if (action == null) {
             throw new ConfigException(404, "配置动作不存在");
+        }
+
+        // 检查当前模式是否支持此动作的处理器
+        if (action.containsKey("handlerBean") && !supportsBeanActions()) {
+            throw new ConfigException(409, "此操作仅在 StarBot 正常运行时可用");
         }
 
         // 根据动作元数据中的参数从页面提交的配置中筛选当前动作所需的参数
@@ -227,6 +243,14 @@ public class ConfigActionService implements AutoCloseable {
     }
 
     /**
+     * 判断当前模式是否支持 Spring Bean 动作
+     * @return 当前模式是否支持 Spring Bean 动作
+     */
+    public boolean supportsBeanActions() {
+        return beanFactory != null;
+    }
+
+    /**
      * 从页面提交的配置中筛选当前动作所需的参数
      * @param source 页面提交的配置
      * @param parameters 动作元数据中声明的参数
@@ -300,8 +324,16 @@ public class ConfigActionService implements AutoCloseable {
      */
     private void run(Task task, JSONObject action, JSONObject arguments, String module, String group) {
         try {
-            Class<?> type = Class.forName(action.getString("handler"), true, getClassLoader());
-            ConfigActionHandler handler = type.asSubclass(ConfigActionHandler.class).getConstructor().newInstance();
+            // 根据动作元数据从 Spring 容器获取处理器或根据类名创建处理器
+            ConfigActionHandler handler;
+            if (action.containsKey("handlerBean")) {
+                handler = beanFactory.getBean(action.getString("handlerBean"), ConfigActionHandler.class);
+            } else {
+                Class<?> type = Class.forName(action.getString("handler"), true, getClassLoader());
+                handler = type.asSubclass(ConfigActionHandler.class).getConstructor().newInstance();
+            }
+
+            // 执行动作并记录任务结果
             String message = handler.execute(arguments);
             task.completion.complete(JSONObject.of("id", task.id, "state", "succeeded", "message",
                     StringUtils.isBlank(message) ? "执行成功" : message));

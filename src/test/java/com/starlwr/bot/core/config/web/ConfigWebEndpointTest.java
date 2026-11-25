@@ -168,7 +168,8 @@ class ConfigWebEndpointTest {
                     () -> new ByteArrayInputStream(new byte[0]));
             assertThat(bootstrap.getStatus()).isEqualTo(200);
             JSONObject payload = JSONObject.parseObject(new String(bootstrap.getBody(), StandardCharsets.UTF_8));
-            assertThat(payload).containsOnlyKeys("meta", "diagnostics", "springPaths", "accessPasswordPath", "document");
+            assertThat(payload).containsOnlyKeys("meta", "diagnostics", "springPaths", "accessPasswordPath", "beanActionsAvailable", "document");
+            assertThat(payload).containsEntry("beanActionsAvailable", false);
             assertThat(payload.getJSONArray("accessPasswordPath")).containsExactly("starbot", "core", "config-center", "password");
             assertThat(payload.getJSONArray("springPaths")).contains(List.of("starbot", "core", "mail", "enabled"));
             assertThat(payload.getJSONArray("meta").getJSONObject(0).getString("id")).isEqualTo("core");

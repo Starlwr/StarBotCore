@@ -18,6 +18,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -57,6 +58,35 @@ class ConfigActionServiceTest {
             assertThat(draft).doesNotContainKey("advanced");
             assertThat(service.getStatus(result.getString("id"))).isEqualTo(result);
             assertThat(service.execute(request(new JSONObject())).getString("message")).isEqualTo("默认值/25");
+        }
+    }
+
+    /**
+     * 验证依赖 Spring 的动作由容器注入，并且仅在正常运行时可执行
+     */
+    @Test
+    void executesBeanActionOnlyWithSpringContext() throws Exception {
+        ConfigMetaRegistry registry = registry(JSONObject.of("id", "echo", "label", "执行", "handlerBean", "counterAction",
+                "synchronous", true));
+        JSONObject request = request(new JSONObject());
+
+        // 验证独立配置模式拒绝 Spring Bean 动作
+        try (ConfigActionService service = createActions(registry)) {
+            assertThatThrownBy(() -> service.execute(request)).isInstanceOfSatisfying(ConfigException.class, exception -> {
+                assertThat(exception.getStatus()).isEqualTo(409);
+                assertThat(exception).hasMessage("此操作仅在 StarBot 正常运行时可用");
+            });
+        }
+
+        // 验证动作处理器使用 Spring 注入的计数器
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(AtomicInteger.class, () -> new AtomicInteger(10));
+            context.registerBean("counterAction", CounterAction.class);
+            context.refresh();
+            try (ConfigActionService service = new ConfigActionService(registry, new SpringPropertyBridge(registry), context.getBeanFactory())) {
+                assertThat(service.execute(request)).containsEntry("state", "succeeded").containsEntry("message", "11");
+                assertThat(context.getBean(AtomicInteger.class).get()).isEqualTo(11);
+            }
         }
     }
 
@@ -429,8 +459,18 @@ class ConfigActionServiceTest {
      */
     private ConfigMetaRegistry registry(boolean synchronous, Class<? extends ConfigActionHandler> handler, JSONObject parameters,
                                         JSONObject... advancedFields) throws Exception {
+        return registry(JSONObject.of("id", "echo", "label", "执行", "handler", handler.getName(), "synchronous", synchronous, "parameters", parameters),
+                advancedFields);
+    }
+
+    /**
+     * 将动作声明写入测试插件并加载元数据
+     * @param action 动作元数据
+     * @param advancedFields 额外声明的高级配置字段
+     * @return 配置注册表
+     */
+    private ConfigMetaRegistry registry(JSONObject action, JSONObject... advancedFields) throws Exception {
         Path plugins = Files.createDirectories(directory.resolve("plugins"));
-        JSONObject action = JSONObject.of("id", "echo", "label", "执行", "handler", handler.getName(), "synchronous", synchronous, "parameters", parameters);
         JSONObject group = JSONObject.of("id", "settings", "title", "设置", "path", new JSONArray(),
                 "fields", JSONArray.of(JSONObject.of("key", "value", "label", "值", "type", "string")),
                 "actions", JSONArray.of(action));
@@ -480,6 +520,30 @@ class ConfigActionServiceTest {
      */
     private static ConfigActionService createActions(ConfigMetaRegistry registry) {
         return new ConfigActionService(registry, new SpringPropertyBridge(registry));
+    }
+
+    /**
+     * 计数测试处理器
+     */
+    private static class CounterAction implements ConfigActionHandler {
+        /**
+         * 动作执行次数
+         */
+        private final AtomicInteger counter;
+
+        CounterAction(AtomicInteger counter) {
+            this.counter = counter;
+        }
+
+        /**
+         * 增加执行次数并返回计数
+         * @param parameters 动作参数
+         * @return 当前执行次数
+         */
+        @Override
+        public String execute(JSONObject parameters) {
+            return String.valueOf(counter.incrementAndGet());
+        }
     }
 
     /**

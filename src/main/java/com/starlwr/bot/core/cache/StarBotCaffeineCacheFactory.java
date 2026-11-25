@@ -76,5 +76,10 @@ public class StarBotCaffeineCacheFactory implements StarBotCacheFactory {
         public void invalidate(@NonNull K key) {
             cache.invalidate(key);
         }
+
+        @Override
+        public void invalidateAll() {
+            cache.invalidateAll();
+        }
     }
 }

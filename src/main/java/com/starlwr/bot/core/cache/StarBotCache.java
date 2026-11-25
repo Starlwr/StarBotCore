@@ -48,4 +48,9 @@ public interface StarBotCache<K, V> {
      * @param key 缓存键
      */
     void invalidate(K key);
+
+    /**
+     * 清空缓存
+     */
+    void invalidateAll();
 }

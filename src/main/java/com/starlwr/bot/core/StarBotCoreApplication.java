@@ -158,19 +158,19 @@ public class StarBotCoreApplication {
         // 获取本次启动使用的 Spring 属性
         Map<String, Object> properties = configService.getSpringProperties();
 
-        // 准备登录密码、登录提示和网页接口
+        // 准备配置中心的登录密码和登录提示
         String configuredPassword = configService.get("starbot.core.config-center.password", String.class);
         boolean randomPassword = configEnabled && StringUtils.isBlank(configuredPassword);
         String token = configEnabled ? createConfigPassword(configService) : null;
         String loginNotice = randomPassword ? (configService.isPasswordReset()
                 ? "访问密码已重置, 请使用 StarBot 控制台中的随机密码登录"
                 : "当前使用随机访问密码, 请查看 StarBot 控制台中的登录密码") : "";
-        ConfigWebEndpoint endpoint = configEnabled ? new ConfigWebEndpoint(registry,
-                new ConfigEditService(configService, springPropertyBridge),
-                new ConfigActionService(registry, springPropertyBridge), token, randomPassword, !editing, loginNotice) : null;
 
         // 独立模式只启动配置 HTTP 服务和文件监听
         if (editing) {
+            ConfigWebEndpoint endpoint = new ConfigWebEndpoint(registry,
+                    new ConfigEditService(configService, springPropertyBridge),
+                    new ConfigActionService(registry, springPropertyBridge), token, randomPassword, false, loginNotice);
             startConfigServer(args, properties, configService, endpoint, invalidDocument, errors);
             return;
         }
@@ -184,8 +184,13 @@ public class StarBotCoreApplication {
             applicationContext.registerBean("configService", ConfigService.class, () -> configService);
             applicationContext.registerBean("configGetterPostProcessor", ConfigGetterPostProcessor.class, () -> new ConfigGetterPostProcessor(configService));
             applicationContext.registerBean("configMetaRegistry", ConfigMetaRegistry.class, () -> registry);
-            if (endpoint != null) {
-                applicationContext.registerBean("configWebEndpoint", ConfigWebEndpoint.class, () -> endpoint);
+
+            // 启用配置中心时注册网页接口，并将 Bean 工厂传给动作服务
+            if (configEnabled) {
+                applicationContext.registerBean("configWebEndpoint", ConfigWebEndpoint.class, () -> new ConfigWebEndpoint(registry,
+                        new ConfigEditService(configService, springPropertyBridge),
+                        new ConfigActionService(registry, springPropertyBridge, applicationContext.getBeanFactory()),
+                        token, randomPassword, true, loginNotice));
             }
         });
 

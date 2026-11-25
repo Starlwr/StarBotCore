@@ -1137,7 +1137,13 @@ public class ConfigMetaRegistry {
             requireText(action, "id");
             require(actionIds.add(action.getString("id")), "同一配置分组中动作 id 重复");
             requireText(action, "label");
-            requireText(action, "handler");
+
+            // 检查处理器声明，只能填写类名或 Spring Bean 名称
+            boolean bean = action.containsKey("handlerBean");
+            require(bean != action.containsKey("handler"), "动作必须且只能声明 handler 或 handlerBean");
+            requireText(action, bean ? "handlerBean" : "handler");
+
+            // 检查动作的执行方式和确认提示
             require(!action.containsKey("synchronous") || action.get("synchronous") instanceof Boolean, "synchronous 必须是布尔值");
             if (action.containsKey("confirmation")) {
                 requireText(action, "confirmation");
