@@ -368,6 +368,7 @@ class StarBotCoreApplicationTest {
             "network":[] | "server.address":"127.0.0.1" | ["starbot","core","network"]
             "network-thread":{"core-pool-size":8,"max-pool-size":1} | "server.address":"127.0.0.1" | ["starbot","core","network-thread","core-pool-size"]
             "config-center":{"enabled":"invalid"} | "server.address":"127.0.0.1" | ["starbot","core","config-center","enabled"]
+            "cache":{"type":"redis"} | "server.address":"127.0.0.1" | ["starbot","core","cache","type"]
             "network":{} | "server.address":"invalid/address","server.port":65536 | ["advanced","server.address"]
             "network":{} | "server":{"address":"127.0.0.1","port":65536} | ["advanced","server.port"]
             """)

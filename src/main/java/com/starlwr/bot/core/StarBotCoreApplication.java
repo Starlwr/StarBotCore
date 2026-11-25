@@ -14,7 +14,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.convert.ConversionException;
@@ -43,7 +42,6 @@ import java.util.Map;
 @Slf4j
 @EnableAsync
 @EnableRetry
-@EnableCaching
 @EnableScheduling
 @EnableAspectJAutoProxy(exposeProxy = true)
 @SpringBootApplication

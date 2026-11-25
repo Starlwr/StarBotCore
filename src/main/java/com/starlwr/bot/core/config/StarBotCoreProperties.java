@@ -39,6 +39,9 @@ public class StarBotCoreProperties {
     private final AiThread aiThread = new AiThread();
 
     @Getter
+    private final Cache cache = new Cache();
+
+    @Getter
     private final Plugin plugin = new Plugin();
 
     @Getter
@@ -212,6 +215,18 @@ public class StarBotCoreProperties {
          * 非核心线程存活时间，单位：秒
          */
         private int keepAliveSeconds = 60;
+    }
+
+    /**
+     * 缓存相关
+     */
+    @Getter
+    @Setter
+    public static class Cache {
+        /**
+         * 缓存类型
+         */
+        private String type = "caffeine";
     }
 
     /**

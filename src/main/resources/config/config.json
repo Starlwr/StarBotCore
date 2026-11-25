@@ -498,6 +498,26 @@
       ]
     },
     {
+      "id": "cache",
+      "title": "缓存",
+      "path": ["cache"],
+      "restartRequired": true,
+      "fields": [
+        {
+          "key": "type",
+          "label": "缓存类型",
+          "description": "业务缓存使用的存储类型",
+          "type": "string",
+          "options": [
+            {
+              "label": "内置缓存",
+              "value": "caffeine"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "plugin",
       "title": "插件",
       "description": "管理插件依赖的自动下载和仓库地址",
